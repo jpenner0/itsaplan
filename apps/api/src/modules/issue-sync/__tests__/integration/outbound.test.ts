@@ -28,6 +28,7 @@ function fakeGithub() {
     nextNumber: 1,
     nextComment: 500,
     fullName: 'acme/site',
+    admin: true,
     transferred: new Set<number>(),
   };
   const prefix = '/api/v3';
@@ -68,7 +69,7 @@ function fakeGithub() {
           id: 1,
           full_name: state.fullName,
           html_url: `https://github.com/${state.fullName}`,
-          permissions: { admin: true },
+          permissions: { admin: state.admin },
         });
       }
       if (path === '/repos/acme/site/hooks') {
@@ -627,6 +628,20 @@ describe('GitHub issue sync, outbound', () => {
     await enable(ctx);
     const created = await createIssue(ctx);
     fake.state.fullName = 'acme/site-renamed';
+
+    const removed = await ctx.asOwner.issues({ issueId: created.id }).delete({});
+    expect(removed.status).toBe(204);
+    await issueSyncSettled();
+
+    expect(fake.issues.get(1)).toMatchObject({ state: 'closed', state_reason: 'not_planned' });
+    expect(await db.select().from(issueSyncOutbox)).toEqual([]);
+  });
+
+  it('closes the GitHub issue when the token has no admin right on the repository', async () => {
+    const ctx = await setup(fake);
+    await enable(ctx);
+    const created = await createIssue(ctx);
+    fake.state.admin = false;
 
     const removed = await ctx.asOwner.issues({ issueId: created.id }).delete({});
     expect(removed.status).toBe(204);

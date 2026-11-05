@@ -543,6 +543,22 @@ async function pushComment(activityId: number, wait: boolean): Promise<boolean> 
   });
 }
 
+// The repository may have been renamed since the outbox row was written. Reading it by
+// id needs admin rights on it; without them, or for a deleted repository, the stored
+// name is used.
+async function currentRepositoryName(
+  input: ProviderConnectionInput,
+  storedName: string,
+  externalId: string | null,
+): Promise<string> {
+  if (!externalId) return storedName;
+  try {
+    return (await getProviderRepository(input, externalId)).fullName;
+  } catch {
+    return storedName;
+  }
+}
+
 // A deleted issue is closed as not planned; a deleted comment is deleted. The connection
 // may be gone with its team, and then there is nothing to send with.
 async function pushTombstone(row: OutboxRow): Promise<void> {
@@ -557,12 +573,9 @@ async function pushTombstone(row: OutboxRow): Promise<void> {
     baseUrl: connection.baseUrl,
     token: decryptSecret(connection),
   };
-  // The repository may have been renamed since the row was written. A close that is
-  // still redirected under the current name means the issue was transferred, and it
-  // is no longer this repository's to close.
-  const repository = row.repositoryExternalId
-    ? (await getProviderRepository(input, row.repositoryExternalId)).fullName
-    : row.repository;
+  // A close that is still redirected under the current name means the issue was
+  // transferred, and it is no longer this repository's to close.
+  const repository = await currentRepositoryName(input, row.repository, row.repositoryExternalId);
   if (row.kind === 'delete_comment') {
     await deleteProviderIssueComment(input, repository, row.externalId);
   } else {
