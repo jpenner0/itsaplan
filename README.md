@@ -60,7 +60,7 @@ release.
 - Quick actions that run on an issue, and auto-assignment when an issue moves into a state
 - Docs: shared Markdown pages in a tree, with revision history, private and locked pages,
   favorites, embedded files, comment threads, @username mentions of people and agents,
-  and links to the issues they describe
+  and links to the issues they describe. [Mermaid diagrams](docs/documents.md) render inline
 - Freeform notes boards: sticky notes on a canvas, with colors, checklists, and connections
 - Share a view or an issue by public link, read-only and without sign-in
 - Initiatives that group and track related work inside a project
