@@ -17,8 +17,6 @@
       "cron": "Bir zaman çizelgesine göre",
       "status": "Bir iş belirli bir duruma girdiğinde"
     },
-    "moreTypes": "Cloud ve Pro'da daha fazla tetikleyici",
-    "moreTypesHint": "Yeni işler, atamalar, etiketler ve yorumlar",
     "taskOptional": "Görev (isteğe bağlı)",
     "issueTaskPlaceholder": "Kabul kriterlerini işin açıklamasına yazın.",
     "issueTaskHint": "Ajan işi ve işe ne olduğunu alır. Ne yapması gerektiğini ekleyin.",
@@ -502,8 +500,6 @@
     "import": "İçe Aktar",
     "source": "Kaynak",
     "sourceHint": "Nereden içe aktarılacağını seçin.",
-    "moreSources": "Cloud ve Pro'da daha fazlası",
-    "moreSourcesHint": "Daha fazla içe aktarma kaynağı Cloud ve kendi sunucunuzda çalışan Pro'da mevcut.",
     "connect": "Plane'e bağlan",
     "connectHint": "Bağlantıyı test etmek ve projelerini yüklemek için kendi barındırdığınız bir Plane örneklemini girin.",
     "baseUrl": "Plane URL'si",

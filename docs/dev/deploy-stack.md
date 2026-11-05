@@ -1,10 +1,6 @@
 # Deploy stack
 
 - The deploy composes do not publish the Postgres port.
-- `docker-compose.pro.yml` and `docker-compose.coolify-pro.yml` run the published Pro images:
-  migrate from `vendor/itsaplan/packages/db/src/migrate.ts`, start the api with `./pro-api`. The
-  Helm chart does the same with `values-pro.yaml`, which sets the Pro image repositories and
-  `pro: true`. `pro: true` alone selects only the two paths, so the core images fail on it.
 - Migrations run as a separate step before the apps start:
   - Compose: the one-shot `migrate` service. api, worker and bot wait for it.
   - Helm: the `migrate` init container of the api pods. Worker and bot pods wait in a

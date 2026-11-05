@@ -17,8 +17,6 @@
       "cron": "Según una programación",
       "status": "Cuando un ticket entra en un estado"
     },
-    "moreTypes": "Más disparadores en Cloud y Pro",
-    "moreTypesHint": "Tickets nuevos, asignaciones, etiquetas y comentarios",
     "taskOptional": "Tarea (opcional)",
     "issueTaskPlaceholder": "Escribe los criterios de aceptación en la descripción del ticket.",
     "issueTaskHint": "El agente recibe el ticket y lo que le ha pasado. Añade qué hacer con él.",
@@ -502,8 +500,6 @@
     "import": "Importar",
     "source": "Origen",
     "sourceHint": "Elige desde dónde importar.",
-    "moreSources": "Más en Cloud y Pro",
-    "moreSourcesHint": "Hay más fuentes de importación en Cloud y en Pro autoalojado.",
     "connect": "Conectar con Plane",
     "connectHint": "Introduce una instancia autoalojada de Plane para comprobar la conexión y cargar sus proyectos.",
     "baseUrl": "URL de Plane",

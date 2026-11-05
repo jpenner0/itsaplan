@@ -8,7 +8,7 @@ request succeeds, but no session is kept and the app stays signed out. `http://l
 one exception in Chrome and Firefox; WebKit browsers such as Safari refuse it there too.
 
 ```bash
-git clone https://github.com/croffasia/itsaplan.git
+git clone https://github.com/jpenner0/itsaplan.git
 cd itsaplan
 cp .env.example .env
 # fill in the eight values below
@@ -36,14 +36,8 @@ run from the images published on each release. `VERSION` in `.env` pins one rele
 of the newest. The `migrate` service applies migrations before the api starts, and the first account you register
 becomes the instance admin.
 
-For the Pro edition, start the stack with `docker compose -f docker-compose.pro.yml up -d`.
-It takes the same `.env` and runs the Pro images. Without a valid license they run as the core
-does; the license key is entered in god mode, under **License**. The project name and the
-volumes are those of `docker-compose.yml`, so an existing instance moves to Pro on the same
-data.
-
 `.env.example` documents every variable, including the optional ones: legal document URLs,
-passkey and cookie settings, telemetry opt-out, and worker tuning.
+passkey and cookie settings, and worker tuning.
 
 ## Where the api lives
 
@@ -258,7 +252,7 @@ docker run --rm -v itsaplan_minio-data:/data -v "$PWD":/out alpine tar czf /out/
 ```
 
 If you call the API from your own scripts or from an MCP client, read the
-[release notes](https://github.com/croffasia/itsaplan/releases) for the paths a release removed.
+[release notes](https://github.com/jpenner0/itsaplan/releases) for the paths a release removed.
 
 ## Building from source instead
 

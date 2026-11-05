@@ -1,6 +1,6 @@
 # Coding agent setup
 
-[`@itsaplan/runner`](https://www.npmjs.com/package/@itsaplan/runner) runs an external agent
+[`@jpenner0/itsaplan-runner`](https://www.npmjs.com/package/@jpenner0/itsaplan-runner) runs an external agent
 on your own machine. It has a preset for each of eight coding agent CLIs. A preset builds
 the command itself: the flags for an unattended run, and the session resume.
 
@@ -11,7 +11,7 @@ Each preset needs two files in the working directory:
 
 This page holds both files for each preset, and the notes that apply to that CLI. The
 runner's own settings are in its
-[README](https://github.com/croffasia/itsaplan/blob/main/packages/runner/README.md).
+[README](https://github.com/jpenner0/itsaplan/blob/main/packages/runner/README.md).
 
 The instance can also send the tasks to an endpoint that you run. See
 [Agent endpoint](agent-endpoint.md).

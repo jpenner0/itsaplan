@@ -54,8 +54,8 @@ The mail From address falls back to env (`EMAIL_FROM`, then `NOTIFICATIONS_EMAIL
   Those routes answer 403 unless a build turns per-workspace SCIM on.
 
 Each secret is encrypted with `@repo/crypto` and has a `redacted` mirror. The settings routes
-decrypt the value and build their DTO from it. `workspacesWithOwnScim` and the worker's telemetry
-read the mirror, which needs no key. No route returns a stored secret. A new SCIM token is
+decrypt the value and build their DTO from it. `workspacesWithOwnScim` reads
+the mirror, which needs no key. No route returns a stored secret. A new SCIM token is
 returned once, by the request that generates it.
 
 The mail provider is read by the api and the worker as well, so its shape and reader are in

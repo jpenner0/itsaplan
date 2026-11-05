@@ -205,60 +205,12 @@
     "deleteDialog": {
       "title": "刪除範本「{name}」？",
       "description": "以此範本建立的專案不受影響。",
-      "confirm": "刪除範本",
-      "galleryNote": "它在圖庫中的頁面也會下架。"
+      "confirm": "刪除範本"
     },
     "panel": {
       "saved": "儲存於 {date}",
       "none": "無",
       "teams": "團隊：{teams}"
-    },
-    "publish": {
-      "action": "發布",
-      "published": "已發布",
-      "account": "圖庫帳號",
-      "publishingAs": "發布身分",
-      "authorProfile": "作者資料",
-      "changeEmail": "變更電子郵件",
-      "rules": "圖庫規則",
-      "unlink": "解除工作區連結",
-      "downloadable": "任何人都能下載",
-      "private": "不含工作項目和成員",
-      "counts": "{states, plural, other {# 個狀態}} · {types, plural, other {# 種類型}} · {fields, plural, other {# 個欄位}}",
-      "by": "作者 <b>{name}</b>",
-      "authorHint": "顯示在從 {email} 發布的每個範本上。",
-      "authorName": "作者",
-      "authorUrl": "個人檔案連結",
-      "optional": "選填",
-      "authorUrlInvalid": "必須以 https:// 開頭",
-      "submit": "發布",
-      "update": "更新頁面",
-      "live": "已上線",
-      "since": "自 {date}",
-      "openPage": "開啟頁面",
-      "copyLink": "複製連結",
-      "linkCopied": "已複製連結",
-      "copyFailed": "無法複製連結",
-      "unpublish": "取消發布",
-      "unpublishConfirm": "下架頁面？",
-      "unpublishHint": "它的連結將失效。",
-      "keep": "保留",
-      "publishedToast": "已發布",
-      "updatedToast": "頁面已更新",
-      "badge": "公開",
-      "badgeHint": "自 {date} 起在圖庫中",
-      "link": {
-        "intro": "為這個工作區確認一次電子郵件。",
-        "email": "電子郵件",
-        "emailHint": "不會公開顯示",
-        "agree": "傳送驗證碼即表示你接受<rules>圖庫規則</rules>。",
-        "sendCode": "傳送驗證碼",
-        "codeSent": "輸入傳送到 {email} 的驗證碼",
-        "code": "驗證碼",
-        "confirm": "確認",
-        "resend": "重新傳送",
-        "resent": "已傳送新驗證碼"
-      }
     }
   },
   "panel": {
@@ -687,8 +639,6 @@
   "workspace": {
     "rail": "工作區",
     "create": "新建工作區",
-    "createUnavailableTitle": "更多工作區",
-    "createUnavailableHint": "每人擁有多個工作區的功能可在 Cloud 和自託管 Pro 版中使用。",
     "general": "一般",
     "roles": {
       "owner": "所有者",

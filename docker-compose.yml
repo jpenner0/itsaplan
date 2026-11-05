@@ -82,7 +82,7 @@ services:
   # and bot start only after it succeeds, so none of them runs against an old schema.
   # restart 'no' keeps a finished run from being started again.
   migrate:
-    image: ghcr.io/croffasia/itsaplan-api:${VERSION:-latest}
+    image: ghcr.io/jpenner0/itsaplan-api:${VERSION:-latest}
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -103,7 +103,7 @@ services:
       - db-backups:/backups
 
   api:
-    image: ghcr.io/croffasia/itsaplan-api:${VERSION:-latest}
+    image: ghcr.io/jpenner0/itsaplan-api:${VERSION:-latest}
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -158,7 +158,7 @@ services:
   # Webhook delivery, notification delivery, agent schedules, and agent runs.
   # Shares the database with the api. No public ports.
   worker:
-    image: ghcr.io/croffasia/itsaplan-worker:${VERSION:-latest}
+    image: ghcr.io/jpenner0/itsaplan-worker:${VERSION:-latest}
     build:
       context: .
       dockerfile: apps/worker/Dockerfile
@@ -175,11 +175,6 @@ services:
       # provider credentials stored in the database — encrypted with this key, the
       # same value the api uses.
       APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?set APP_ENCRYPTION_KEY in .env}
-      # Anonymous telemetry (TELEMETRY.md). Either variable, set to anything but 0,
-      # turns it off.
-      TELEMETRY_DISABLED: ${TELEMETRY_DISABLED:-}
-      DO_NOT_TRACK: ${DO_NOT_TRACK:-}
-      TELEMETRY_DEBUG: ${TELEMETRY_DEBUG:-}
       # The same list the api reads. This process delivers webhooks to those hosts.
       SSRF_ALLOWED_HOSTS: ${SSRF_ALLOWED_HOSTS:-}
       # A downloaded Plane import attachment is stored here, the same bucket the
@@ -199,7 +194,7 @@ services:
   # Must stay at one replica: Telegram hands each getUpdates call to a single
   # caller, so a second instance would take updates away from the first.
   bot:
-    image: ghcr.io/croffasia/itsaplan-bot:${VERSION:-latest}
+    image: ghcr.io/jpenner0/itsaplan-bot:${VERSION:-latest}
     build:
       context: .
       dockerfile: apps/bot/Dockerfile
@@ -217,7 +212,7 @@ services:
   # The origins are read at startup and handed to the browser by the server render,
   # so the image carries none of them and a changed API_URL only needs a restart.
   web:
-    image: ghcr.io/croffasia/itsaplan-web:${VERSION:-latest}
+    image: ghcr.io/jpenner0/itsaplan-web:${VERSION:-latest}
     build:
       context: .
       dockerfile: apps/web/Dockerfile

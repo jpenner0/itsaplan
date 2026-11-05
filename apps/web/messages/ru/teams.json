@@ -205,60 +205,12 @@
     "deleteDialog": {
       "title": "Удалить шаблон «{name}»?",
       "description": "Проекты, созданные по нему, не изменятся.",
-      "confirm": "Удалить шаблон",
-      "galleryNote": "Его страница в галерее тоже исчезнет."
+      "confirm": "Удалить шаблон"
     },
     "panel": {
       "saved": "Сохранён {date}",
       "none": "Нет",
       "teams": "Команды: {teams}"
-    },
-    "publish": {
-      "action": "Опубликовать",
-      "published": "Опубликован",
-      "account": "Аккаунт галереи",
-      "publishingAs": "Публикуете как",
-      "authorProfile": "Профиль автора",
-      "changeEmail": "Сменить email",
-      "rules": "Правила галереи",
-      "unlink": "Отвязать воркспейс",
-      "downloadable": "Скачать может любой",
-      "private": "Без задач и людей",
-      "counts": "{states, plural, one {# статус} few {# статуса} many {# статусов} other {# статуса}} · {types, plural, one {# тип} few {# типа} many {# типов} other {# типа}} · {fields, plural, one {# поле} few {# поля} many {# полей} other {# поля}}",
-      "by": "автор <b>{name}</b>",
-      "authorHint": "Показывается на всех шаблонах, опубликованных с {email}.",
-      "authorName": "Автор",
-      "authorUrl": "Ссылка на профиль",
-      "optional": "Необязательно",
-      "authorUrlInvalid": "Ссылка должна начинаться с https://",
-      "submit": "Опубликовать",
-      "update": "Обновить страницу",
-      "live": "Доступен",
-      "since": "с {date}",
-      "openPage": "Открыть страницу",
-      "copyLink": "Копировать ссылку",
-      "linkCopied": "Ссылка скопирована",
-      "copyFailed": "Не удалось скопировать ссылку",
-      "unpublish": "Снять с публикации",
-      "unpublishConfirm": "Снять страницу?",
-      "unpublishHint": "Её ссылка перестанет работать.",
-      "keep": "Оставить",
-      "publishedToast": "Опубликовано",
-      "updatedToast": "Страница обновлена",
-      "badge": "Публичный",
-      "badgeHint": "В галерее с {date}",
-      "link": {
-        "intro": "Подтвердите email один раз для этого воркспейса.",
-        "email": "Email",
-        "emailHint": "Не показывается публично",
-        "agree": "Отправляя код, вы принимаете <rules>правила галереи</rules>.",
-        "sendCode": "Отправить код",
-        "codeSent": "Введите код, отправленный на {email}",
-        "code": "Код",
-        "confirm": "Подтвердить",
-        "resend": "Отправить ещё раз",
-        "resent": "Новый код отправлен"
-      }
     }
   },
   "panel": {
@@ -687,8 +639,6 @@
   "workspace": {
     "rail": "Воркспейсы",
     "create": "Новый воркспейс",
-    "createUnavailableTitle": "Больше воркспейсов",
-    "createUnavailableHint": "Больше воркспейсов на человека доступно в Cloud и в Pro-версии для своего сервера.",
     "general": "Общие",
     "roles": {
       "owner": "Владелец",

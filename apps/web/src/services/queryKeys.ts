@@ -48,7 +48,6 @@ export const qk = {
     ['project-templates', 'workspace', workspaceId, 'import', template] as const,
   projectTemplatePreview: (workspaceId: number, projectId: number, include: unknown) =>
     ['project-templates', 'workspace', workspaceId, 'preview', projectId, include] as const,
-  templatePublisher: (workspaceId: number) => ['template-publisher', workspaceId] as const,
   // The members of a team and the projects it owns, each read by its own section. A
   // page is scoped by the search term and the window it was read with.
   teamMembers: (teamId: number, params: unknown) => ['team', teamId, 'members', params] as const,

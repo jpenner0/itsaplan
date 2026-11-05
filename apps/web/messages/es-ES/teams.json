@@ -205,60 +205,12 @@
     "deleteDialog": {
       "title": "¿Eliminar la plantilla «{name}»?",
       "description": "Los proyectos creados con ella no cambian.",
-      "confirm": "Eliminar plantilla",
-      "galleryNote": "Su página en la galería también se retira."
+      "confirm": "Eliminar plantilla"
     },
     "panel": {
       "saved": "Guardada el {date}",
       "none": "Ninguno",
       "teams": "Equipos: {teams}"
-    },
-    "publish": {
-      "action": "Publicar",
-      "published": "Publicada",
-      "account": "Cuenta de la galería",
-      "publishingAs": "Publicas como",
-      "authorProfile": "Perfil del autor",
-      "changeEmail": "Cambiar correo",
-      "rules": "Normas de la galería",
-      "unlink": "Desvincular espacio de trabajo",
-      "downloadable": "Cualquiera puede descargarla",
-      "private": "Sin tickets ni personas",
-      "counts": "{states, plural, one {# estado} other {# estados}} · {types, plural, one {# tipo} other {# tipos}} · {fields, plural, one {# campo} other {# campos}}",
-      "by": "de <b>{name}</b>",
-      "authorHint": "Se muestra en todas las plantillas publicadas desde {email}.",
-      "authorName": "Autor",
-      "authorUrl": "Enlace al perfil",
-      "optional": "Opcional",
-      "authorUrlInvalid": "Debe empezar por https://",
-      "submit": "Publicar",
-      "update": "Actualizar página",
-      "live": "En línea",
-      "since": "desde el {date}",
-      "openPage": "Abrir página",
-      "copyLink": "Copiar enlace",
-      "linkCopied": "Enlace copiado",
-      "copyFailed": "No se pudo copiar el enlace",
-      "unpublish": "Retirar",
-      "unpublishConfirm": "¿Retirar la página?",
-      "unpublishHint": "Su enlace dejará de funcionar.",
-      "keep": "Mantener",
-      "publishedToast": "Publicada",
-      "updatedToast": "Página actualizada",
-      "badge": "Pública",
-      "badgeHint": "En la galería desde el {date}",
-      "link": {
-        "intro": "Confirma un correo una sola vez para este espacio de trabajo.",
-        "email": "Correo electrónico",
-        "emailHint": "No se muestra públicamente",
-        "agree": "Al enviar el código aceptas las <rules>normas de la galería</rules>.",
-        "sendCode": "Enviar código",
-        "codeSent": "Introduce el código enviado a {email}",
-        "code": "Código",
-        "confirm": "Confirmar",
-        "resend": "Enviar de nuevo",
-        "resent": "Código nuevo enviado"
-      }
     }
   },
   "panel": {
@@ -687,8 +639,6 @@
   "workspace": {
     "rail": "Espacios de trabajo",
     "create": "Nuevo espacio de trabajo",
-    "createUnavailableTitle": "Más espacios de trabajo",
-    "createUnavailableHint": "Más espacios de trabajo por persona están disponibles en Cloud y en Pro autoalojado.",
     "general": "General",
     "roles": {
       "owner": "Propietario",

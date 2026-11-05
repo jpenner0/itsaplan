@@ -17,8 +17,6 @@
       "cron": "On a schedule",
       "status": "When an issue enters a state"
     },
-    "moreTypes": "More triggers in Cloud and Pro",
-    "moreTypesHint": "New issues, assignments, labels and comments",
     "taskOptional": "Task (optional)",
     "issueTaskPlaceholder": "Write the acceptance criteria into the issue description.",
     "issueTaskHint": "The agent gets the issue and what happened to it. Add what to do with it.",
@@ -502,8 +500,6 @@
     "import": "Import",
     "source": "Source",
     "sourceHint": "Choose where to import from.",
-    "moreSources": "More in Cloud and Pro",
-    "moreSourcesHint": "More sources to import from are available in Cloud and self-hosted Pro.",
     "connect": "Connect to Plane",
     "connectHint": "Enter a self-hosted Plane instance to check the connection and load its projects.",
     "baseUrl": "Plane URL",

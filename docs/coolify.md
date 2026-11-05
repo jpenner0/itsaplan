@@ -8,16 +8,8 @@ pasted compose file and two domains.
 
 **New Resource → Docker Compose Empty**, then pick the server to deploy on.
 
-Paste the whole of one file into **Docker Compose file** and press **Save**:
-
-| Edition             | File                                                                       |
-| ------------------- | -------------------------------------------------------------------------- |
-| Pro (recommended)   | [`docker-compose.coolify-pro.yml`](../docker-compose.coolify-pro.yml)       |
-| Community           | [`docker-compose.coolify-images.yml`](../docker-compose.coolify-images.yml) |
-
-Without a license key the Pro images run as Community does. To unlock the Pro features later,
-enter the key in god mode, under **License**. The stack stays the same, with no move to
-another compose file.
+Paste the whole of [`docker-compose.coolify-images.yml`](../docker-compose.coolify-images.yml)
+into **Docker Compose file** and press **Save**.
 
 ## 2. Set the domains
 
@@ -41,7 +33,7 @@ it exits. The first account registered becomes the instance admin.
 
 Secrets (database password, auth secret, encryption key, worker token, object store credentials)
 are generated on the first deploy and stay stable across later ones — nothing to fill in by
-hand. Optional variables from `.env.example` — legal document URLs, telemetry opt-out,
+hand. Optional variables from `.env.example` — legal document URLs and
 worker tuning — go in **Environment Variables**.
 
 ## Upgrade
@@ -55,7 +47,7 @@ Use this to run a branch instead of a release. The server builds the images itse
 takes longer and needs more memory than pulling them.
 
 1. **New Resource → Public Repository**, then pick the server. Enter
-   `https://github.com/croffasia/itsaplan.git` and press **Check repository**.
+   `https://github.com/jpenner0/itsaplan.git` and press **Check repository**.
 2. Set **Build Pack** to `Docker Compose`, **Base Directory** to `/`, and **Docker Compose
    Location** to `/docker-compose.coolify.yml`, then press **Continue**.
 3. In **Configuration → Git Source**, set **Branch**, leave **Commit SHA** as `HEAD`, and press

@@ -9,14 +9,13 @@ import type { ImportSourceEntry } from '../../types/importSource';
 import SettingsImportExportPlane from './SettingsImportExportPlane';
 import SettingsImportExportLinear from './SettingsImportExportLinear';
 import SettingsImportExportTrello from './SettingsImportExportTrello';
-import SettingsImportExportMoreSources from './SettingsImportExportMoreSources';
 import SettingsImportExportJobList from './SettingsImportExportJobList';
 import SettingsImportExportDownloadButton from './SettingsImportExportDownloadButton';
 
 const CORE_SOURCES: ImportSourceEntry[] = [
-  { kind: 'source', key: 'plane', label: 'Plane', Component: SettingsImportExportPlane },
-  { kind: 'source', key: 'linear', label: 'Linear', Component: SettingsImportExportLinear },
-  { kind: 'source', key: 'trello', label: 'Trello', Component: SettingsImportExportTrello },
+  { key: 'plane', label: 'Plane', Component: SettingsImportExportPlane },
+  { key: 'linear', label: 'Linear', Component: SettingsImportExportLinear },
+  { key: 'trello', label: 'Trello', Component: SettingsImportExportTrello },
 ];
 
 // Import and export on two tabs. Import: pick a source, connect to it, pick what to
@@ -32,7 +31,7 @@ export default function SettingsImportExport({ project }: { project: ProjectDeta
   const canEdit = can('import_export', 'edit');
   const entries = useImportSources(CORE_SOURCES);
   const [sourceKey, setSourceKey] = useState(CORE_SOURCES[0]!.key);
-  const source = entries.find((e) => e.kind === 'source' && e.key === sourceKey);
+  const source = entries.find((e) => e.key === sourceKey);
 
   return (
     <Tabs defaultValue="import">
@@ -46,23 +45,15 @@ export default function SettingsImportExport({ project }: { project: ProjectDeta
             <SettingsSection title={t('source')} description={t('sourceHint')}>
               <Tabs value={sourceKey} onValueChange={setSourceKey}>
                 <TabsList variant="line">
-                  {entries.map((entry) =>
-                    entry.kind === 'more' ? (
-                      <SettingsImportExportMoreSources
-                        key={entry.key}
-                        label={entry.label}
-                        hint={entry.hint}
-                      />
-                    ) : (
-                      <TabsTrigger key={entry.key} value={entry.key}>
-                        {entry.label}
-                      </TabsTrigger>
-                    ),
-                  )}
+                  {entries.map((entry) => (
+                    <TabsTrigger key={entry.key} value={entry.key}>
+                      {entry.label}
+                    </TabsTrigger>
+                  ))}
                 </TabsList>
               </Tabs>
             </SettingsSection>
-            {source?.kind === 'source' && <source.Component key={source.key} project={project} />}
+            {source && <source.Component key={source.key} project={project} />}
           </>
         )}
         <SettingsSection title={t('jobs')} description={t('jobsHint')}>

@@ -1,12 +1,12 @@
 # itsaplan Helm Chart
 
-Helm chart for deploying [It's a Plan](https://github.com/croffasia/itsaplan) on Kubernetes.
+Helm chart for deploying [It's a Plan](https://github.com/jpenner0/itsaplan) on Kubernetes.
 
 ## Prerequisites
 
 - Kubernetes 1.24+
 - Helm 3.10+
-- The published container images from `ghcr.io/croffasia/itsaplan-{api,web,worker,bot}`
+- The published container images from `ghcr.io/jpenner0/itsaplan-{api,web,worker,bot}`
 
 ## Quick start
 
@@ -148,17 +148,6 @@ bot:
   enabled: false
 ```
 
-## Pro edition
-
-`values-pro.yaml` runs the Pro images. Pass it before your own values file:
-
-```bash
-helm install itsaplan charts/itsaplan -f charts/itsaplan/values-pro.yaml -f values.yaml
-```
-
-Without a valid license the Pro images run as the core does. The license key is entered in
-god mode, under **License**.
-
 ## Values reference
 
 ### Global
@@ -170,7 +159,6 @@ god mode, under **License**.
 | `nodeSelector`       | Global node selector (per-component overrides take precedence) | `{}`    |
 | `tolerations`        | Global tolerations                                             | `[]`    |
 | `affinity`           | Global affinity                                                | `{}`    |
-| `pro`                | Run the Pro images (set by `values-pro.yaml`)                  | `false` |
 | `imagePullSecrets`   | Image pull secrets for private registries                      | `[]`    |
 | `podSecurityContext` | Pod-level security context                                     | `{}`    |
 | `securityContext`    | Container-level security context                               | `{}`    |
@@ -189,7 +177,7 @@ god mode, under **License**.
 |---------------------------------------|-----------------------------------------------------------|----------------------------------|
 | `api.replicaCount`                    | Number of API replicas                                    | `1`                              |
 | `api.port`                            | Container port                                            | `3000`                           |
-| `api.image.repository`                | Image repository                                          | `ghcr.io/croffasia/itsaplan-api` |
+| `api.image.repository`                | Image repository                                          | `ghcr.io/jpenner0/itsaplan-api` |
 | `api.image.tag`                       | Image tag (defaults to `appVersion`)                      | `""`                             |
 | `api.image.pullPolicy`                | Image pull policy                                         | `IfNotPresent`                   |
 | `api.internalUrl`                     | Override internal API URL for inter-service communication | `""`                             |
@@ -202,7 +190,6 @@ god mode, under **License**.
 | `api.env.S3_BUCKET`                   | S3 bucket name                                            | `""`                             |
 | `api.env.S3_REGION`                   | S3 region                                                 | `us-east-1`                      |
 | `api.env.S3_FORCE_PATH_STYLE`         | S3 path-style access                                      | `"true"`                         |
-| `api.env.TELEMETRY_DISABLED`          | Disable telemetry                                         | `"1"`                            |
 | `api.resources`                       | CPU/memory requests and limits                            | `{}`                             |
 | `api.nodeSelector`                    | Node selector                                             | `{}`                             |
 | `api.tolerations`                     | Tolerations                                               | `[]`                             |
@@ -223,7 +210,7 @@ god mode, under **License**.
 |---------------------------------------|--------------------------------------|----------------------------------|
 | `web.replicaCount`                    | Number of web replicas               | `1`                              |
 | `web.port`                            | Container port                       | `3001`                           |
-| `web.image.repository`                | Image repository                     | `ghcr.io/croffasia/itsaplan-web` |
+| `web.image.repository`                | Image repository                     | `ghcr.io/jpenner0/itsaplan-web` |
 | `web.image.tag`                       | Image tag (defaults to `appVersion`) | `""`                             |
 | `web.image.pullPolicy`                | Image pull policy                    | `IfNotPresent`                   |
 | `web.env.HOSTNAME`                    | Bind address                         | `0.0.0.0`                        |
@@ -244,11 +231,9 @@ god mode, under **License**.
 | Key                             | Description                          | Default                             |
 |---------------------------------|--------------------------------------|-------------------------------------|
 | `worker.replicaCount`           | Number of worker replicas            | `1`                                 |
-| `worker.image.repository`       | Image repository                     | `ghcr.io/croffasia/itsaplan-worker` |
+| `worker.image.repository`       | Image repository                     | `ghcr.io/jpenner0/itsaplan-worker` |
 | `worker.image.tag`              | Image tag (defaults to `appVersion`) | `""`                                |
 | `worker.image.pullPolicy`       | Image pull policy                    | `IfNotPresent`                      |
-| `worker.env.TELEMETRY_DISABLED` | Disable telemetry                    | `"1"`                               |
-| `worker.env.DO_NOT_TRACK`       | Do not track                         | `"1"`                               |
 | `worker.resources`              | CPU/memory requests and limits       | `{}`                                |
 | `worker.nodeSelector`           | Node selector                        | `{}`                                |
 | `worker.tolerations`            | Tolerations                          | `[]`                                |
@@ -259,7 +244,7 @@ god mode, under **License**.
 | Key                    | Description                          | Default                          |
 |------------------------|--------------------------------------|----------------------------------|
 | `bot.enabled`          | Deploy the Telegram bot              | `true`                           |
-| `bot.image.repository` | Image repository                     | `ghcr.io/croffasia/itsaplan-bot` |
+| `bot.image.repository` | Image repository                     | `ghcr.io/jpenner0/itsaplan-bot` |
 | `bot.image.tag`        | Image tag (defaults to `appVersion`) | `""`                             |
 | `bot.image.pullPolicy` | Image pull policy                    | `IfNotPresent`                   |
 | `bot.resources`        | CPU/memory requests and limits       | `{}`                             |

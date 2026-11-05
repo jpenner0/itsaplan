@@ -17,8 +17,6 @@
       "cron": "依排程",
       "status": "工作項目進入某狀態時"
     },
-    "moreTypes": "Cloud 和 Pro 中的更多觸發方式",
-    "moreTypesHint": "新工作項目、指派、標籤和留言",
     "taskOptional": "任務（可選）",
     "issueTaskPlaceholder": "在工作項目描述中寫下驗收標準。",
     "issueTaskHint": "代理會收到該工作項目及其發生的變化。可補充要對它做什麼。",
@@ -502,8 +500,6 @@
     "import": "匯入",
     "source": "來源",
     "sourceHint": "選擇匯入來源。",
-    "moreSources": "Cloud 和 Pro 中有更多",
-    "moreSourcesHint": "Cloud 和自架 Pro 支援更多匯入來源。",
     "connect": "連線 Plane",
     "connectHint": "輸入自託管的 Plane 執行個體地址以檢查連線並載入其專案。",
     "baseUrl": "Plane 地址",

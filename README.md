@@ -8,21 +8,14 @@ Self-hosted project management and issue tracking, with no per-seat fees. Agents
 the same board as your people. Everything is available over the REST API, webhooks, and MCP.
 Replaces Linear, Jira, Asana, Trello, Plane, and Miro.
 
-If It's a Plan looks useful to you, star the repo ⭐ and
-[leave a review on Product Hunt](https://www.producthunt.com/products/it-s-a-plan/reviews).
-
-<a href="https://railway.com/deploy/its-a-plan?referralCode=lQ5O6i&utm_medium=integration&utm_source=button&utm_campaign=itsaplan"><img src="https://railway.com/button.svg" alt="Deploy on Railway" height="40" /></a>
+<a href="https://railway.com/deploy/its-a-plan"><img src="https://railway.com/button.svg" alt="Deploy on Railway" height="40" /></a>
 <a href="docs/coolify.md"><img src="assets/coolify-button.svg" alt="Deploy on Coolify" height="40" /></a>
 <a href="docs/self-hosting.md"><img src="assets/docker-button.svg" alt="Self-host with Docker" height="40" /></a>
-<a href="https://itsaplan.dev/pro"><img src="assets/pro-button.svg" alt="Deploy Pro version" height="40" /></a>
 
 [![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![CI](https://github.com/croffasia/itsaplan/actions/workflows/ci.yml/badge.svg)](https://github.com/croffasia/itsaplan/actions/workflows/ci.yml)
-[![Stars](https://img.shields.io/github/stars/croffasia/itsaplan?style=flat)](https://github.com/croffasia/itsaplan/stargazers)
-[![Last commit](https://img.shields.io/github/last-commit/croffasia/itsaplan)](https://github.com/croffasia/itsaplan/commits/main)
-
-<a href="https://trendshift.io/repositories/95056?utm_source=repository-badge&utm_medium=badge&utm_campaign=badge-repository-95056" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/95056" alt="#8 Repository of the Day on GitHub Trending" width="250" height="55"/></a>
-<a href="https://trendshift.io/repositories/95056?utm_source=trendshift-badge&utm_medium=badge&utm_campaign=badge-trendshift-95056" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/95056/daily?language=TypeScript" alt="#13 TypeScript Repository of the Day on Trendshift" width="250" height="55"/></a>
+[![CI](https://github.com/jpenner0/itsaplan/actions/workflows/ci.yml/badge.svg)](https://github.com/jpenner0/itsaplan/actions/workflows/ci.yml)
+[![Stars](https://img.shields.io/github/stars/jpenner0/itsaplan?style=flat)](https://github.com/jpenner0/itsaplan/stargazers)
+[![Last commit](https://img.shields.io/github/last-commit/jpenner0/itsaplan)](https://github.com/jpenner0/itsaplan/commits/main)
 
 <img src="assets/screenshots/tour.gif" alt="Board, AI chat, initiatives, timeline, calendar, and agent schedules" width="100%" />
 
@@ -82,7 +75,7 @@ release.
 - Internal agents run on the instance. Configure the model, system prompt, tools, and
   reusable skills, written inline or imported from a GitHub repository
 - External agents run on your own machine, under your own account. Install
-  [`@itsaplan/runner`](packages/runner) and it gives every task to Claude Code, Codex,
+  [`@jpenner0/itsaplan-runner`](packages/runner) and it gives every task to Claude Code, Codex,
   Antigravity CLI, GitHub Copilot CLI, opencode, or any command that reads stdin
 - Or control the run queue through the API and do the work in your own implementation
 - A run starts on an @mention in a comment on an issue or a document, on an assignment, or
@@ -110,42 +103,11 @@ release.
 
 </details>
 
-## Pro edition
-
-<a href="https://itsaplan.dev/pro"><img src="assets/pro-banner.svg" alt="It's a Plan Pro: run your issue tracker up to 91% cheaper than Linear, Jira, Asana and Plane. $240 a year for the whole instance, any number of people." width="100%" /></a>
-
-Buying Pro funds the work on Community, the free edition. Pro has everything in Community, plus
-the features below. One license covers one domain, with no limit on seats or workspaces.
-
-| Features | Community | Pro |
-| --- | :---: | :---: |
-| SSO and SCIM for the instance | ✓ | ✓ |
-| Scheduled agent runs | ✓ | ✓ |
-| Agent tokens and cost | ✓ | ✓ |
-| Workspaces per person | 1 | Unlimited |
-| SSO and SCIM per workspace | — | ✓ |
-| Require SSO | — | ✓ |
-| Email domains per workspace | — | ✓ |
-| Audit log | — | ✓ |
-| Workspace dashboard | — | ✓ |
-| Schedules on issue events | — | ✓ |
-| Schedule filters and run limits | — | ✓ |
-| Agent analytics by person and trigger | — | ✓ |
-| AI budgets | — | ✓ |
-| Help desk with public forms | — | ✓ |
-
-To run Pro, deploy with [`docker-compose.pro.yml`](docs/self-hosting.md),
-[`docker-compose.coolify-pro.yml`](docs/coolify.md), or [`values-pro.yaml`](docs/helm.md), then
-enter the key in god mode under **License**. Without a valid key, Pro runs as Community. Your
-data stays when you switch between editions.
-
-**[Pricing and license terms →](https://itsaplan.dev/pro)**
-
 ## Getting started
 
 ### Deploy on Railway — recommended
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/its-a-plan?referralCode=lQ5O6i&utm_medium=integration&utm_source=button&utm_campaign=itsaplan)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/its-a-plan)
 
 The whole stack in one click, with no server to maintain. You give Railway two hostnames,
 and it generates every secret. You need a domain of your own: [the guide](docs/railway.md)
@@ -156,7 +118,7 @@ explains why, and what to do after the deploy.
 Requirements: Docker and [Bun](https://bun.sh).
 
 ```bash
-git clone https://github.com/croffasia/itsaplan.git
+git clone https://github.com/jpenner0/itsaplan.git
 cd itsaplan
 bun install
 bun run setup   # answer "Try it"
@@ -173,7 +135,7 @@ needed. Run it again later to restart the instance; the data stays.
 - [Deploy on Coolify](docs/coolify.md) — the same stack on a Coolify instance
 - [Deploy on Kubernetes](docs/helm.md) — Helm chart for any Kubernetes cluster
 - [Local development](docs/development.md) — running the apps on the host, and the tests
-- [Coding agent setup](docs/runner.md) — the config for each CLI that `@itsaplan/runner` runs
+- [Coding agent setup](docs/runner.md) — the config for each CLI that `@jpenner0/itsaplan-runner` runs
 - [Agent endpoint](docs/agent-endpoint.md) — the instance sends an external agent's tasks to a URL that you run, such as an AWS Lambda function
 
 ## Built with
@@ -197,25 +159,20 @@ gets merged. Be kind; we follow a [Code of Conduct](CODE_OF_CONDUCT.md).
 
 Thank you to everyone who has contributed to It's a Plan:
 
-<a href="https://github.com/croffasia/itsaplan/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=croffasia/itsaplan&columns=20" alt="Contributors" />
+<a href="https://github.com/jpenner0/itsaplan/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=jpenner0/itsaplan&columns=20" alt="Contributors" />
 </a>
-
-Not ready to contribute code? [Star the repo](https://github.com/croffasia/itsaplan) and share
-it — it is the simplest way to help the project grow.
 
 ## Security
 
 Found a vulnerability? Report it privately through
-[GitHub Security Advisories](https://github.com/croffasia/itsaplan/security/advisories/new),
+[GitHub Security Advisories](https://github.com/jpenner0/itsaplan/security/advisories/new),
 not a public issue, so we can fix it first. Details in [SECURITY.md](SECURITY.md).
 
 ## License
 
-Copyright © 2026 Andrii Poluosmak.
+Copyright © 2026 Andrii Poluosmak. This repository is a modified fork of
+[croffasia/itsaplan](https://github.com/croffasia/itsaplan).
 
 [AGPL-3.0](LICENSE), except `packages/runner`, which is
 [Apache-2.0](packages/runner/LICENSE).
-
-A commercial licence is available if AGPL-3.0 does not fit your company. Ask on
-[Telegram](https://telegram.me/croffasia).

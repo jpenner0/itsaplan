@@ -224,6 +224,5 @@
     "perPage": "每页",
     "range": "第 {first}-{last} 项，共 {total} 项"
   },
-  "aboutCloudAndPro": "了解 Cloud 和 Pro",
   "signingOut": "正在退出…"
 }

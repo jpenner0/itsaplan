@@ -67,22 +67,6 @@ export const ProjectTemplateResponse = t.Object({
 
 export const ProjectTemplateListResponse = t.Array(ProjectTemplateResponse);
 
-export const TemplatePublicationResponse = t.Object({
-  url: t.String(),
-  publishedAt: t.String({ format: 'date-time' }),
-});
-
-export const WorkspaceProjectTemplateListResponse = t.Array(
-  t.Composite([
-    ProjectTemplateResponse,
-    t.Object({
-      publication: t.Nullable(TemplatePublicationResponse, {
-        description: 'The page of the template in the gallery, null while it is not published.',
-      }),
-    }),
-  ]),
-);
-
 // What a template holds. The states, issue types, label groups, labels, fields and options
 // carry an id, which the other parts reference them by: the row id in the project the
 // template was saved from, or the number an imported template gave them.
@@ -313,38 +297,4 @@ export const importProjectTemplateBody = t.Object({
   name: saveProjectTemplateBody.properties.name,
   description: saveProjectTemplateBody.properties.description,
   teamIds: saveProjectTemplateBody.properties.teamIds,
-});
-
-const publisherEmail = t.String({ format: 'email', maxLength: 200 });
-
-export const publisherCodeBody = t.Object({ email: publisherEmail });
-
-export const linkPublisherBody = t.Object({
-  email: publisherEmail,
-  code: t.String({ pattern: '^[0-9]{6}$', description: 'The code the gallery emailed.' }),
-});
-
-export const TemplatePublisherResponse = t.Object({
-  email: t.String(),
-  authorName: t.String(),
-  authorUrl: t.Nullable(t.String()),
-});
-
-export const publisherAuthorBody = t.Object({
-  authorName: t.String({
-    minLength: 1,
-    maxLength: 80,
-    pattern: '\\S',
-    description: 'Shown as the author of every template the address publishes.',
-  }),
-  authorUrl: t.Optional(
-    t.Nullable(
-      t.String({
-        format: 'uri',
-        pattern: '^https://',
-        maxLength: 200,
-        description: "A link to the author's profile, shown beside the name.",
-      }),
-    ),
-  ),
 });

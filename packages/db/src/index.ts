@@ -1,7 +1,7 @@
 export { db, type DbExecutor } from './client';
 export * from './schema';
 export * from './permissions';
-export { getSetting, getOrCreateSetting, setSetting } from './settings';
+export { getSetting, setSetting } from './settings';
 export { readSecret, writeSecret } from './secrets';
 export { createWorkspace, teamWorkspaceId } from './workspace';
 export {

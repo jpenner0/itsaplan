@@ -17,8 +17,6 @@
       "cron": "Por agendamento",
       "status": "Quando uma issue entra em um estado"
     },
-    "moreTypes": "Mais gatilhos no Cloud e no Pro",
-    "moreTypesHint": "Novas issues, atribuições, etiquetas e comentários",
     "taskOptional": "Tarefa (opcional)",
     "issueTaskPlaceholder": "Escreva os critérios de aceitação na descrição da issue.",
     "issueTaskHint": "O agente recebe a issue e o que aconteceu com ela. Diga o que fazer com ela.",
@@ -502,8 +500,6 @@
     "import": "Importar",
     "source": "Origem",
     "sourceHint": "Escolha de onde importar.",
-    "moreSources": "Mais no Cloud e no Pro",
-    "moreSourcesHint": "Mais fontes de importação estão disponíveis no Cloud e no Pro auto-hospedado.",
     "connect": "Conectar ao Plane",
     "connectHint": "Informe uma instância Plane auto-hospedada para verificar a conexão e carregar seus projetos.",
     "baseUrl": "URL do Plane",

@@ -52,31 +52,5 @@
     "title": "En el tiempo",
     "description": "Tokens y coste del periodo.",
     "empty": "Sin consumo en este periodo"
-  },
-  "preview": {
-    "title": "Más en Cloud y Pro",
-    "description": "Gasto por persona y disparador, duración de ejecuciones y llamadas a herramientas. Disponible en Cloud y en Pro autoalojado.",
-    "hide": "Ocultar",
-    "show": "Mostrar",
-    "byPerson": {
-      "title": "Por persona",
-      "description": "Quién inició ejecuciones en un chat o con una mención."
-    },
-    "byTrigger": {
-      "title": "Por disparador",
-      "description": "Chat, mención, programación o evento de tarea."
-    },
-    "bySchedule": {
-      "title": "Por programación",
-      "description": "Lo que gastó cada programación."
-    },
-    "tools": {
-      "title": "Herramientas",
-      "description": "Llamadas a herramientas y cuántas fallaron."
-    },
-    "latency": {
-      "title": "Duración",
-      "description": "Mediana y percentil 95 por día."
-    }
   }
 }
