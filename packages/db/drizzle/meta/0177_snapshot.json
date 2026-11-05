@@ -1,5 +1,5 @@
 {
-  "id": "35bb6d7c-e8c3-467f-88d1-7397c1f822f9",
+  "id": "faa0d20e-6977-4117-8beb-f5ea5bba7068",
   "prevId": "f7bed09d-b055-43c1-9206-208d77c4cbb3",
   "version": "7",
   "dialect": "postgresql",
@@ -8177,6 +8177,12 @@
         },
         "repository": {
           "name": "repository",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "repository_external_id": {
+          "name": "repository_external_id",
           "type": "text",
           "primaryKey": false,
           "notNull": false

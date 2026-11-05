@@ -2132,6 +2132,8 @@ export const issueSyncOutbox = pgTable(
     publish: boolean('publish').notNull().default(false),
     connectionId: integer('connection_id'),
     repository: text('repository'),
+    // The provider's id of the repository, to find it again after a rename.
+    repositoryExternalId: text('repository_external_id'),
     externalId: text('external_id'),
     attempts: integer('attempts').notNull().default(0),
     lastError: text('last_error'),

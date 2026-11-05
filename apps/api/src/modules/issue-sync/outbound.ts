@@ -87,9 +87,10 @@ function enqueue(work: () => Promise<void>): Promise<void> {
 }
 
 // Pushes the issue's queued changes in the background. A no-op for the sync's own writes.
+// It does not wait for a repository another sync holds: the background run sends those.
 export function pushIssueSync(issueId: number): void {
   if (isIssueSyncWrite()) return;
-  void enqueue(() => processOutbox(eq(issueSyncOutbox.issueId, issueId), true)).catch(
+  void enqueue(() => processOutbox(eq(issueSyncOutbox.issueId, issueId), false)).catch(
     (error: unknown) => console.error('[issue-sync] push failed:', error),
   );
 }
@@ -107,21 +108,24 @@ export async function processIssueSyncOutbox(): Promise<void> {
 // Queues a new issue to be created on the provider, when its project syncs issues and
 // sends new ones there.
 export async function publishNewIssue(issueId: number, projectId: number): Promise<void> {
-  if (isIssueSyncWrite()) return;
   if ((await projectSyncRepositoryId(projectId, true)) === null) return;
+  await queueIssue(issueId, true);
+  pushIssueSync(issueId);
+}
+
+async function queueIssue(issueId: number, publish: boolean): Promise<void> {
   await db
     .insert(issueSyncOutbox)
-    .values({ kind: 'issue', issueId, publish: true })
+    .values({ kind: 'issue', issueId, publish })
     .onConflictDoUpdate({
       target: issueSyncOutbox.issueId,
       targetWhere: sql`${issueSyncOutbox.kind} = 'issue'`,
       set: {
-        publish: true,
+        publish: sql`${issueSyncOutbox.publish} or ${publish}`,
         version: sql`${issueSyncOutbox.version} + 1`,
         nextAttemptAt: sql`now()`,
       },
     });
-  pushIssueSync(issueId);
 }
 
 export interface PublishedIssueDto {
@@ -362,33 +366,36 @@ async function createExternalIssue(repo: SyncRepository, issueId: number): Promi
   const local = await localSyncFields(issueId);
   if (!local) return;
   const out = await outgoing(repo, issueId, local.fields);
-  let external = await createProviderIssue(repo.input, repo.fullName, {
+  const external = await createProviderIssue(repo.input, repo.fullName, {
     title: out.fields.title,
     body: out.body,
     labels: await ensureLabels(repo, issueId),
     assignees: out.assigneeLogin ? [out.assigneeLogin] : [],
   });
-  if (out.fields.status !== 'open') {
-    const closed = await updateProviderIssue(
-      repo.input,
-      repo.fullName,
-      external.number,
-      statusInput(out.fields),
-    );
-    if (closed.status === 'ok') external = closed.issue;
-  }
+  // The link is stored before anything else can fail, so a retry updates this issue
+  // instead of creating a second one. A closed status is sent as an update.
   const hashes = fieldHashes(await providerFields(local.projectId, external));
-  await db.insert(issueSyncLink).values({
-    issueId,
-    managedRepositoryId: repo.id,
-    externalId: external.externalId,
-    externalNumber: external.number,
-    externalUrl: external.url ?? `${repo.webUrl}/issues/${external.number}`,
-    syncedHash: stateHash(hashes),
-    fieldHashes: hashes,
-    externalUpdatedAt: new Date(external.updatedAt),
-  });
+  const [link] = await db
+    .insert(issueSyncLink)
+    .values({
+      issueId,
+      managedRepositoryId: repo.id,
+      externalId: external.externalId,
+      externalNumber: external.number,
+      externalUrl: external.url ?? `${repo.webUrl}/issues/${external.number}`,
+      syncedHash: stateHash(hashes),
+      fieldHashes: hashes,
+      externalUpdatedAt: new Date(external.updatedAt),
+    })
+    .returning();
   await upsertIssueLink(repo, issueId, external);
+  if (out.fields.status === 'open') return;
+  try {
+    await updateExternalIssue(repo, link!);
+  } catch (error) {
+    console.error(`[issue-sync] issue ${issueId} was created but not closed:`, error);
+    await queueIssue(issueId, false);
+  }
 }
 
 // Sends the fields that changed locally since the last sync. A field the provider also
@@ -550,10 +557,16 @@ async function pushTombstone(row: OutboxRow): Promise<void> {
     baseUrl: connection.baseUrl,
     token: decryptSecret(connection),
   };
+  // The repository may have been renamed since the row was written. A close that is
+  // still redirected under the current name means the issue was transferred, and it
+  // is no longer this repository's to close.
+  const repository = row.repositoryExternalId
+    ? (await getProviderRepository(input, row.repositoryExternalId)).fullName
+    : row.repository;
   if (row.kind === 'delete_comment') {
-    await deleteProviderIssueComment(input, row.repository, row.externalId);
+    await deleteProviderIssueComment(input, repository, row.externalId);
   } else {
-    await updateProviderIssue(input, row.repository, Number(row.externalId), {
+    await updateProviderIssue(input, repository, Number(row.externalId), {
       state: 'closed',
       stateReason: 'not_planned',
     });
