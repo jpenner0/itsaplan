@@ -52,10 +52,7 @@ export default function AccountGoogleConnection() {
       onConnect={() => void onConnect()}
       onDisconnect={() => {
         if (!google) return;
-        disconnect.mutate(
-          { providerId: 'google', accountId: google.accountId },
-          { onSuccess: () => toast.success(t('googleDisconnected')) },
-        );
+        disconnect.mutate(google.id, { onSuccess: () => toast.success(t('googleDisconnected')) });
       }}
     />
   );

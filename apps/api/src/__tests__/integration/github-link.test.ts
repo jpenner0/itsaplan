@@ -55,6 +55,29 @@ async function configureGithub(cookie: string, enabled = true) {
   expect(res.status).toBe(200);
 }
 
+// The whole link round trip, as the browser of the signed-in person makes it.
+async function linkGithub(cookie: string) {
+  answerGithub();
+  const start = await post(
+    '/link-social',
+    { provider: 'github', callbackURL: 'http://localhost:3001/account/accounts' },
+    cookie,
+  );
+  expect(start.status).toBe(200);
+  const authorize = new URL(((await start.json()) as { url: string }).url);
+  const callback = await app.handle(
+    new Request(
+      `http://localhost/api/auth/callback/github?code=code-1&state=${authorize.searchParams.get('state')}`,
+      { headers: { cookie: `${cookie}; ${cookiesOf(start)}` } },
+    ),
+  );
+  return { authorize, callback };
+}
+
+function rowsOf(userId: string) {
+  return db.select().from(account).where(eq(account.userId, userId));
+}
+
 describe('GitHub account link', () => {
   beforeEach(resetDb);
   afterEach(() => {
@@ -65,24 +88,10 @@ describe('GitHub account link', () => {
     const god = await signUpTestUser({ name: 'Root' });
     await configureGithub(god.cookie);
     const member = await signUpTestUser({ name: 'Member' });
-    answerGithub();
 
-    const start = await post(
-      '/link-social',
-      { provider: 'github', callbackURL: 'http://localhost:3001/account/accounts' },
-      member.cookie,
-    );
-    expect(start.status).toBe(200);
-    const { url } = (await start.json()) as { url: string };
-    const authorize = new URL(url);
+    const { authorize, callback } = await linkGithub(member.cookie);
+
     expect(authorize.searchParams.get('scope')).toBe('read:user');
-    const callback = await app.handle(
-      new Request(
-        `http://localhost/api/auth/callback/github?code=code-1&state=${authorize.searchParams.get('state')}`,
-        { headers: { cookie: `${member.cookie}; ${cookiesOf(start)}` } },
-      ),
-    );
-
     expect(callback.status).toBe(302);
     expect(callback.headers.get('location')).toBe('http://localhost:3001/account/accounts');
     const rows = await db
@@ -121,6 +130,71 @@ describe('GitHub account link', () => {
     expect(callback.status).toBe(302);
     expect(callback.headers.get('location')).toContain('error=');
     expect(await db.select().from(account).where(eq(account.providerId, 'github'))).toHaveLength(0);
+  });
+
+  it('refuses a second GitHub account while one is linked', async () => {
+    const god = await signUpTestUser({ name: 'Root' });
+    await configureGithub(god.cookie);
+    await linkGithub(god.cookie);
+
+    const res = await post(
+      '/link-social',
+      { provider: 'github', callbackURL: 'http://localhost:3001/account/accounts' },
+      god.cookie,
+    );
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ code: 'GITHUB_ALREADY_LINKED' });
+    expect((await rowsOf(god.userId)).filter((r) => r.providerId === 'github')).toHaveLength(1);
+  });
+
+  it('refuses to unlink the last way to sign in while GitHub is linked', async () => {
+    const god = await signUpTestUser({ name: 'Root' });
+    await configureGithub(god.cookie);
+    await linkGithub(god.cookie);
+    const password = (await rowsOf(god.userId)).find((r) => r.providerId === 'credential')!;
+
+    const res = await post('/unlink-account', { accountId: password.id }, god.cookie);
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ code: 'FAILED_TO_UNLINK_LAST_ACCOUNT' });
+    expect(await rowsOf(god.userId)).toHaveLength(2);
+  });
+
+  it('unlinks a sign-in method while another one is left', async () => {
+    const god = await signUpTestUser({ name: 'Root' });
+    await configureGithub(god.cookie);
+    await linkGithub(god.cookie);
+    // A Google sign-in needs Google's round trip; the row is what the rule reads.
+    await db.insert(account).values({
+      id: 'google-row',
+      accountId: 'google-sub',
+      providerId: 'google',
+      userId: god.userId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const password = (await rowsOf(god.userId)).find((r) => r.providerId === 'credential')!;
+
+    const res = await post('/unlink-account', { accountId: password.id }, god.cookie);
+
+    expect(res.status).toBe(200);
+    expect((await rowsOf(god.userId)).map((r) => r.providerId).sort()).toEqual([
+      'github',
+      'google',
+    ]);
+  });
+
+  it('unlinks GitHub', async () => {
+    const god = await signUpTestUser({ name: 'Root' });
+    await configureGithub(god.cookie);
+    await linkGithub(god.cookie);
+    const github = (await rowsOf(god.userId)).find((r) => r.providerId === 'github')!;
+
+    const res = await post('/unlink-account', { accountId: github.id }, god.cookie);
+
+    expect(res.status).toBe(200);
+    expect((await rowsOf(god.userId)).map((r) => r.providerId)).toEqual(['credential']);
   });
 
   it('refuses a sign-in or sign-up with GitHub', async () => {
