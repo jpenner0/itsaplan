@@ -660,9 +660,9 @@ export const agentSchedule = pgTable(
     // Empty on a 'status' schedule that sends no task of its own.
     prompt: text('prompt').notNull(),
     // 'cron' runs on `cron` and carries `next_run_at`; 'status' runs on an issue each
-    // time one enters `column_id`, `delay_sec` after it does. Any other type is one an
-    // extension of the api adds (modules/agents/schedules/extension.ts), which queues
-    // its runs itself.
+    // time one enters `column_id`, `delay_sec` after it does. Every other type takes
+    // neither: an event type of the core or one an extension of the api adds
+    // (modules/agents/schedules/extension.ts), whose runs are queued by what they react to.
     type: text('type').notNull().default('cron'),
     cron: text('cron'),
     timezone: text('timezone').notNull(),
