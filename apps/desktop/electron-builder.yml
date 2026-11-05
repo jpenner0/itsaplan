@@ -1,0 +1,37 @@
+appId: io.github.jpenner0.itsaplan
+productName: It's a Plan
+# The bundle in dist/ has no runtime dependencies, so no node_modules are packed.
+files:
+  - dist/**
+  - package.json
+# The deb needs a homepage; package.json has none.
+extraMetadata:
+  homepage: https://github.com/jpenner0/itsaplan
+directories:
+  output: release
+artifactName: itsaplan-${version}-${os}-${arch}.${ext}
+# electron-builder converts the PNG to .icns and .ico.
+icon: ../web/public/icon-512.png
+mac:
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+  category: public.app-category.productivity
+  # Unsigned builds: the workflow uploads the files, nothing is published here.
+  identity: null
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]
+    - target: deb
+      arch: [x64]
+  # The apostrophe in productName is not allowed in the AppImage file name.
+  executableName: itsaplan
+  category: Office
+  maintainer: jpenner0 <noreply@users.noreply.github.com>
+  synopsis: Desktop app for It's a Plan
+  description: A desktop shell for a self-hosted It's a Plan instance.
