@@ -45,6 +45,8 @@ import {
   documentVersionBody,
   documentIssueParams,
   duplicateDocumentBody,
+  importMarkdownBody,
+  MarkdownImportResponse,
   issueDocumentsParams,
   linkDocumentIssueBody,
   documentInitiativeParams,
@@ -81,6 +83,7 @@ import {
   type DocumentAssetRow,
   documentAssetPath,
 } from './service';
+import { importMarkdownZip } from './markdown-import-service';
 import {
   addDocumentInitiativeLink,
   addDocumentIssueLink,
@@ -659,6 +662,32 @@ export const documentRoutes = new Elysia({
         description:
           'Create a public or private Markdown page, optionally nested under another page.',
         ...mcpTool('create_document'),
+      },
+    },
+  )
+  .post(
+    '/projects/:projectKey/documents/import',
+    async ({ project, user, body, set }) => {
+      const current = requireUser(user);
+      await assertPermission(project.id, current, 'documents', 'create');
+      const result = await importMarkdownZip({
+        projectId: project.id,
+        userId: current.id,
+        parentId: body.parentId ?? null,
+        bytes: new Uint8Array(await body.file.arrayBuffer()),
+      });
+      set.status = 201;
+      return result;
+    },
+    {
+      permission: ['documents', 'edit'],
+      feature: 'documents',
+      body: importMarkdownBody,
+      response: { 201: MarkdownImportResponse, ...commonErrors, ...errors(409, 413, 502) },
+      detail: {
+        summary: 'Import a Markdown folder',
+        description:
+          'Create a page tree from a ZIP of Markdown files, at the top level or under `parentId`. Folders become parent pages, referenced files become page assets. Returns the created top-level pages and the skipped files.',
       },
     },
   )

@@ -208,6 +208,16 @@ export const DocumentExportResponse = t.Object({
 
 export const uploadDocumentAssetBody = t.Object({ file: t.File() });
 
+export const importMarkdownBody = t.Object({
+  file: t.File({ description: 'A ZIP file of Markdown files and the files they reference.' }),
+  parentId: t.Optional(t.Numeric({ minimum: 1 })),
+});
+
+export const MarkdownImportResponse = t.Object({
+  pages: DocumentSummaryListResponse,
+  skipped: t.Array(t.String()),
+});
+
 export const documentAssetFromChatBody = t.Object({
   chatAttachmentId: t.String({
     format: 'uuid',

@@ -36,11 +36,11 @@ import {
   storeAttachmentObject,
 } from '#modules/attachments/storage';
 
-type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+export type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-const DOCUMENT_TREE_LOCK_NAMESPACE = 1_145_390_931;
+export const DOCUMENT_TREE_LOCK_NAMESPACE = 1_145_390_931;
 
-async function lockDocumentActor(executor: Executor, userId: string): Promise<void> {
+export async function lockDocumentActor(executor: Executor, userId: string): Promise<void> {
   const rows = await executor.execute(
     sql`select id from "user" where id = ${userId} for key share`,
   );
@@ -141,7 +141,7 @@ function mapDocument(row: typeof projectDocument.$inferSelect, isFavorite = fals
   };
 }
 
-function summaryOf(
+export function summaryOf(
   row: typeof projectDocument.$inferSelect,
   isFavorite = false,
 ): DocumentSummaryRow {
@@ -287,7 +287,7 @@ export async function listDocuments(
   }));
 }
 
-async function selectDocument(
+export async function selectDocument(
   executor: Executor,
   projectId: number,
   documentId: number,
@@ -477,13 +477,14 @@ async function visibleDocumentParentId(
   return parent?.id ?? null;
 }
 
-async function assertValidParent(
+// Returns the depth of the parent: 0 at the top level, 1 for a top-level parent.
+export async function assertValidParent(
   executor: Executor,
   projectId: number,
   documentId: number | null,
   parentId: number | null,
   userId: string,
-): Promise<void> {
+): Promise<number> {
   let cursor = parentId;
   const seen = new Set<number>();
   while (cursor !== null) {
@@ -507,9 +508,10 @@ async function assertValidParent(
     }
     cursor = parent.parentId;
   }
+  return seen.size;
 }
 
-async function nextPosition(
+export async function nextPosition(
   executor: Executor,
   projectId: number,
   parentId: number | null,
@@ -670,13 +672,13 @@ function assertExpectedVersion(row: { version: number }, expected: number): void
   }
 }
 
-function assertActive(row: { archivedAt: Date | null }): void {
+export function assertActive(row: { archivedAt: Date | null }): void {
   if (row.archivedAt !== null) {
     throw new HttpError(409, 'Restore this document before changing it.');
   }
 }
 
-function assertUnlocked(row: { isLocked: boolean }): void {
+export function assertUnlocked(row: { isLocked: boolean }): void {
   if (row.isLocked) {
     throw new HttpError(409, 'Unlock this document before changing it.');
   }
@@ -685,7 +687,7 @@ function assertUnlocked(row: { isLocked: boolean }): void {
 const MAX_DOCUMENT_JSON_BYTES = 1_000_000;
 const MAX_DOCUMENT_JSON_NODES = 10_000;
 const MAX_DOCUMENT_JSON_DEPTH = 100;
-const MAX_DOCUMENT_METADATA_BYTES = 16_384;
+export const MAX_DOCUMENT_METADATA_BYTES = 16_384;
 const DOCUMENT_NODE_TYPES = new Set([
   'doc',
   'paragraph',
