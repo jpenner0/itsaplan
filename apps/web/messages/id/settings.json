@@ -15,7 +15,9 @@
     "type": "Berjalan",
     "types": {
       "cron": "Sesuai jadwal",
-      "status": "Saat issue masuk ke status"
+      "status": "Saat issue masuk ke status",
+      "synced_issue_created": "Saat ada isu GitHub baru",
+      "pull_request_opened": "Saat pull request dibuka"
     },
     "taskOptional": "Tugas (opsional)",
     "issueTaskPlaceholder": "Tulis kriteria penerimaan di deskripsi issue.",
@@ -82,7 +84,11 @@
     "createAgent": "Buat agen",
     "empty": "Belum ada jadwal",
     "emptyHint": "Pilih agen, tugas, dan seberapa sering tugas dijalankan.",
-    "deleteMessage": "Jadwal <v>{name}</v> dan riwayat eksekusinya akan dihapus. Tindakan ini tidak dapat dibatalkan."
+    "deleteMessage": "Jadwal <v>{name}</v> dan riwayat eksekusinya akan dihapus. Tindakan ini tidak dapat dibatalkan.",
+    "typeHints": {
+      "synced_issue_created": "Hanya berjalan untuk isu yang baru dibuat di GitHub selama sinkronisasi isu aktif. Tidak untuk impor pertama dan tidak untuk isu yang dibuat It's a Plan sendiri di GitHub.",
+      "pull_request_opened": "Berjalan saat pull request yang merujuk isu tersinkron dibuka atau diubah dari draf menjadi siap. Tidak pada setiap push. Untuk memulai tinjauan baru, sebut agen di isu tersebut."
+    }
   },
   "agents": {
     "empty": "Belum ada agen",
