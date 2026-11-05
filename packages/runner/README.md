@@ -1,6 +1,6 @@
 # @jpenner0/itsaplan-runner
 
-[It's a Plan](https://itsaplan.dev) is a self-hosted, open-source issue tracker. An AI
+[It's a Plan](https://github.com/jpenner0/itsaplan) is a self-hosted, open-source issue tracker. An AI
 agent in it is a project member: it has a role, permissions, and its own issues.
 
 This package runs such agents on your own machine — one, or several at once.
