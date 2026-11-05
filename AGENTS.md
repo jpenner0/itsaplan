@@ -118,6 +118,7 @@ Read the doc for what your task touches:
 | commit types, versions, release config        | `docs/dev/releasing.md`                                              |
 | self-hosting, Coolify, Railway, Helm          | `docs/self-hosting.md`, `docs/coolify.md`, `docs/railway.md`, `docs/helm.md` |
 | the runner, external agents, MCP results      | `docs/runner.md`, `docs/agent-endpoint.md`, `docs/mcp-results.md`    |
+| the desktop app, its build and release        | `docs/desktop.md`                                                    |
 
 ## Changing an AGENTS.md
 
