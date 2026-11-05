@@ -47,8 +47,9 @@ export function useDisconnectProvider() {
   const t = useTranslations('account.accounts');
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { providerId: string; accountId: string }) => {
-      const { error } = await unlinkAccount(input);
+    // better-auth unlinks by the id of the account row, not the provider's account id.
+    mutationFn: async (rowId: string) => {
+      const { error } = await unlinkAccount({ accountId: rowId });
       if (error) throw new Error(error.message ?? t('disconnectFailed'));
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.linkedAccounts }),

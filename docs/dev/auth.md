@@ -235,6 +235,14 @@ address as verified. better-auth links only a verified address equal to the acco
 `databaseHooks.account` drops the OAuth tokens of a GitHub row: every write to GitHub uses the
 team's token.
 
+`hooks.before` keeps two more rules:
+
+- `/link-social` for GitHub is refused with 409 `GITHUB_ALREADY_LINKED` while the account has a
+  GitHub row. The sync maps a member to one GitHub user.
+- `/unlink-account` is refused with 400 `FAILED_TO_UNLINK_LAST_ACCOUNT` when it would remove the
+  last row other than GitHub. better-auth itself only keeps the last row of any kind.
+  `/unlink-account` takes the id of the `account` row.
+
 ## Registration gate
 
 `assertRegistrationAllowed` runs in two places. `hooks.before` runs it on `/sign-up/email`, and
