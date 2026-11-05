@@ -1,4 +1,4 @@
-import { GitPullRequest, Link2, Plus } from 'lucide-react';
+import { GitPullRequest, Link2, Plus, Upload } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,9 +11,12 @@ import {
 export default function IssueDevelopmentAddMenu({
   onLink,
   onCreate,
+  onPublish,
 }: {
   onLink: () => void;
   onCreate: () => void;
+  // Set only when the issue can be published to the synced GitHub repository.
+  onPublish?: () => void;
 }) {
   const t = useTranslations('issue.development');
   return (
@@ -33,6 +36,12 @@ export default function IssueDevelopmentAddMenu({
           <GitPullRequest />
           {t('createPullRequest')}
         </DropdownMenuItem>
+        {onPublish && (
+          <DropdownMenuItem onSelect={onPublish}>
+            <Upload />
+            {t('publish')}
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

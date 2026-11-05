@@ -494,7 +494,13 @@
     "onOpenHint": "아직 시작되지 않은 이슈만 이동합니다. 진행 중이거나 종료된 이슈는 그대로 유지됩니다.",
     "onOpenNone": "동작 없음",
     "changeState": "상태 변경…",
-    "noState": "상태 없음"
+    "noState": "상태 없음",
+    "issueSyncTitle": "이슈 동기화",
+    "issueSyncOnHint": "켜면 열려 있는 모든 GitHub 이슈를 한 번 가져옵니다.",
+    "issueSyncOffHint": "끄면 연결만 제거됩니다. 이슈는 양쪽에 그대로 남습니다.",
+    "newIssuesToGithub": "새 이슈를 GitHub로",
+    "newIssuesToGithubHint": "이 프로젝트에서 만든 이슈는 GitHub에도 만들어집니다.",
+    "issueSyncSaved": "이슈 동기화 설정을 저장했습니다"
   },
   "importExport": {
     "import": "가져오기",

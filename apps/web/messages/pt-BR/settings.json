@@ -494,7 +494,13 @@
     "onOpenHint": "Só move issues que não foram iniciadas. Issues em andamento e fechadas ficam onde estão.",
     "onOpenNone": "Sem ação",
     "changeState": "Alterar estado…",
-    "noState": "Sem estado."
+    "noState": "Sem estado.",
+    "issueSyncTitle": "Sincronização de issues",
+    "issueSyncOnHint": "Ao ativar, todas as issues abertas do GitHub são importadas uma vez.",
+    "issueSyncOffHint": "Ao desativar, apenas os vínculos são removidos. As issues permanecem nos dois lados.",
+    "newIssuesToGithub": "Novas issues para o GitHub",
+    "newIssuesToGithubHint": "As issues criadas neste projeto também são criadas no GitHub.",
+    "issueSyncSaved": "Configurações de sincronização de issues salvas"
   },
   "importExport": {
     "import": "Importar",

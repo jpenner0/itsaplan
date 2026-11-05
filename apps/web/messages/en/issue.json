@@ -253,7 +253,8 @@
     "edited": "edited",
     "deleteComment": "Delete comment",
     "deleteCommentTitle": "Delete this comment?",
-    "deleteCommentConfirmation": "The comment and its replies will be permanently deleted."
+    "deleteCommentConfirmation": "The comment and its replies will be permanently deleted.",
+    "viaGithub": "@{login} on GitHub"
   },
   "stats": {
     "title": "Stats",
@@ -415,7 +416,9 @@
       "failed": "Failed",
       "canceled": "Canceled",
       "skipped": "Skipped"
-    }
+    },
+    "publish": "Publish to GitHub",
+    "published": "Published to GitHub"
   },
   "documents": {
     "title": "Docs",
@@ -564,5 +567,11 @@
     "selectRun": "Select a run to see its details",
     "runNotFound": "This run is not in your queue, or you cannot read it.",
     "backToRuns": "Back to runs"
+  },
+  "sync": {
+    "settingsConflict": "This repository already syncs with another project.",
+    "publishConflict": "This issue is already on GitHub, or its project does not sync issues.",
+    "github": "GitHub returned an error. Try again later.",
+    "busy": "A sync is running right now. Try again in a moment."
   }
 }

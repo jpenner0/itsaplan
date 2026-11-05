@@ -494,7 +494,13 @@
     "onOpenHint": "只移動尚未開始的工作項目，進行中和已關閉的保持不變。",
     "onOpenNone": "不執行操作",
     "changeState": "更改狀態…",
-    "noState": "無狀態。"
+    "noState": "無狀態。",
+    "issueSyncTitle": "議題同步",
+    "issueSyncOnHint": "開啟後會一次性匯入所有未關閉的 GitHub 議題。",
+    "issueSyncOffHint": "關閉後只會移除連結，兩邊的議題都會保留。",
+    "newIssuesToGithub": "新議題同步到 GitHub",
+    "newIssuesToGithubHint": "在此專案中建立的議題也會在 GitHub 中建立。",
+    "issueSyncSaved": "議題同步設定已儲存"
   },
   "importExport": {
     "import": "匯入",

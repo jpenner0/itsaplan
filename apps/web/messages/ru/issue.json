@@ -253,7 +253,8 @@
     "edited": "изменено",
     "deleteComment": "Удалить комментарий",
     "deleteCommentTitle": "Удалить этот комментарий?",
-    "deleteCommentConfirmation": "Комментарий и ответы на него будут удалены безвозвратно."
+    "deleteCommentConfirmation": "Комментарий и ответы на него будут удалены безвозвратно.",
+    "viaGithub": "@{login} в GitHub"
   },
   "stats": {
     "title": "Статистика",
@@ -415,7 +416,9 @@
       "failed": "Ошибка",
       "canceled": "Отменён",
       "skipped": "Пропущен"
-    }
+    },
+    "publish": "Опубликовать в GitHub",
+    "published": "Опубликовано в GitHub"
   },
   "documents": {
     "title": "Документы",
@@ -564,5 +567,11 @@
     "selectRun": "Select a run to see its details",
     "runNotFound": "Этого запуска нет в очереди или к нему нет доступа.",
     "backToRuns": "Back to runs"
+  },
+  "sync": {
+    "settingsConflict": "Этот репозиторий уже синхронизируется с другим проектом.",
+    "publishConflict": "Эта задача уже есть в GitHub, или её проект не синхронизирует задачи.",
+    "github": "GitHub вернул ошибку. Повторите попытку позже.",
+    "busy": "Синхронизация выполняется. Повторите попытку через минуту."
   }
 }

@@ -5,11 +5,13 @@ import IssueDevelopmentAddMenu from './IssueDevelopmentAddMenu';
 import IssueDevelopmentCreateDialog from './IssueDevelopmentCreateDialog';
 import IssueDevelopmentLinkCard from './IssueDevelopmentLinkCard';
 import IssueDevelopmentLinkDialog from './IssueDevelopmentLinkDialog';
+import { useIssuePublish } from '../../hooks/useIssuePublish';
 import IssueSectionHeading from './IssueSectionHeading';
 import { useTranslations } from 'next-intl';
 
 export default function IssueDevelopmentPanel({
   issueId,
+  projectKey,
   identifier,
   issueTitle,
   links,
@@ -17,6 +19,7 @@ export default function IssueDevelopmentPanel({
   canManage,
 }: {
   issueId: number;
+  projectKey: string;
   identifier: string;
   issueTitle: string;
   links: DevelopmentLink[];
@@ -27,6 +30,7 @@ export default function IssueDevelopmentPanel({
   const { open, toggle } = usePersistedOpen('issue-development-open');
   const [linkOpen, setLinkOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const publish = useIssuePublish(issueId, projectKey, links, canManage);
   if (links.length === 0 && !canManage) return null;
 
   return (
@@ -42,6 +46,7 @@ export default function IssueDevelopmentPanel({
           <IssueDevelopmentAddMenu
             onLink={() => setLinkOpen(true)}
             onCreate={() => setCreateOpen(true)}
+            onPublish={publish.available ? publish.publish : undefined}
           />
         )}
       </div>

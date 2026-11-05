@@ -494,7 +494,13 @@
     "onOpenHint": "Only moves issues that haven't been started. In-progress and closed issues stay put.",
     "onOpenNone": "No action",
     "changeState": "Change state…",
-    "noState": "No state."
+    "noState": "No state.",
+    "issueSyncTitle": "Issues sync",
+    "issueSyncOnHint": "Turning this on imports all open GitHub issues once.",
+    "issueSyncOffHint": "Turning this off only removes the links. Issues stay on both sides.",
+    "newIssuesToGithub": "New issues to GitHub",
+    "newIssuesToGithubHint": "Issues created in this project are also created on GitHub.",
+    "issueSyncSaved": "Issue sync settings saved"
   },
   "importExport": {
     "import": "Import",
