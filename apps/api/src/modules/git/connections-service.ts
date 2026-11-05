@@ -41,6 +41,8 @@ export interface GitManagedRepositoryDto {
   webUrl: string;
   status: 'connected' | 'error';
   lastError: string | null;
+  issuesSyncEnabled: boolean;
+  newIssuesToProvider: boolean;
 }
 
 export interface DevelopmentRepositoryDto {
@@ -63,16 +65,13 @@ const repositoryColumns = {
   webUrl: gitManagedRepository.webUrl,
   status: gitManagedRepository.status,
   lastError: gitManagedRepository.lastError,
+  issuesSyncEnabled: gitManagedRepository.issuesSyncEnabled,
+  newIssuesToProvider: gitManagedRepository.newIssuesToProvider,
 };
 
-function mapRepository(row: {
-  id: number;
-  externalId: string;
-  fullName: string;
-  webUrl: string;
-  status: string;
-  lastError: string | null;
-}): GitManagedRepositoryDto {
+function mapRepository(
+  row: Omit<GitManagedRepositoryDto, 'status'> & { status: string },
+): GitManagedRepositoryDto {
   return { ...row, status: row.status === 'error' ? 'error' : 'connected' };
 }
 

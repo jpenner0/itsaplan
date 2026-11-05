@@ -399,12 +399,14 @@ export async function getCommentRef(
 // comment, scoped to what the edit changed: a change-log entry, the comment.updated
 // webhook, and the mentions the edit newly adds (agents get a run, members a
 // notification); a handle the comment already named is not told again. Who may
-// change whose is settled by the route guard.
+// change whose is settled by the route guard. `mentions: false` is for an author outside
+// the team, whose mentions reach nobody, as in createComment.
 export async function updateComment(
   commentId: number,
   body: string,
   actorUserId: string | null,
   projectId: number,
+  { mentions = true }: { mentions?: boolean } = {},
 ): Promise<FeedItemRow> {
   const [before] = await db
     .select()
@@ -422,7 +424,7 @@ export async function updateComment(
   await recordActivity(comment.issueId, [{ action: 'comment_edited' }], actorUserId);
   await emitCommentEvent(projectId, 'comment.updated', comment, actorUserId);
 
-  const added = addedMentionHandles(before.body ?? '', body);
+  const added = mentions ? addedMentionHandles(before.body ?? '', body) : [];
   if (added.length > 0) {
     const mentioned = await resolveMentionHandles(projectId, added);
     if (mentioned.agentUserIds.length > 0)
