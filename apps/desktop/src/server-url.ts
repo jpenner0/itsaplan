@@ -9,8 +9,11 @@ export function normalizeServerUrl(input: string): string {
   } catch {
     throw new Error('Enter a valid URL.');
   }
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    throw new Error('Only http and https URLs are supported.');
-  }
+  if (!isHttpUrl(url.href)) throw new Error('Only http and https URLs are supported.');
   return url.origin;
+}
+
+export function isHttpUrl(input: string): boolean {
+  const url = URL.parse(input);
+  return url?.protocol === 'http:' || url?.protocol === 'https:';
 }
