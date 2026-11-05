@@ -17,11 +17,16 @@ import {
   upsertBranchLinks,
   upsertPullRequestLinks,
 } from './development';
-import type { GitEvent, GitProviderKey, PullRequestEvent } from './providers';
+import type {
+  GitEvent,
+  GitProviderKey,
+  IssueCommentEvent,
+  IssueEvent,
+  PullRequestEvent,
+} from './providers';
 import { columnStateTypes, firstCompletedColumnId, type GitSettings } from './service';
 import { postPullRequestLinkback } from './connections-service';
 import { issueWebPath } from '#modules/teams/ref';
-import { handleIssueSyncEvent } from '#modules/issue-sync/service';
 
 // Stores normalized repository events and applies pull request automation:
 // - a pull request merged into the repository's default branch moves the issues
@@ -62,8 +67,9 @@ export async function handleGitEvent(
   settings: GitSettings,
   providerKey: GitProviderKey,
   providerLabel: string,
-  event: GitEvent,
-): Promise<PullRequestOutcome | 'branch' | 'pipeline' | 'check' | 'issue'> {
+  // Issue events are stored by queueIssueSyncEvent.
+  event: Exclude<GitEvent, IssueEvent | IssueCommentEvent>,
+): Promise<PullRequestOutcome | 'branch' | 'pipeline' | 'check'> {
   if (event.kind === 'check') {
     await updateCheckLinks(project.id, providerKey, event);
     return 'check';
@@ -71,11 +77,6 @@ export async function handleGitEvent(
   if (event.kind === 'pipeline') {
     await updatePipelineLinks(project.id, providerKey, event);
     return 'pipeline';
-  }
-
-  if (event.kind === 'issue' || event.kind === 'issue_comment') {
-    await handleIssueSyncEvent(project.id, event);
-    return 'issue';
   }
 
   if (event.kind === 'branch') {

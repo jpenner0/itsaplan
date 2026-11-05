@@ -1254,6 +1254,13 @@
       "when": 1793890971481,
       "tag": "0178_issue_sync_outbox_repository_id",
       "breakpoints": true
+    },
+    {
+      "idx": 179,
+      "version": "7",
+      "when": 1793891830699,
+      "tag": "0179_issue_sync_inbox",
+      "breakpoints": true
     }
   ]
 }

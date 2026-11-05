@@ -1,4 +1,10 @@
-import { db, gitManagedRepository, gitProviderConnection, issueSyncLink } from '@repo/db';
+import {
+  db,
+  gitManagedRepository,
+  gitProviderConnection,
+  issueSyncInbox,
+  issueSyncLink,
+} from '@repo/db';
 import { decryptSecret } from '@repo/crypto';
 import { and, eq, ne, sql, type SQL } from 'drizzle-orm';
 import { HttpError, intEnv, iso, pgErrorCode } from '#shared/lib';
@@ -9,14 +15,8 @@ import {
   listProviderOpenIssues,
 } from '#modules/git/issues-provider';
 import { getOrCreateGitSettings } from '#modules/git/service';
-import type { IssueCommentEvent, IssueEvent } from '#modules/git/providers';
 import { runAsIssueSync } from './context';
-import {
-  applyProviderComment,
-  applyProviderIssue,
-  unlinkProviderIssue,
-  type SyncRepository,
-} from './inbound';
+import { applyProviderComment, applyProviderIssue, type SyncRepository } from './inbound';
 
 export interface IssueSyncSettingsDto {
   repositoryId: number;
@@ -310,7 +310,7 @@ function syncedElsewhere(): HttpError {
   return new HttpError(409, 'This repository already syncs its issues with another project');
 }
 
-// Both sides keep their issues; only the links go.
+// Both sides keep their issues; only the links and the deliveries not yet applied go.
 async function disableSync(repositoryId: number): Promise<void> {
   await withRepositoryLock(repositoryId, true, async () => {
     await db
@@ -318,6 +318,7 @@ async function disableSync(repositoryId: number): Promise<void> {
       .set({ issuesSyncEnabled: false, issuesWatermark: null, updatedAt: new Date() })
       .where(eq(gitManagedRepository.id, repositoryId));
     await db.delete(issueSyncLink).where(eq(issueSyncLink.managedRepositoryId, repositoryId));
+    await db.delete(issueSyncInbox).where(eq(issueSyncInbox.managedRepositoryId, repositoryId));
   });
 }
 
@@ -344,31 +345,4 @@ export async function reconcileIssueSync(): Promise<void> {
       console.error(`[issue-sync] repository ${id} failed:`, error);
     }
   }
-}
-
-// A verified webhook delivery for the project's repository. Ignored when the repository
-// does not sync its issues.
-export async function handleIssueSyncEvent(
-  projectId: number,
-  event: IssueEvent | IssueCommentEvent,
-): Promise<void> {
-  const row = await loadRepository(
-    and(
-      eq(gitManagedRepository.projectId, projectId),
-      eq(gitManagedRepository.issuesSyncEnabled, true),
-      eq(gitProviderConnection.provider, 'github'),
-      sql`lower(${gitManagedRepository.fullName}) = lower(${event.repo})`,
-    ),
-  );
-  if (!row) return;
-  const repo = syncRepository(row);
-  await withRepositoryLock(row.id, true, async () => {
-    if (event.kind === 'issue_comment') {
-      await applyProviderComment(repo, event.comment, event.action);
-    } else if (event.action === 'deleted' || event.action === 'transferred') {
-      await unlinkProviderIssue(repo, event.issue.number);
-    } else {
-      await applyProviderIssue(repo, event.issue);
-    }
-  });
 }
