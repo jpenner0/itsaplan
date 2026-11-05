@@ -53,4 +53,38 @@ describe('buildSlashItems', () => {
       ['Tasks', 'Code'],
     );
   });
+
+  it('offers the Mermaid diagram only when it has a label', () => {
+    assert.equal(buildSlashItems({ codeBlockLabel: 'Code' }).length, 1);
+    const items = buildSlashItems({ codeBlockLabel: 'Code', mermaidLabel: 'Diagram (Mermaid)' });
+    assert.deepEqual(
+      items.map((item) => item.title),
+      ['Code', 'Diagram (Mermaid)'],
+    );
+    for (const query of ['mermaid', 'diagram']) {
+      assert.ok(items.some((item) => item.title.toLowerCase().includes(query)));
+    }
+  });
+
+  it('inserts a mermaid code block with example content', () => {
+    const item = buildSlashItems({ codeBlockLabel: 'Code', mermaidLabel: 'Diagram (Mermaid)' })[1];
+    const calls: unknown[] = [];
+    const chain = {
+      focus: () => chain,
+      deleteRange: () => chain,
+      insertContent: (content: unknown) => {
+        calls.push(content);
+        return chain;
+      },
+      run: () => true,
+    };
+    item?.run({ editor: { chain: () => chain } as never, range: { from: 0, to: 1 } });
+    assert.deepEqual(calls, [
+      {
+        type: 'codeBlock',
+        attrs: { language: 'mermaid' },
+        content: [{ type: 'text', text: 'flowchart TD\n    A --> B' }],
+      },
+    ]);
+  });
 });

@@ -15,8 +15,11 @@ import {
   SquareCode,
   Table,
   type LucideIcon,
+  Workflow,
 } from 'lucide-react';
 import EditorSlashMenu, { type SlashMenuRef } from '@/components/common/editor/EditorSlashMenu';
+
+const MERMAID_EXAMPLE = 'flowchart TD\n    A --> B';
 
 export type SlashItem = {
   title: string;
@@ -34,6 +37,8 @@ export type SlashCommandOptions = {
   codeBlockLabel: string;
   // Omitted where the editor has no table extension, which drops the Table item.
   tableLabel?: string;
+  // Omitted where the editor has no Mermaid block, which drops the Diagram item.
+  mermaidLabel?: string;
   // Omitted where there is nothing to pick from, which drops the Image item.
   image?: { label: string; onPick: () => void };
   // For an editor that registers the task-list extensions but has no rich block
@@ -109,6 +114,23 @@ export function buildSlashItems(options: SlashCommandOptions): SlashItem[] {
     icon: SquareCode,
     run: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleCodeBlock().run(),
   });
+  if (options.mermaidLabel) {
+    items.push({
+      title: options.mermaidLabel,
+      icon: Workflow,
+      run: ({ editor, range }) =>
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .insertContent({
+            type: 'codeBlock',
+            attrs: { language: 'mermaid' },
+            content: [{ type: 'text', text: MERMAID_EXAMPLE }],
+          })
+          .run(),
+    });
+  }
   if (options.blocks) {
     items.push({
       title: options.blocks.divider,

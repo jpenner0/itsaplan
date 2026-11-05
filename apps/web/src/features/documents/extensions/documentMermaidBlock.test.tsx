@@ -9,6 +9,7 @@ import * as themes from 'next-themes';
 import { JSDOM } from 'jsdom';
 import * as mermaid from '@/lib/mermaid';
 import documents from '../../../../messages/en/documents.json';
+import { buildSlashItems } from '@/lib/tiptap-slash-command';
 import { documentEditorExtensions } from '../components/DocumentMarkdownEditor';
 
 const spyOn = createRequire(import.meta.url)('bun:test').spyOn as (
@@ -99,6 +100,7 @@ beforeEach(() => {
     navigator: dom.window.navigator,
     localStorage: dom.window.localStorage,
     Node: dom.window.Node,
+    DOMRect: dom.window.DOMRect,
     NodeFilter: dom.window.NodeFilter,
     Element: dom.window.Element,
     HTMLElement: dom.window.HTMLElement,
@@ -192,5 +194,20 @@ describe('documentMermaidBlock', () => {
     await settle();
     assert.equal(mermaidBlock(), null);
     assert.ok(editor.view.dom.querySelector('pre > code.language-ts'));
+  });
+
+  it('shows the diagram that the slash item inserts into an empty paragraph', async () => {
+    createEditor('');
+    await render();
+    editor.commands.insertContent('/diagram');
+    const item = buildSlashItems({ codeBlockLabel: 'Code', mermaidLabel: 'Diagram (Mermaid)' })[1]!;
+    await act(async () => item.run({ editor, range: { from: 1, to: 9 } }));
+    await settle();
+    assert.equal(
+      editor.storage.markdown.getMarkdown().trim(),
+      '```mermaid\nflowchart TD\n    A --> B\n```',
+    );
+    assert.ok(mermaidBlock());
+    assert.deepEqual(rendered, ['flowchart TD\n    A --> B']);
   });
 });

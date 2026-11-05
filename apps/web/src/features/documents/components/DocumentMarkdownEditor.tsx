@@ -69,6 +69,7 @@ type EditorLabels = {
   placeholder: string;
   codeBlockLabel: string;
   tableLabel: string;
+  mermaidLabel?: string;
   blocks?: {
     paragraph: string;
     headings: [string, string, string, string, string, string];
@@ -117,6 +118,7 @@ export function documentEditorExtensions(labels: EditorLabels, mentions?: Mentio
     SlashCommand.configure({
       codeBlockLabel: labels.codeBlockLabel,
       tableLabel: labels.tableLabel,
+      mermaidLabel: labels.mermaidLabel,
       blocks: labels.blocks,
       image: labels.image,
     }),
@@ -195,6 +197,7 @@ export default function DocumentMarkdownEditor({
         placeholder,
         codeBlockLabel: t('codeBlock'),
         tableLabel: t('table'),
+        mermaidLabel: t('mermaidDiagram'),
         blocks: {
           paragraph: t('text'),
           headings: [

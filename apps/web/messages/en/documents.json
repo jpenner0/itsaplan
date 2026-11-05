@@ -177,6 +177,7 @@
     "todoList": "To-do list",
     "quote": "Quote",
     "codeBlock": "Code block",
+    "mermaidDiagram": "Diagram (Mermaid)",
     "divider": "Divider",
     "table": "Table",
     "image": "Image",

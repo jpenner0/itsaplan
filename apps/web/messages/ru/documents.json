@@ -189,6 +189,7 @@
     "numberedList": "Нумерованный список",
     "quote": "Цитата",
     "codeBlock": "Блок кода",
+    "mermaidDiagram": "Диаграмма (Mermaid)",
     "divider": "Разделитель",
     "undo": "Отменить",
     "redo": "Повторить",
