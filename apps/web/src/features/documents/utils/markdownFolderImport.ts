@@ -137,14 +137,20 @@ const FENCED_CODE = /^ {0,3}(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:^ {0,3}\1[ \t]*$|(?!
 // Blanks fenced code and inline code spans so the reference scan skips them.
 function maskCode(content: string): string {
   const text = content.replace(FENCED_CODE, (block) => block.replace(/[^\n]/g, ' '));
-  // A code span runs to the next backtick run of the same length. Indexing the next run of each
-  // length keeps this linear on pages with many unmatched backticks.
+  // A code span runs to the next backtick run of the same length in the same paragraph. Indexing
+  // the next such run keeps this linear on pages with many unmatched backticks.
   const runs = [...text.matchAll(/`+/g)];
+  const blankLines = [...text.matchAll(/\n[ \t]*\n/g)].map((m) => m.index);
+  const runKeys: string[] = [];
+  for (let i = 0, paragraph = 0; i < runs.length; i += 1) {
+    while (paragraph < blankLines.length && blankLines[paragraph] < runs[i].index) paragraph += 1;
+    runKeys.push(`${paragraph}:${runs[i][0].length}`);
+  }
   const nextSameLength: number[] = [];
-  const latest = new Map<number, number>();
+  const latest = new Map<string, number>();
   for (let i = runs.length - 1; i >= 0; i -= 1) {
-    nextSameLength[i] = latest.get(runs[i][0].length) ?? -1;
-    latest.set(runs[i][0].length, i);
+    nextSameLength[i] = latest.get(runKeys[i]) ?? -1;
+    latest.set(runKeys[i], i);
   }
   let masked = '';
   let copied = 0;
@@ -260,10 +266,11 @@ async function analyze(input: PickedFile[]): Promise<Analysis> {
   ): PreviewNode => {
     pageCount += 1;
     if (sourcePath === null) return { title: name, children };
-    const { title, content } = parsePage(texts.get(sourcePath)!, name);
-    if (content.length > MAX_PAGE_CHARACTERS) {
+    const text = texts.get(sourcePath)!;
+    if (text.length > MAX_PAGE_CHARACTERS) {
       violations.push({ kind: 'pageLength', path: sourcePath });
     }
+    const { title, content } = parsePage(text, name);
     for (const path of referencedPaths(content, sourcePath)) {
       if (others.has(path)) referenced.add(path);
     }

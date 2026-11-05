@@ -127,16 +127,6 @@ describe('previewMarkdownImport', () => {
     assert.deepEqual(violations, [{ kind: 'pageCount', count: 501 }]);
   });
 
-  test('reports a page over 250,000 characters, not counting frontmatter', async () => {
-    const { violations } = await previewMarkdownImport(
-      pick({
-        'big.md': 'a'.repeat(250_001),
-        'ok.md': `---\ntitle: t\n---\n${'a'.repeat(250_000)}`,
-      }),
-    );
-    assert.deepEqual(violations, [{ kind: 'pageLength', path: 'big.md' }]);
-  });
-
   test('does not count skipped files towards the size limits', async () => {
     const big = { path: '.git/pack', file: { size: 300 * 1024 * 1024 } as File };
     const { violations } = await previewMarkdownImport([...pick({ 'a.md': '' }), big]);
@@ -212,11 +202,23 @@ describe('previewMarkdownImport', () => {
     );
   });
 
-  test('removes a leading H1 equal to the title before counting characters', async () => {
+  test('counts the page limit over the whole file, frontmatter included', async () => {
     const { violations } = await previewMarkdownImport(
-      pick({ 'a.md': `# a\n\n${'x'.repeat(250_000)}` }),
+      pick({ 'a.md': `---\ntitle: t\n---\n${'x'.repeat(250_000)}` }),
     );
-    assert.deepEqual(violations, []);
+    assert.deepEqual(violations, [{ kind: 'pageLength', path: 'a.md' }]);
+  });
+
+  test('ends a code span at a blank line', async () => {
+    const preview = await previewMarkdownImport(
+      pick({
+        'a.md': '`open ![x](one.png)\n\nclose` ![y](two.png) `in ![z](three.png) code`',
+        'one.png': 'x',
+        'two.png': 'x',
+        'three.png': 'x',
+      }),
+    );
+    assert.deepEqual(preview.skipped, ['two.png']);
   });
 
   test('names a file that is not valid UTF-8', async () => {
