@@ -83,6 +83,7 @@ import {
   type DocumentAssetRow,
   documentAssetPath,
 } from './service';
+import { MARKDOWN_IMPORT_LIMITS } from './markdown-import';
 import { importMarkdownZip } from './markdown-import-service';
 import {
   addDocumentInitiativeLink,
@@ -113,6 +114,9 @@ function documentAssetDto(
     embedUrl: `/protected-media${url}`,
   };
 }
+
+// The ZIP limit plus room for the multipart framing; the parser checks the ZIP itself exactly.
+const MARKDOWN_IMPORT_BODY_BYTES = MARKDOWN_IMPORT_LIMITS.zipBytes + 64 * 1024;
 
 const OWNER_ONLY = 'Only the page owner can do this, or a project owner on a public page.';
 const EMBED_HINT =
@@ -682,6 +686,12 @@ export const documentRoutes = new Elysia({
     {
       permission: ['documents', 'edit'],
       feature: 'documents',
+      // Bun buffers up to its server-wide limit, so this route refuses a larger upload by its header.
+      parse: ({ request }) => {
+        if (Number(request.headers.get('content-length') ?? 0) > MARKDOWN_IMPORT_BODY_BYTES) {
+          throw new HttpError(413, 'The upload is larger than 50 MB.');
+        }
+      },
       body: importMarkdownBody,
       response: { 201: MarkdownImportResponse, ...commonErrors, ...errors(409, 413, 502) },
       detail: {

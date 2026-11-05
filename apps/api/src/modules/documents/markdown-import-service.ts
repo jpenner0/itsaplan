@@ -162,6 +162,7 @@ export async function importMarkdownZip(input: {
     await Promise.all(uploaded.map(deleteAttachmentObject));
     throw error;
   }
+  // The pages are committed: a failed notification is logged, so a retry does not import them twice.
   for (const [index, { id }] of pages.entries()) {
     await fanOutTextMentions({
       projectId,
@@ -169,6 +170,8 @@ export async function importMarkdownZip(input: {
       before: [],
       after: documentMentionHandles({ content: contents[index], contentJson: null }),
       actorUserId: userId,
+    }).catch((error: unknown) => {
+      console.error(`[planner] mention notifications for imported document ${id} failed:`, error);
     });
   }
   return { documents: roots, createdCount: pages.length, skipped: plan.skipped };

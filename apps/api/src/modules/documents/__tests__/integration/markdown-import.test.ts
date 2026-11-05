@@ -25,7 +25,7 @@ async function setupProject() {
   const owner = await signUpTestUser();
   const asOwner = authedApi(owner.cookie);
   const project = (await createProject(asOwner, { key: 'MKT', name: 'Marketing' })).data!;
-  return { asOwner, project };
+  return { asOwner, owner, project };
 }
 
 async function addMember(owner: Client, roleId?: number) {
@@ -222,6 +222,18 @@ describe('POST /projects/:projectKey/documents/import', () => {
     });
     expect(res.status).toBe(201);
     expect(res.data!.skipped).toEqual(['.obsidian/', 'unused.png']);
+  });
+
+  it('refuses an upload larger than 50 MB by its size before parsing it', async () => {
+    const { owner } = await setupProject();
+    const size = MARKDOWN_IMPORT_LIMITS.zipBytes + 128 * 1024;
+    // An in-memory request carries no Content-Length; a client over HTTP sends one.
+    const client = authedApi(owner.cookie, { 'content-length': String(size) });
+    const res = await documents(client).import.post({
+      file: new File([new Uint8Array(size)], 'docs.zip'),
+    });
+    expect(res.status).toBe(413);
+    expect(res.error!.value).toMatchObject({ error: 'The upload is larger than 50 MB.' });
   });
 
   it('rejects an import with more pages than the limit', async () => {
