@@ -165,4 +165,28 @@ describe('useMarkdownImport', () => {
     assert.equal(imported, 0);
     assert.deepEqual(successes, []);
   });
+
+  it('uploads once when Import is clicked twice', async () => {
+    stubImport(
+      new Response(JSON.stringify({ documents: [], createdCount: 1, skipped: [] }), {
+        status: 201,
+      }),
+    );
+    await act(() => controller!.choose([page('a.md', 'A')]));
+    await act(() => Promise.all([controller!.submit(), controller!.submit()]));
+
+    assert.equal(requests.length, 1);
+    assert.equal(imported, 1);
+  });
+
+  it('drops the result of a read that was reset', async () => {
+    await act(async () => {
+      const reading = controller!.choose([page('a.md', 'A')]);
+      controller!.reset();
+      await reading;
+    });
+
+    assert.equal(controller!.preview, null);
+    assert.equal(controller!.reading, false);
+  });
 });

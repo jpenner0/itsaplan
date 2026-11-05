@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import { useImportMarkdownDocuments } from '../services/documents.service';
@@ -31,10 +31,16 @@ export function useMarkdownImport({
   const [selection, setSelection] = useState<Selection | null>(null);
   const [reading, setReading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  // The state is not updated until the next render, so a second click needs the ref.
+  const submitLock = useRef(false);
+  // A result is dropped when a newer choose or a reset started after it.
+  const generation = useRef(0);
 
   // A ZIP is unpacked in the browser. One that is too large arrives without files and with its
   // own violation. Anything else is the files of a folder, with its root name already removed.
   const choose = async (picked: PickedFile[]) => {
+    const current = ++generation.current;
     setReading(true);
     setError(null);
     setSelection(null);
@@ -47,21 +53,25 @@ export function useMarkdownImport({
         violations.length > 0
           ? { tree: [], pageCount: 0, assetCount: 0, skipped: [], violations }
           : await previewMarkdownImport(files);
-      setSelection({ files, preview });
+      if (current === generation.current) setSelection({ files, preview });
     } catch {
-      setError(t('importReadFailed'));
+      if (current === generation.current) setError(t('importReadFailed'));
     } finally {
-      setReading(false);
+      if (current === generation.current) setReading(false);
     }
   };
 
   const reset = () => {
+    generation.current += 1;
+    setReading(false);
     setSelection(null);
     setError(null);
   };
 
   const submit = async () => {
-    if (!selection) return;
+    if (!selection || submitLock.current) return;
+    submitLock.current = true;
+    setSubmitting(true);
     setError(null);
     try {
       const zip = await packMarkdownImport(selection.files);
@@ -74,6 +84,9 @@ export function useMarkdownImport({
       onImported();
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : t('importReadFailed'));
+    } finally {
+      submitLock.current = false;
+      setSubmitting(false);
     }
   };
 
@@ -82,12 +95,9 @@ export function useMarkdownImport({
     preview: preview ?? null,
     reading,
     error,
-    pending: importer.isPending,
+    pending: submitting,
     canImport:
-      preview != null &&
-      preview.violations.length === 0 &&
-      preview.pageCount > 0 &&
-      !importer.isPending,
+      preview != null && preview.violations.length === 0 && preview.pageCount > 0 && !submitting,
     choose,
     reset,
     submit,
