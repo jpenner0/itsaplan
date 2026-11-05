@@ -5,7 +5,7 @@
   "private": true,
   "main": "dist/main.js",
   "scripts": {
-    "build": "bun build src/main.ts --outfile dist/main.js --target node --format cjs --external electron",
+    "build": "bun build src/main.ts --outfile dist/main.js --target node --format cjs --external electron && cp src/connect.html dist/",
     "electron": "bun run build && electron .",
     "package": "bun run build && electron-builder",
     "lint": "eslint .",

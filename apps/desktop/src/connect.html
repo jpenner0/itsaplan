@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; form-action https://connect.invalid"
+    />
+    <title>It's a Plan</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font:
+          14px system-ui,
+          sans-serif;
+      }
+      body {
+        margin: 0;
+        padding: 20px;
+      }
+      form {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      input {
+        padding: 6px 8px;
+        font: inherit;
+      }
+      #error {
+        min-height: 2.6em;
+        margin: 0;
+        color: #d33;
+        overflow-wrap: anywhere;
+      }
+      button {
+        align-self: flex-end;
+        padding: 6px 16px;
+        font: inherit;
+      }
+    </style>
+  </head>
+  <body>
+    <form action="https://connect.invalid/" method="get">
+      <label for="url">Server URL</label>
+      <input
+        id="url"
+        name="url"
+        type="text"
+        placeholder="https://plan.example.com"
+        spellcheck="false"
+        autofocus
+      />
+      <p id="error" role="alert"></p>
+      <button type="submit">Connect</button>
+    </form>
+    <script>
+      const params = new URLSearchParams(location.search);
+      document.getElementById('url').value = params.get('url') ?? '';
+      document.getElementById('error').textContent = params.get('error') ?? '';
+      document.querySelector('form').addEventListener('submit', () => {
+        const button = document.querySelector('button');
+        button.disabled = true;
+        button.textContent = 'Connecting…';
+      });
+    </script>
+  </body>
+</html>
