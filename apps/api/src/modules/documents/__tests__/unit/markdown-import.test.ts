@@ -211,6 +211,14 @@ describe('parseMarkdownZip: references', () => {
     });
   }
 
+  it('ends a code span at a blank line', () => {
+    const [page] = parse({
+      'a.md': 'Don`t\n\n![a](b.png)\n\nA `code` span',
+      'b.png': 'png',
+    }).pages;
+    expect(page.references).toEqual([{ path: 'b.png', kind: 'asset' }]);
+  });
+
   it('rewrites only the references in the map and keeps everything else', () => {
     const plan = parse(files);
     const page = plan.pages[0].children.find((p) => p.path === 'docs/page.md')!;
@@ -308,6 +316,23 @@ describe('parseMarkdownZip: limits', () => {
     expect(err.message).toContain('dir/a.md');
   });
 
+  it('counts the frontmatter toward the page limit', () => {
+    const frontmatter = '---\nkey: value\n---\n';
+    const body = 'x'.repeat(MARKDOWN_IMPORT_LIMITS.pageChars - frontmatter.length);
+    expect(parse({ 'a.md': frontmatter + body }).pages[0].content).toBe(body);
+    const err = failure(() => parse({ 'dir/a.md': `${frontmatter}${body}x` }));
+    expect(err.status).toBe(413);
+    expect(err.message).toContain('dir/a.md');
+  });
+
+  it('rejects a Markdown file whose declared size cannot fit the page limit', () => {
+    const maxBytes = MARKDOWN_IMPORT_LIMITS.pageChars * 3 + 3;
+    const bytes = withDeclaredSize(zip({ 'a.md': 'x'.repeat(1_000) }), maxBytes + 1);
+    const err = failure(() => parseMarkdownZip(bytes, opts));
+    expect(err.status).toBe(413);
+    expect(err.message).toContain('a.md');
+  });
+
   it('accepts the maximum depth and rejects one level more', () => {
     expect(outline(parse({ 'a/b.md': '' }, 2).pages)).toEqual([{ a: ['b'] }]);
     const err = failure(() => parse({ 'a/b/c.md': '' }, 2));
@@ -331,6 +356,13 @@ describe('parseMarkdownZip: limits', () => {
       MARKDOWN_IMPORT_LIMITS.uncompressedBytes + 1,
     );
     expect(failure(() => parseMarkdownZip(bytes, opts)).status).toBe(413);
+  });
+
+  it('rejects a declared size its compressed data cannot produce', () => {
+    const bytes = withDeclaredSize(zip({ 'a.bin': 'x', 'a.md': '![](a.bin)' }), 10_000_000);
+    const err = failure(() => parseMarkdownZip(bytes, opts));
+    expect(err.status).toBe(400);
+    expect(err.message).toContain('a.bin');
   });
 
   it('stops inflating an entry that is larger than declared', () => {
