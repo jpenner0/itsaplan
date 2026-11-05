@@ -22,6 +22,8 @@ COPY packages/net/package.json ./packages/net/
 COPY packages/storage/package.json ./packages/storage/
 COPY packages/runner/package.json ./packages/runner/
 COPY packages/eslint-config/package.json ./packages/eslint-config/
+# The unfiltered install reaches apps/desktop; the image does not use the Electron binary.
+ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
 RUN bun install --frozen-lockfile
 
 # 2) Build Next. bun keeps some workspace deps in per-package node_modules rather
