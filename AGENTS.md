@@ -4,7 +4,7 @@ It's a Plan, a self-hosted project tracker. Bun + Turborepo monorepo: Elysia api
 web with shadcn/ui, better-auth, Drizzle + PostgreSQL.
 
 Before you change files in an app or package, read its `AGENTS.md`: `apps/api`, `apps/web`,
-`apps/worker`, `apps/bot`, `packages/auth`, `packages/db`. It overrides this file.
+`apps/worker`, `apps/bot`, `apps/desktop`, `packages/auth`, `packages/db`. It overrides this file.
 
 ## Rules
 
@@ -94,7 +94,7 @@ the change gives the user. Version bumps and release config traps: `docs/dev/rel
 ## Gotchas
 
 - A new workspace member needs `COPY <path>/package.json ./<path>/` in every Dockerfile that
-  installs deps (`apps/api`, `apps/web`, `apps/worker`, `apps/bot`). Without it the Docker build
+  installs deps (`apps/api`, `apps/web`, `apps/worker`, `apps/bot`, `apps/desktop`). Without it the Docker build
   fails while local dev still works.
 - A better-auth config change can change its tables. Run `bun run auth:generate`, then
   `db:generate` and `db:migrate`.
