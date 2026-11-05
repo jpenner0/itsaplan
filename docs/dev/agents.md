@@ -167,8 +167,8 @@ Both are for GitHub only.
 
 | Tool                      | Route                                           | Permission            |
 | ------------------------- | ----------------------------------------------- | --------------------- |
-| `get_pull_request_diff`   | `GET /issues/:issueId/development/:linkId/diff` | `work_items` read     |
-| `comment_on_pull_request` | `POST /issues/:issueId/development/:linkId/comments` | `work_items` edit |
+| `get_pull_request_diff`   | `GET /issues/:issueId/development/:linkId/diff` | `repositories` edit   |
+| `comment_on_pull_request` | `POST /issues/:issueId/development/:linkId/comments` | `repositories` edit |
 
 - `linkId` is the `id` of an `issue_development_link` of kind `pull_request`. It is not the pull
   request number. `get_issue` lists it under `development`.

@@ -102,8 +102,8 @@ describe('internal agent route tools', () => {
     for (const key of keys) expect(other[key]).toBeUndefined();
 
     const catalog = new Map(actionCatalog().map((action) => [action.key, action.permission]));
-    expect(catalog.get('get_pull_request_diff')).toEqual(['work_items', 'read']);
-    expect(catalog.get('comment_on_pull_request')).toEqual(['work_items', 'edit']);
+    expect(catalog.get('get_pull_request_diff')).toEqual(['repositories', 'edit']);
+    expect(catalog.get('comment_on_pull_request')).toEqual(['repositories', 'edit']);
   });
 
   it('opens an attachment: a text file as its text, an image as an image part', async () => {

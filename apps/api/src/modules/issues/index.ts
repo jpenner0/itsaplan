@@ -937,7 +937,7 @@ export const issueRoutes = new Elysia({ name: 'issues', detail: { tags: ['Issues
       getLinkedPullRequestDiff(projectId, params.issueId, params.linkId),
     {
       params: issueDevelopmentLinkParams,
-      workItem: 'read',
+      developmentRepositories: 'edit',
       response: { 200: PullRequestDiffResponse, ...commonErrors },
       detail: {
         summary: 'Read the diff of a linked pull request',
@@ -968,7 +968,7 @@ export const issueRoutes = new Elysia({ name: 'issues', detail: { tags: ['Issues
     {
       params: issueDevelopmentLinkParams,
       body: pullRequestCommentBody,
-      workItem: 'edit',
+      developmentRepositories: 'edit',
       response: { 201: PullRequestCommentResponse, ...commonErrors },
       detail: {
         summary: 'Comment on a linked pull request',

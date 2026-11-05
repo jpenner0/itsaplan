@@ -11,7 +11,12 @@ import {
   setPermissionExtensions,
   type PermissionResource,
 } from '../../permissions';
-import { mergePermissions, readOnlyPermissions, workspaceRoleGrant } from '../../workspace-roles';
+import {
+  mergePermissions,
+  readOnlyPermissions,
+  setWorkspaceRoleGrant,
+  workspaceRoleGrant,
+} from '../../workspace-roles';
 
 // Unit test: the permission matrix is a set of pure functions with no session,
 // no HTTP, and no database, so they are tested directly (no Eden Treaty). This
@@ -121,6 +126,7 @@ describe('setPermissionExtensions', () => {
 
   it('reaches a workspace admin, whose matrix is built when it is read', () => {
     extend();
+    setWorkspaceRoleGrant('admin', readOnlyPermissions());
     const grant = workspaceRoleGrant('admin');
     if (grant === 'owner' || grant === null) throw new Error('admin grants a matrix');
     expect(grant[first].read).toBe(true);

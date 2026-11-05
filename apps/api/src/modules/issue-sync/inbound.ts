@@ -290,7 +290,8 @@ async function importIssue(repo: SyncRepository, external: ProviderIssue): Promi
 // issue: neither starts a triage run.
 function isNewOnProvider(repo: SyncRepository, external: ProviderIssue): boolean {
   return (
-    repo.issuesWatermark !== null && Date.parse(external.createdAt) > repo.issuesWatermark.getTime()
+    repo.issuesWatermark !== null &&
+    Date.parse(external.createdAt) >= repo.issuesWatermark.getTime()
   );
 }
 

@@ -174,9 +174,20 @@ describe('Pull request tools of an issue', () => {
       });
     });
 
-    it('is open to a member who can read the issue', async () => {
+    it('refuses a default member, who has no repositories permission', async () => {
       const { asOwner, issueId, linkId } = await setup(fake);
       const member = await addProjectMember(asOwner, 'MKT');
+
+      expect((await diffOf(member, issueId, linkId)).status).toBe(403);
+    });
+
+    it('is open to a member with repositories edit', async () => {
+      const { asOwner, issueId, linkId } = await setup(fake);
+      const role = await createRole(asOwner, 'MKT', {
+        name: 'Repo editor',
+        permissions: { work_items: { read: true }, repositories: { edit: true } },
+      });
+      const member = await addProjectMember(asOwner, 'MKT', role.data!.id);
 
       expect((await diffOf(member, issueId, linkId)).status).toBe(200);
     });
@@ -325,7 +336,7 @@ describe('Pull request tools of an issue', () => {
       expect((await comment(asOwner, issueId, linkId, 'Hi')).status).toBe(400);
     });
 
-    it('refuses a member who may only read the issue', async () => {
+    it('refuses a member who has no repositories permission', async () => {
       const { asOwner, issueId, linkId } = await setup(fake);
       const role = await createRole(asOwner, 'MKT', {
         name: 'Reader',
@@ -333,7 +344,7 @@ describe('Pull request tools of an issue', () => {
       });
       const reader = await addProjectMember(asOwner, 'MKT', role.data!.id);
 
-      expect((await diffOf(reader, issueId, linkId)).status).toBe(200);
+      expect((await diffOf(reader, issueId, linkId)).status).toBe(403);
       expect((await comment(reader, issueId, linkId, 'Hi')).status).toBe(403);
     });
 
