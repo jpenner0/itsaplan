@@ -17,7 +17,7 @@
       "cron": "طبق زمان‌بندی",
       "status": "وقتی تسک وارد یک وضعیت می‌شود",
       "synced_issue_created": "هنگام ایجاد issue جدید در GitHub",
-      "pull_request_opened": "هنگام وجود pull request"
+      "pull_request_opened": "هنگام باز شدن pull request"
     },
     "taskOptional": "وظیفه (اختیاری)",
     "issueTaskPlaceholder": "معیارهای پذیرش را در توضیحات تسک بنویس.",

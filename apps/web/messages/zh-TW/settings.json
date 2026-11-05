@@ -17,7 +17,7 @@
       "cron": "依排程",
       "status": "工作項目進入某狀態時",
       "synced_issue_created": "GitHub 出現新 issue 時",
-      "pull_request_opened": "有 pull request 時"
+      "pull_request_opened": "pull request 被開啟時"
     },
     "taskOptional": "任務（可選）",
     "issueTaskPlaceholder": "在工作項目描述中寫下驗收標準。",

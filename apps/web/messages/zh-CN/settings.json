@@ -17,7 +17,7 @@
       "cron": "按定时",
       "status": "工作项进入某状态时",
       "synced_issue_created": "GitHub 出现新 issue 时",
-      "pull_request_opened": "有 pull request 时"
+      "pull_request_opened": "pull request 被打开时"
     },
     "taskOptional": "任务（可选）",
     "issueTaskPlaceholder": "在工作项描述中写下验收标准。",

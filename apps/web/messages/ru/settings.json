@@ -17,7 +17,7 @@
       "cron": "По расписанию",
       "status": "Когда задача попадает в статус",
       "synced_issue_created": "При новой задаче GitHub",
-      "pull_request_opened": "При pull request"
+      "pull_request_opened": "При открытии pull request"
     },
     "taskOptional": "Задача (необязательно)",
     "issueTaskPlaceholder": "Опиши критерии приёмки в описании задачи.",

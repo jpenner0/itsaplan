@@ -17,7 +17,7 @@
       "cron": "Sesuai jadwal",
       "status": "Saat issue masuk ke status",
       "synced_issue_created": "Saat ada isu GitHub baru",
-      "pull_request_opened": "Saat ada pull request"
+      "pull_request_opened": "Saat pull request dibuka"
     },
     "taskOptional": "Tugas (opsional)",
     "issueTaskPlaceholder": "Tulis kriteria penerimaan di deskripsi issue.",

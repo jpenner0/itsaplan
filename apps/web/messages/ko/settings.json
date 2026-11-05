@@ -17,7 +17,7 @@
       "cron": "정해진 일정에 따라",
       "status": "이슈가 특정 상태로 변경될 때",
       "synced_issue_created": "새 GitHub 이슈가 생길 때",
-      "pull_request_opened": "풀 리퀘스트가 있을 때"
+      "pull_request_opened": "풀 리퀘스트가 열릴 때"
     },
     "taskOptional": "작업 (선택 사항)",
     "issueTaskPlaceholder": "승인 기준을 이슈 설명에 작성하세요.",

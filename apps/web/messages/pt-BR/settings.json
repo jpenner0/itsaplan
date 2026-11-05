@@ -17,7 +17,7 @@
       "cron": "Por agendamento",
       "status": "Quando uma issue entra em um estado",
       "synced_issue_created": "Com uma nova issue do GitHub",
-      "pull_request_opened": "Com um pull request"
+      "pull_request_opened": "Quando um pull request é aberto"
     },
     "taskOptional": "Tarefa (opcional)",
     "issueTaskPlaceholder": "Escreva os critérios de aceitação na descrição da issue.",
