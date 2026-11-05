@@ -177,6 +177,7 @@
     "todoList": "할 일 목록",
     "quote": "인용",
     "codeBlock": "코드 블록",
+    "mermaidDiagram": "다이어그램 (Mermaid)",
     "divider": "구분선",
     "table": "테이블",
     "image": "이미지",
