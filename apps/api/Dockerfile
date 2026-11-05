@@ -12,6 +12,7 @@ COPY apps/api/package.json ./apps/api/
 COPY apps/web/package.json ./apps/web/
 COPY apps/worker/package.json ./apps/worker/
 COPY apps/bot/package.json ./apps/bot/
+COPY apps/desktop/package.json ./apps/desktop/
 COPY packages/db/package.json ./packages/db/
 COPY packages/auth/package.json ./packages/auth/
 COPY packages/agent-tools/package.json ./packages/agent-tools/
@@ -25,6 +26,8 @@ COPY packages/eslint-config/package.json ./packages/eslint-config/
 # image excludes every other app's deps. INSTALL_FLAGS defaults to --production; the
 # test gate overrides both — it runs the bot and worker suites out of this image, and
 # those need their own workspace links and the devDeps the suites import.
+# An empty INSTALL_FILTER reaches apps/desktop; the image does not use the Electron binary.
+ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
 ARG INSTALL_FILTER="--filter api"
 ARG INSTALL_FLAGS="--production"
 # --production still installs the devDependencies of workspace packages

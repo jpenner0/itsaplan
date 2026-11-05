@@ -1,0 +1,76 @@
+name: Publish desktop
+
+# Builds the unsigned desktop installers and attaches them to the GitHub Release
+# of the tag. Called by release.yml once a release is tagged; the manual trigger
+# republishes an existing tag.
+#
+# Each installer is built on a runner of its own OS, because electron-builder
+# cannot build every target from one.
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: The release tag to build, e.g. v0.10.1
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The release tag to build, e.g. v0.10.1
+        required: true
+        type: string
+
+env:
+  BUN_VERSION: 1.4.4
+
+jobs:
+  build:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: mac
+            runner: macos-latest
+            pattern: '*.dmg'
+          - os: win
+            runner: windows-latest
+            pattern: '*.exe'
+          - os: linux
+            runner: ubuntu-latest
+            pattern: '*.AppImage *.deb'
+    # The same shell on every OS: the steps below use bash syntax.
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
+          # Only gh uses a token, passed through GH_TOKEN below.
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - run: bun install --frozen-lockfile
+
+      # The workflow uploads the files itself, so electron-builder must not publish.
+      - run: bun run package -- --${{ matrix.os }} --publish never
+        working-directory: apps/desktop
+
+      # Only installers: blockmaps and update metadata are of no use without auto-update.
+      - name: Upload the installers to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+          PATTERN: ${{ matrix.pattern }}
+        working-directory: apps/desktop/release
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC2086
+          gh release upload "$TAG" $PATTERN --clobber --repo "$GITHUB_REPOSITORY"

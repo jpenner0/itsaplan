@@ -96,3 +96,15 @@ jobs:
     uses: ./.github/workflows/publish-chart.yml
     with:
       tag: ${{ needs.move-release-branch.outputs.tag }}
+
+  # The unsigned desktop installers, attached to the release that was just
+  # tagged. Runs beside the other publish jobs; it only needs the tag.
+  publish-desktop:
+    name: Publish desktop
+    needs: move-release-branch
+    if: ${{ needs.move-release-branch.outputs.tag != '' }}
+    permissions:
+      contents: write
+    uses: ./.github/workflows/publish-desktop.yml
+    with:
+      tag: ${{ needs.move-release-branch.outputs.tag }}
