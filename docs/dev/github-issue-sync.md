@@ -313,7 +313,7 @@ type `pull_request_opened`.
 webhook manages, and only to an issue of that project that is not archived. A reference to another
 repository is ignored.
 
-A resolved reference is handled like a project key in the branch. Before, `#123` was ignored.
+A resolved reference is handled like a project key in the branch.
 
 - It gets the `issue_development_link` of kind `pull_request` on every pull request event.
 - It is listed in the linkback comment when the link is new.

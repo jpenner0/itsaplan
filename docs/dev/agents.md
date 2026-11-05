@@ -151,7 +151,8 @@ time or in a column. The types are `synced_issue_created` and `pull_request_open
 `queueEventRuns({ type, projectId, issueId, lead })` in `modules/agents/schedules/issue-runs.ts`
 queues one run for every active schedule of the type in the project whose agent is a member of the
 project. The run has `agent_run.trigger = 'event'` and the prompt `lead`, a blank line and the
-schedule's prompt. It returns the run ids.
+schedule's prompt. When the schedule's prompt is empty, the prompt is `lead`, a space and "Review it
+and take the appropriate next step." It returns the run ids.
 
 - `queueEventRuns` does no deduplication. A caller must call it once per event.
 - `lead` is copied into the prompt as it is. A caller builds it from stored values and never from
