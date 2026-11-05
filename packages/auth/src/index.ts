@@ -2,8 +2,9 @@ import { randomInt } from 'node:crypto';
 import { createWorkspace, db } from '@repo/db';
 import { and, eq, gt, isNull, sql, type SQL } from 'drizzle-orm';
 import { betterAuth, type BetterAuthPlugin } from 'better-auth';
-import { createAuthMiddleware, APIError } from 'better-auth/api';
+import { createAuthMiddleware, APIError, getOAuthState } from 'better-auth/api';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import type { GithubProfile } from 'better-auth/social-providers';
 import { passkey } from '@better-auth/passkey';
 import { apiKey } from '@better-auth/api-key';
 import { mcp } from '@better-auth/mcp';
@@ -21,7 +22,8 @@ import {
   hasPendingInvite,
   hasExpiredInvite,
   getGoogleConfig,
-  isGoogleUsable,
+  getGithubConfig,
+  isOAuthAppUsable,
   getOidcConfig,
   isOidcUsable,
   isAccountDeactivated,
@@ -274,9 +276,65 @@ async function refreshGoogleOptions(): Promise<boolean> {
     const config = await getGoogleConfig();
     googleOptions.clientId = config.clientId;
     googleOptions.clientSecret = config.clientSecret;
-    return isGoogleUsable(config);
+    return isOAuthAppUsable(config);
   } catch (error) {
     console.error('[auth] could not read the Google credentials:', error);
+    return false;
+  }
+}
+
+// The callback URL to register on the GitHub OAuth app; god mode shows it for copying.
+export const GITHUB_REDIRECT_URI = `${apiPublicUrl}/api/auth/callback/github`;
+
+// GitHub links an identity to the signed-in account and never signs anyone in or up:
+// the issue sync maps GitHub users to members through these `account` rows. The
+// profile is read only while the OAuth state carries the link that /link-social
+// wrote, so a sign-in callback gets no user and fails. The linked account's own
+// address is reported as verified: with `read:user` GitHub shows no private
+// address, and better-auth links only a verified address equal to the account's.
+async function githubLinkUserInfo(token: { accessToken?: string }) {
+  const link = (await getOAuthState())?.link;
+  if (!link || !token.accessToken) return null;
+  const response = await fetch('https://api.github.com/user', {
+    headers: { authorization: `Bearer ${token.accessToken}`, 'user-agent': "It's a Plan" },
+  });
+  if (!response.ok) return null;
+  const profile = (await response.json()) as GithubProfile;
+  return {
+    user: {
+      name: profile.name || profile.login,
+      email: link.email,
+      emailVerified: true,
+      image: profile.avatar_url,
+    },
+    data: profile,
+  };
+}
+
+// Same contract as googleOptions: the provider keeps this object by reference.
+const githubOptions = {
+  clientId: '',
+  clientSecret: '',
+  redirectURI: GITHUB_REDIRECT_URI,
+  disableDefaultScope: true,
+  scope: ['read:user'],
+  disableSignUp: true,
+  getUserInfo: githubLinkUserInfo,
+};
+
+function withoutGithubTokens<T extends { providerId?: string }>(account: T): T {
+  if (account.providerId !== 'github') return account;
+  return { ...account, accessToken: null, refreshToken: null, idToken: null };
+}
+
+async function refreshGithubOptions(): Promise<boolean> {
+  try {
+    const config = await getGithubConfig();
+    githubOptions.clientId = config.clientId;
+    githubOptions.clientSecret = config.clientSecret;
+    return isOAuthAppUsable(config);
+  } catch (error) {
+    console.error('[auth] could not read the GitHub credentials:', error);
     return false;
   }
 }
@@ -634,6 +692,10 @@ function createAuth() {
         await refreshGoogleOptions();
         return googleOptions;
       },
+      github: async () => {
+        await refreshGithubOptions();
+        return githubOptions;
+      },
     },
 
     // A provider address that already has an account signs into it and gains a linked
@@ -734,6 +796,13 @@ function createAuth() {
         if (ctx.path === '/link-social' && provider === OIDC_PROVIDER_ID) {
           throw new APIError('FORBIDDEN', { message: 'Single sign-on cannot be linked' });
         }
+        // GitHub is linked from the profile and is no way in (githubLinkUserInfo).
+        if (ctx.path === '/sign-in/social' && provider === 'github') {
+          throw new APIError('FORBIDDEN', {
+            code: 'GITHUB_SIGN_IN_DISABLED',
+            message: 'GitHub can only be linked to a signed-in account',
+          });
+        }
 
         // Both halves of an OAuth round trip: starting it and coming back from it. This
         // is where the stored settings are loaded into the provider, so a request never
@@ -753,6 +822,15 @@ function createAuth() {
           if (!(await refreshGoogleOptions())) {
             throw new APIError('FORBIDDEN', {
               message: 'Google sign-in is disabled on this instance',
+            });
+          }
+          return;
+        }
+        if (provider === 'github') {
+          if (!(await refreshGithubOptions())) {
+            throw new APIError('FORBIDDEN', {
+              code: 'GITHUB_DISABLED',
+              message: 'GitHub is not configured on this instance',
             });
           }
           return;
@@ -805,6 +883,12 @@ function createAuth() {
     },
 
     databaseHooks: {
+      // The GitHub row only names the identity. Every write to GitHub uses the team's
+      // token, so the user's is not kept.
+      account: {
+        create: { before: async (account) => ({ data: withoutGithubTokens(account) }) },
+        update: { before: async (account) => ({ data: withoutGithubTokens(account) }) },
+      },
       user: {
         create: {
           // Every account creation passes here, whichever method made it, so this is
@@ -1064,6 +1148,9 @@ export {
   setGoogleSettings,
   getGoogleConfig,
   hasConfiguredGoogle,
+  getGithubSettings,
+  setGithubSettings,
+  hasConfiguredGithub,
   getOidcSettings,
   setOidcSettings,
   getOidcConfig,
@@ -1084,9 +1171,9 @@ export type {
   AuthSettings,
   InstanceEmailDto,
   InstanceEmailPatch,
-  InstanceGoogleDto,
-  InstanceGooglePatch,
-  InstanceGoogleConfig,
+  InstanceOAuthAppDto,
+  InstanceOAuthAppPatch,
+  InstanceOAuthAppConfig,
   InstanceOidcDto,
   InstanceOidcPatch,
   InstanceOidcConfig,

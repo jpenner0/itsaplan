@@ -108,6 +108,11 @@ export interface InstanceGoogleSettingsPatch {
   clientSecret?: string;
 }
 
+// The GitHub OAuth app that lets a member link a GitHub account for the issue sync.
+// Same shape and secret handling as Google; GitHub is no sign-in method.
+export type InstanceGithubSettings = InstanceGoogleSettings;
+export type InstanceGithubSettingsPatch = InstanceGoogleSettingsPatch;
+
 // The instance's generic OIDC/OAuth2 provider. The client secret is never returned,
 // only a `hasClientSecret` flag. redirectUri is derived from the API origin and has
 // to be registered with the identity provider.
@@ -328,6 +333,15 @@ export const getInstanceGoogleSettings = () =>
 
 export const updateInstanceGoogleSettings = (patch: InstanceGoogleSettingsPatch) =>
   request<InstanceGoogleSettings>('/god/google-settings', {
+    method: 'PUT',
+    body: JSON.stringify(patch),
+  });
+
+export const getInstanceGithubSettings = () =>
+  request<InstanceGithubSettings>('/god/github-settings');
+
+export const updateInstanceGithubSettings = (patch: InstanceGithubSettingsPatch) =>
+  request<InstanceGithubSettings>('/god/github-settings', {
     method: 'PUT',
     body: JSON.stringify(patch),
   });

@@ -1,6 +1,7 @@
 import { Elysia, t } from 'elysia';
 import {
   GOOGLE_REDIRECT_URI,
+  GITHUB_REDIRECT_URI,
   OIDC_REDIRECT_URI,
   getAuthSettings,
   setAuthSettings,
@@ -10,6 +11,8 @@ import {
   getGoogleSettings,
   setGoogleSettings,
   hasConfiguredGoogle,
+  getGithubSettings,
+  setGithubSettings,
   getOidcSettings,
   setOidcSettings,
   getScimSettings,
@@ -62,6 +65,8 @@ import {
   EmailTestResponse,
   GoogleSettingsBody,
   GoogleSettingsResponse,
+  GithubSettingsBody,
+  GithubSettingsResponse,
   InstanceProjectDetailResponse,
   InstanceProjectPageResponse,
   InstanceTeamMemberPageResponse,
@@ -299,6 +304,42 @@ export const godRoutes = new Elysia({ name: 'god', detail: { tags: ['God'] } })
       detail: {
         summary: 'Update Google sign-in settings',
         description: 'Update the Google OAuth credentials and whether Google sign-in is offered.',
+      },
+    },
+  )
+
+  .get(
+    '/god/github-settings',
+    async () => ({ ...(await getGithubSettings()), redirectUri: GITHUB_REDIRECT_URI }),
+    {
+      response: { 200: GithubSettingsResponse, ...errors(401, 403) },
+      detail: {
+        summary: 'Get GitHub account linking settings',
+        description: 'Get the GitHub OAuth app credentials (the client secret redacted).',
+      },
+    },
+  )
+
+  .put(
+    '/god/github-settings',
+    async ({ body }) => {
+      const current = await getGithubSettings();
+      const enabled = body.enabled ?? current.enabled;
+      const clientId = body.clientId ?? current.clientId;
+      const hasClientSecret = (body.clientSecret?.length ?? 0) > 0 || current.hasClientSecret;
+      if (enabled && (clientId.length === 0 || !hasClientSecret)) {
+        throw new HttpError(400, 'Add the GitHub client ID and secret first');
+      }
+      const next = await setGithubSettings(body);
+      return { ...next, redirectUri: GITHUB_REDIRECT_URI };
+    },
+    {
+      body: GithubSettingsBody,
+      response: { 200: GithubSettingsResponse, ...errors(400, 401, 403) },
+      detail: {
+        summary: 'Update GitHub account linking settings',
+        description:
+          'Update the GitHub OAuth app credentials and whether members may link a GitHub account.',
       },
     },
   )
