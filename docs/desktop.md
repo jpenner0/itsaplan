@@ -22,8 +22,7 @@ The files are named `itsaplan-<version>-<os>-<arch>.<ext>`.
 The builds are not code-signed, so the system warns you on first launch.
 
 - **macOS:** the app is ad-hoc signed and not notarized. The first launch shows a warning about
-  an unidentified developer. Open System Settings, Privacy & Security, and click "Open Anyway",
-  or right-click the app and choose Open.
+  an unidentified developer. Open System Settings, Privacy & Security, and click "Open Anyway".
 - **Windows:** in the SmartScreen dialog click "More info", then "Run anyway".
 - **Linux:** for the AppImage, make the file executable with `chmod +x` and run it. The `.deb`
   installs with your package manager.
@@ -35,7 +34,11 @@ On first launch the app asks for the URL of your instance, for example `https://
 - If you enter no scheme, `https://` is added.
 - `http://` is allowed, for instances that run only on an internal network.
 - The app checks that the URL is reachable, then stores it on your computer.
-- If the server is unreachable, the dialog shows "Could not reach <url>."
+- Only the origin is stored. A path such as `https://host/plan` is dropped, so the instance must
+  be served at the root of its host.
+- The dialog shows an error when the input is not accepted: "Enter a valid URL.", "Only http and
+  https URLs are supported.", "Could not reach <url>." followed by the reason, or "Could not save
+  the server URL." followed by the reason.
 - To use another instance, choose "Change server…". It is in the app menu on macOS and in the File
   menu on Windows and Linux. The app shows the dialog again.
 - The app connects to one instance at a time.
