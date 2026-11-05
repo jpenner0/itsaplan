@@ -996,6 +996,12 @@ export const gitProviderConnection = pgTable(
     ciphertext: text('ciphertext').notNull(),
     iv: text('iv').notNull(),
     authTag: text('auth_tag').notNull(),
+    // Author of synced comments whose external author has no linked account. A hidden
+    // user like an agent's bot user, but without team_member or ai_agent rows. NULL
+    // until the first such comment is synced.
+    botUserId: text('bot_user_id')
+      .unique()
+      .references(() => user.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -1018,6 +1024,12 @@ export const gitManagedRepository = pgTable(
     webhookExternalId: text('webhook_external_id').notNull(),
     status: text('status').notNull().default('connected'),
     lastError: text('last_error'),
+    issuesSyncEnabled: boolean('issues_sync_enabled').notNull().default(false),
+    // Whether an issue created in the project is also created in the repository.
+    newIssuesToProvider: boolean('new_issues_to_provider').notNull().default(true),
+    // Provider `updated_at` of the newest issue the reconcile has read; its next run
+    // asks only for issues changed since then.
+    issuesWatermark: timestamp('issues_watermark', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -1028,6 +1040,10 @@ export const gitManagedRepository = pgTable(
       t.externalId,
     ),
     index('git_managed_repository_project_connection_idx').on(t.projectId, t.connectionId),
+    // A repository syncs its issues with at most one project.
+    uniqueIndex('git_managed_repository_issues_sync_uq')
+      .on(t.connectionId, t.externalId)
+      .where(sql`${t.issuesSyncEnabled}`),
   ],
 );
 
@@ -2029,6 +2045,70 @@ export const issueActivity = pgTable(
     index('issue_activity_reply_idx').on(t.replyToId),
     index('issue_activity_initiative_idx').on(t.initiativeId, t.createdAt.desc(), t.id.desc()),
   ],
+);
+
+// Hash of each synced field's value at the last sync.
+export interface IssueSyncFieldHashes {
+  title?: string;
+  description?: string;
+  status?: string;
+  labels?: string;
+  assignee?: string;
+}
+
+// An issue synced with an issue in a managed repository. The link belongs to the
+// issue and stays when the issue moves to another project. Unlinking the repository
+// deletes the links and keeps the issues.
+//
+// synced_hash covers the whole synced state: an incoming change with the same hash is
+// the sync's own write coming back and is ignored. field_hashes tells which side
+// changed a field since the last sync. When both did, the later change wins: the
+// local time is the field's newest issue_activity row, the external time is
+// external_updated_at.
+export const issueSyncLink = pgTable(
+  'issue_sync_link',
+  {
+    id: serial('id').primaryKey(),
+    issueId: integer('issue_id')
+      .notNull()
+      .unique()
+      .references(() => issue.id, { onDelete: 'cascade' }),
+    managedRepositoryId: integer('managed_repository_id')
+      .notNull()
+      .references(() => gitManagedRepository.id, { onDelete: 'cascade' }),
+    externalId: text('external_id').notNull(),
+    externalNumber: integer('external_number').notNull(),
+    externalUrl: text('external_url').notNull(),
+    syncedHash: text('synced_hash').notNull(),
+    fieldHashes: jsonb('field_hashes').$type<IssueSyncFieldHashes>().notNull().default({}),
+    externalUpdatedAt: timestamp('external_updated_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    unique('issue_sync_link_repository_number_uq').on(t.managedRepositoryId, t.externalNumber),
+  ],
+);
+
+// A comment synced with a comment on the linked external issue. external_author_login
+// is set for a comment that came from the provider; its author is the linked user or
+// the connection's bot user.
+export const issueCommentSyncLink = pgTable(
+  'issue_comment_sync_link',
+  {
+    id: serial('id').primaryKey(),
+    activityId: integer('activity_id')
+      .notNull()
+      .unique()
+      .references(() => issueActivity.id, { onDelete: 'cascade' }),
+    issueSyncLinkId: integer('issue_sync_link_id')
+      .notNull()
+      .references(() => issueSyncLink.id, { onDelete: 'cascade' }),
+    externalId: text('external_id').notNull(),
+    externalUrl: text('external_url').notNull(),
+    externalAuthorLogin: text('external_author_login'),
+    syncedHash: text('synced_hash').notNull(),
+    externalUpdatedAt: timestamp('external_updated_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [unique('issue_comment_sync_link_external_uq').on(t.issueSyncLinkId, t.externalId)],
 );
 
 // Saved views (the tabs above a project's work items view). filters and display are jsonb
