@@ -20,6 +20,7 @@ import {
   updateComment,
   type ActivityActor,
 } from '#modules/issues/activity';
+import { queueEventRuns } from '#modules/agents/schedules/issue-runs';
 import { createLabel } from '#modules/labels/service';
 import { getMembership } from '#modules/members/service';
 import { getProjectById } from '#modules/projects/service';
@@ -55,6 +56,9 @@ export interface SyncRepository {
   connectionId: number;
   fullName: string;
   webUrl: string;
+  // The watermark when the repository was loaded, inside its lock. Null until the first
+  // import has finished.
+  issuesWatermark: Date | null;
   input: ProviderConnectionInput;
 }
 
@@ -271,6 +275,33 @@ async function importIssue(repo: SyncRepository, external: ProviderIssue): Promi
     externalUpdatedAt: new Date(external.updatedAt),
   });
   await upsertIssueLink(repo, created.id, external);
+  if (isNewOnProvider(repo, external)) {
+    await queueEventRuns({
+      type: 'synced_issue_created',
+      projectId: project.id,
+      issueId: created.id,
+      lead: triageLead(repo, created.identifier, external.number),
+    });
+  }
+}
+
+// An issue created on the provider after the last sync. The first import brings in
+// every open issue, and a later import can bring in an old one, such as a reopened
+// issue: neither starts a triage run.
+function isNewOnProvider(repo: SyncRepository, external: ProviderIssue): boolean {
+  return (
+    repo.issuesWatermark !== null && Date.parse(external.createdAt) > repo.issuesWatermark.getTime()
+  );
+}
+
+// Carries no text from the provider's issue: the agent reads it with get_issue.
+function triageLead(repo: SyncRepository, identifier: string, number: number): string {
+  return (
+    `Work item ${identifier} was created on GitHub ` +
+    `(${repo.fullName}#${number}, ${repo.webUrl}/issues/${number}). ` +
+    'Triage it: set labels and priority, link duplicates. ' +
+    'Do not close it or move it to a completed or canceled column.'
+  );
 }
 
 async function findLink(repo: SyncRepository, number: number) {
