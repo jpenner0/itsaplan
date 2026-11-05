@@ -267,7 +267,7 @@ function agentQuery() {
 
 // Whether the agent is a member of the project, as a condition on a query over
 // ai_agent. Membership is held by the bot user, so it is a project_member row of it.
-function inProject(projectId: number) {
+export function inProject(projectId: number) {
   return sql`exists (select 1 from ${projectMember} pm where pm.user_id = ${aiAgent.userId} and pm.project_id = ${projectId})`;
 }
 

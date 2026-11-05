@@ -2,8 +2,8 @@ import { HttpError } from '#shared/lib';
 import type { CopyIdMaps } from '#modules/projects/copy';
 
 // What an extension of the api installs into agent schedules: types of its own beside
-// 'cron' and 'status', the options it keeps on a schedule, and which issues start a
-// schedule's runs. A self-hosted instance installs none of them: it has the two core
+// the core types, the options it keeps on a schedule, and which issues start a
+// schedule's runs. A self-hosted instance installs none of them: it has the core
 // types, a schedule holds no options, and every issue starts a run.
 
 export type ScheduleOptions = Record<string, unknown>;
@@ -16,6 +16,14 @@ export interface ScheduleForExtension {
   options: ScheduleOptions;
 }
 
+// The event types take no cron and no column. The issue sync starts
+// 'synced_issue_created' and the pull request webhook 'pull_request_opened', through
+// queueEventRuns (./issue-runs).
+export const eventScheduleTypes = ['synced_issue_created', 'pull_request_opened'] as const;
+export type EventScheduleType = (typeof eventScheduleTypes)[number];
+
+export const coreScheduleTypes: readonly string[] = ['cron', 'status', ...eventScheduleTypes];
+
 let extraTypes: string[] = [];
 
 // A schedule of an added type takes no cron and no column, and nothing in the core
@@ -25,7 +33,7 @@ export function setScheduleTypes(types: string[] = []): void {
 }
 
 export function isScheduleType(type: string): boolean {
-  return type === 'cron' || type === 'status' || extraTypes.includes(type);
+  return coreScheduleTypes.includes(type) || extraTypes.includes(type);
 }
 
 export interface ScheduleOptionsInput {
