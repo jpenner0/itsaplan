@@ -252,5 +252,23 @@
     "retry": "Retry",
     "noResolved": "No resolved discussions.",
     "empty": "Select text to start a discussion."
-  }
+  },
+  "importMarkdown": "Importer du Markdown",
+  "importDescription": "Importez un dossier de fichiers Markdown sous forme de pages. Chaque dossier devient une page parente.",
+  "importSubpagesDescription": "Importez un dossier de fichiers Markdown comme sous-pages de cette page. Chaque dossier devient une page parente.",
+  "importDrop": "Déposez ici un dossier ou un fichier ZIP, ou choisissez-en un.",
+  "importChooseFolder": "Choisir un dossier",
+  "importChooseZip": "Choisir un ZIP",
+  "importReading": "Lecture des fichiers…",
+  "importReadFailed": "Les fichiers n'ont pas pu être lus.",
+  "importAction": "Importer",
+  "importing": "Importation…",
+  "importDone": "Pages importées : {count}",
+  "importSummary": "Pages : {pages} · Ressources : {assets}",
+  "importNothing": "Aucune page Markdown à importer.",
+  "importSkipped": "Fichiers ignorés : {count}",
+  "importZipTooLarge": "Le fichier ZIP dépasse 50 Mo.",
+  "importTooManyPages": "Le dossier contient {count} pages. La limite est de 500.",
+  "importPageTooLong": "{path} dépasse 250 000 caractères.",
+  "importInvalidUtf8": "{path} n'est pas en UTF-8 valide."
 }
