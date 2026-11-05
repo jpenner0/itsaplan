@@ -40,6 +40,25 @@ export const createIssuePullRequestBody = t.Object({
   draft: t.Boolean(),
 });
 
+// GitHub refuses a comment over 65,536 characters; the rest is left for the header line.
+export const pullRequestCommentBody = t.Object({
+  body: t.String({ minLength: 1, maxLength: 60_000 }),
+});
+
+export const PullRequestDiffResponse = t.Object({
+  repository: t.String(),
+  number: t.Number(),
+  url: t.Nullable(t.String()),
+  diff: t.String(),
+  truncated: t.Boolean(),
+});
+
+export const PullRequestCommentResponse = t.Object({
+  repository: t.String(),
+  number: t.Number(),
+  url: t.Nullable(t.String()),
+});
+
 export const DevelopmentRepositoryResponse = t.Object({
   id: t.Number(),
   provider: t.Union([t.Literal('github'), t.Literal('gitlab')]),

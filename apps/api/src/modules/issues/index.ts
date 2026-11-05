@@ -88,7 +88,12 @@ import {
   listIssueDevelopmentLinks,
   removeIssueDevelopmentLink,
 } from '#modules/git/development';
-import { listDevelopmentRepositories, listManagedBranches } from '#modules/git/connections-service';
+import {
+  commentOnLinkedPullRequest,
+  getLinkedPullRequestDiff,
+  listDevelopmentRepositories,
+  listManagedBranches,
+} from '#modules/git/connections-service';
 import { DevelopmentLinkResponse } from '#modules/git/model';
 import {
   createChecklist,
@@ -120,6 +125,9 @@ import {
   DevelopmentRepositoryResponse,
   LinkablePullRequestPageResponse,
   DevelopmentBranchPageResponse,
+  PullRequestCommentResponse,
+  PullRequestDiffResponse,
+  pullRequestCommentBody,
   IssueResponse,
   PublishedIssueResponse,
   IssueLinkResponse,
@@ -919,6 +927,56 @@ export const issueRoutes = new Elysia({ name: 'issues', detail: { tags: ['Issues
         summary: 'Create a pull request for an issue',
         description:
           'Create a GitHub pull request or GitLab merge request from an existing branch.',
+      },
+    },
+  )
+
+  .get(
+    '/issues/:issueId/development/:linkId/diff',
+    async ({ params, projectId }) =>
+      getLinkedPullRequestDiff(projectId, params.issueId, params.linkId),
+    {
+      params: issueDevelopmentLinkParams,
+      workItem: 'read',
+      response: { 200: PullRequestDiffResponse, ...commonErrors },
+      detail: {
+        summary: 'Read the diff of a linked pull request',
+        description:
+          'Return the unified diff of a GitHub pull request linked to this issue. linkId is ' +
+          "the id of a pull_request entry in the issue's development list (get_issue). A " +
+          'diff over 100 KB is cut off and returned with truncated: true.',
+        ...mcpTool('get_pull_request_diff'),
+      },
+    },
+  )
+
+  .post(
+    '/issues/:issueId/development/:linkId/comments',
+    async ({ params, body, projectId, user, set }) => {
+      const text = body.body.trim();
+      if (!text) throw new HttpError(400, 'Comment body is required');
+      const result = await commentOnLinkedPullRequest(
+        projectId,
+        params.issueId,
+        params.linkId,
+        requireUser(user).id,
+        text,
+      );
+      set.status = 201;
+      return result;
+    },
+    {
+      params: issueDevelopmentLinkParams,
+      body: pullRequestCommentBody,
+      workItem: 'edit',
+      response: { 201: PullRequestCommentResponse, ...commonErrors },
+      detail: {
+        summary: 'Comment on a linked pull request',
+        description:
+          'Post a Markdown comment on a GitHub pull request linked to this issue. linkId is ' +
+          "the id of a pull_request entry in the issue's development list (get_issue). The " +
+          'comment is a plain conversation comment: it does not approve or request changes.',
+        ...mcpTool('comment_on_pull_request'),
       },
     },
   )
