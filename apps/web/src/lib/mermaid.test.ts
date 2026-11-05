@@ -9,19 +9,34 @@ const { mock } = await import(bunTest);
 let calls: string[];
 let renderDelay: (source: string) => number;
 
+const api = {
+  initialize: (config: { theme: string; securityLevel: string; startOnLoad: boolean }) => {
+    assert.equal(config.securityLevel, 'strict');
+    assert.equal(config.startOnLoad, false);
+    calls.push(`initialize ${config.theme}`);
+  },
+  render: async (id: string, source: string) => {
+    calls.push(`render ${id} ${source}`);
+    await new Promise((resolve) => setTimeout(resolve, renderDelay(source)));
+    if (source === 'invalid') throw new Error('Parse error on line 1');
+    calls.push(`done ${source}`);
+    return { svg: `<svg id="${id}">${source}</svg>` };
+  },
+};
+
+let failNextLoad = false;
+
+// Bun caches a failed module import, so a failed load is simulated with a thenable `default`:
+// the wrapper's `.then((module) => module.default)` adopts it and rejects when it rejects.
 mock.module('mermaid', () => ({
   default: {
-    initialize: (config: { theme: string; securityLevel: string; startOnLoad: boolean }) => {
-      assert.equal(config.securityLevel, 'strict');
-      assert.equal(config.startOnLoad, false);
-      calls.push(`initialize ${config.theme}`);
-    },
-    render: async (id: string, source: string) => {
-      calls.push(`render ${id} ${source}`);
-      await new Promise((resolve) => setTimeout(resolve, renderDelay(source)));
-      if (source === 'invalid') throw new Error('Parse error on line 1');
-      calls.push(`done ${source}`);
-      return { svg: `<svg id="${id}">${source}</svg>` };
+    then(resolve: (value: typeof api) => void, reject: (error: Error) => void) {
+      if (failNextLoad) {
+        failNextLoad = false;
+        reject(new Error('Failed to load chunk'));
+      } else {
+        resolve(api);
+      }
     },
   },
 }));
@@ -32,6 +47,12 @@ beforeEach(() => {
 });
 
 describe('renderMermaid', () => {
+  it('retries the import after it failed', async () => {
+    failNextLoad = true;
+    assert.deepEqual(await renderMermaid('a', 'default'), { error: 'Failed to load chunk' });
+    assert.ok('svg' in (await renderMermaid('b', 'default')));
+  });
+
   it('initializes with the theme before the render and returns the svg', async () => {
     const result = await renderMermaid('flowchart TD', 'dark');
     assert.ok('svg' in result);

@@ -15,7 +15,13 @@ export function renderMermaid(source: string, theme: MermaidTheme): Promise<Merm
 
 async function render(source: string, theme: MermaidTheme): Promise<MermaidResult> {
   try {
-    loaded ??= import('mermaid').then((module) => module.default);
+    // A failed chunk load is not cached, so the next render tries again.
+    loaded ??= import('mermaid')
+      .then((module) => module.default)
+      .catch((error: unknown) => {
+        loaded = undefined;
+        throw error;
+      });
     const mermaid = await loaded;
     // Strict mode escapes labels, disables click handlers and runs DOMPurify over the whole
     // svg, so the result is safe to insert as HTML.
