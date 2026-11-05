@@ -1,7 +1,7 @@
 import { db, gitManagedRepository, gitProviderConnection, issueSyncLink } from '@repo/db';
 import { decryptSecret } from '@repo/crypto';
 import { and, eq, ne, sql, type SQL } from 'drizzle-orm';
-import { HttpError, iso, pgErrorCode } from '#shared/lib';
+import { HttpError, intEnv, iso, pgErrorCode } from '#shared/lib';
 import { installProviderWebhook } from '#modules/git/connections-provider';
 import {
   listProviderIssueComments,
@@ -89,21 +89,38 @@ function toDto(row: {
 // connection for its lock and takes more for its writes, so a cap below the pool size
 // keeps the pool from filling with lock holders that wait for a connection.
 const MAX_RUNNING_SYNCS = 2;
-// A caller waiting for a repository's lock holds no connection: it retries after
-// LOCK_RETRY_MS and gives up after LOCK_WAIT_MS.
+// A caller waiting for a slot or a repository's lock holds no connection. It retries
+// the lock after LOCK_RETRY_MS and answers 503 once ISSUE_SYNC_LOCK_WAIT_MS has passed.
 const LOCK_RETRY_MS = 200;
-const LOCK_WAIT_MS = 60_000;
 
 let runningSyncs = 0;
 const slotQueue: (() => void)[] = [];
 
-async function acquireSyncSlot(): Promise<void> {
+function repositoryBusy(): HttpError {
+  return new HttpError(503, 'The repository is busy with another issue sync');
+}
+
+async function acquireSyncSlot(deadline: number): Promise<void> {
   if (runningSyncs < MAX_RUNNING_SYNCS) {
     runningSyncs += 1;
     return;
   }
-  // The slot is handed over by releaseSyncSlot, so the count stays the same.
-  await new Promise<void>((resolve) => slotQueue.push(resolve));
+  // The slot is handed over by releaseSyncSlot, so the count stays the same. A waiter
+  // leaves the queue at its deadline and is never handed a slot.
+  await new Promise<void>((resolve, reject) => {
+    const waiter = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    const timer = setTimeout(
+      () => {
+        slotQueue.splice(slotQueue.indexOf(waiter), 1);
+        reject(repositoryBusy());
+      },
+      Math.max(0, deadline - Date.now()),
+    );
+    slotQueue.push(waiter);
+  });
 }
 
 function releaseSyncSlot(): void {
@@ -114,8 +131,12 @@ function releaseSyncSlot(): void {
 
 // Runs fn while holding the repository's advisory lock. Returns false without running
 // fn when another sync, in this replica or another one, holds the lock.
-async function tryRepositoryLock(repositoryId: number, fn: () => Promise<void>): Promise<boolean> {
-  await acquireSyncSlot();
+async function tryRepositoryLock(
+  repositoryId: number,
+  deadline: number,
+  fn: () => Promise<void>,
+): Promise<boolean> {
+  await acquireSyncSlot(deadline);
   try {
     return await db.transaction(async (tx) => {
       const [row] = await tx.execute<{ locked: boolean }>(
@@ -131,18 +152,16 @@ async function tryRepositoryLock(repositoryId: number, fn: () => Promise<void>):
 }
 
 // One sync of a repository at a time across replicas. Without `wait`, a held lock skips
-// fn; with it, the caller retries and answers 503 once LOCK_WAIT_MS has passed.
+// fn; with it, the caller retries until its deadline.
 async function withRepositoryLock(
   repositoryId: number,
   wait: boolean,
   fn: () => Promise<void>,
 ): Promise<void> {
-  const deadline = Date.now() + LOCK_WAIT_MS;
-  while (!(await tryRepositoryLock(repositoryId, fn))) {
+  const deadline = Date.now() + intEnv('ISSUE_SYNC_LOCK_WAIT_MS', 60_000);
+  while (!(await tryRepositoryLock(repositoryId, deadline, fn))) {
     if (!wait) return;
-    if (Date.now() >= deadline) {
-      throw new HttpError(503, 'The repository is busy with another issue sync');
-    }
+    if (Date.now() >= deadline) throw repositoryBusy();
     await Bun.sleep(LOCK_RETRY_MS);
   }
 }

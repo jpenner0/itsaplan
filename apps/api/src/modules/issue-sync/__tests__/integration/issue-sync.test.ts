@@ -55,7 +55,11 @@ function fakeGithub() {
   const comments: Row[] = [];
   const hooks = new Map<number, { id: number; url: string; events: string[] }>();
   let nextHookId = 1;
+  // While held, issue lists wait, so a sync stays in its import.
+  let gate = Promise.resolve();
+  let waitingLists = 0;
   const prefix = '/api/v3';
+  const repositories: Record<string, string> = { '1': 'site', '2': 'docs' };
   const sinceFilter = (rows: Row[], since: string | null) =>
     since ? rows.filter((row) => Date.parse(row.updated_at as string) >= Date.parse(since)) : rows;
 
@@ -65,38 +69,44 @@ function fakeGithub() {
       const url = new URL(req.url);
       const path = url.pathname.slice(prefix.length);
       if (path === '/user') return Response.json({ login: 'octo' });
-      if (path === '/repositories/1') {
+      const repositoryId = path.match(/^\/repositories\/(\d+)$/)?.[1];
+      const name = repositoryId && repositories[repositoryId];
+      if (name) {
         return Response.json({
-          id: 1,
-          full_name: 'acme/site',
-          html_url: 'https://github.com/acme/site',
+          id: Number(repositoryId),
+          full_name: `acme/${name}`,
+          html_url: `https://github.com/acme/${name}`,
           permissions: { admin: true },
         });
       }
-      if (path === '/repos/acme/site/hooks' && req.method === 'GET') {
+      const repoPath = path.replace(/^\/repos\/acme\/(site|docs)\//, '/repos/acme/site/');
+      if (repoPath === '/repos/acme/site/hooks' && req.method === 'GET') {
         return Response.json(
           [...hooks.values()].map((hook) => ({ id: hook.id, config: { url: hook.url } })),
         );
       }
-      if (path === '/repos/acme/site/hooks' && req.method === 'POST') {
+      if (repoPath === '/repos/acme/site/hooks' && req.method === 'POST') {
         const body = (await req.json()) as { events: string[]; config: { url: string } };
         const hook = { id: nextHookId++, url: body.config.url, events: body.events };
         hooks.set(hook.id, hook);
         return Response.json({ id: hook.id, config: { url: hook.url } }, { status: 201 });
       }
-      const hookMatch = path.match(/^\/repos\/acme\/site\/hooks\/(\d+)$/);
+      const hookMatch = repoPath.match(/^\/repos\/acme\/site\/hooks\/(\d+)$/);
       if (hookMatch && req.method === 'PATCH') {
         const hook = hooks.get(Number(hookMatch[1]));
         if (!hook) return Response.json({ message: 'Not Found' }, { status: 404 });
         hook.events = ((await req.json()) as { events: string[] }).events;
         return Response.json({ id: hook.id, config: { url: hook.url } });
       }
-      if (path === '/repos/acme/site/issues') {
+      if (repoPath === '/repos/acme/site/issues') {
+        waitingLists += 1;
+        await gate;
+        waitingLists -= 1;
         const state = url.searchParams.get('state');
         const rows = [...issues.values()].filter((row) => state === 'all' || row.state === state);
         return Response.json(sinceFilter(rows, url.searchParams.get('since')));
       }
-      if (path === '/repos/acme/site/issues/comments') {
+      if (repoPath === '/repos/acme/site/issues/comments') {
         return Response.json(sinceFilter(comments, url.searchParams.get('since')));
       }
       return Response.json({ message: 'Not Found' }, { status: 404 });
@@ -108,6 +118,12 @@ function fakeGithub() {
     comments,
     hooks,
     put: (row: Row) => issues.set(row.number as number, row),
+    hold: () => {
+      let release!: () => void;
+      gate = new Promise((resolve) => (release = resolve));
+      return release;
+    },
+    waitingLists: () => waitingLists,
     stop: () => server.stop(true),
   };
 }
@@ -269,6 +285,7 @@ describe('GitHub issue sync, inbound', () => {
   afterEach(() => {
     fake.stop();
     process.env.NODE_ENV = environment.NODE_ENV;
+    delete process.env.ISSUE_SYNC_LOCK_WAIT_MS;
   });
 
   it('imports only open issues, sets the watermark, and adds issue events to the hook', async () => {
@@ -622,6 +639,29 @@ describe('GitHub issue sync, inbound', () => {
       .feed.get({ query: { filter: 'comments', limit: 100 } });
     expect(feed.data!.items.length).toBe(ids.length);
   }, 30_000);
+
+  it('answers 503 to a delivery that waits for a sync slot past its deadline', async () => {
+    process.env.ISSUE_SYNC_LOCK_WAIT_MS = '300';
+    const ctx = await setup(fake);
+    const connected = await ctx.asOwner
+      .projects({ projectKey: 'MKT' })
+      .settings.git.connections({ connectionId: ctx.connectionId })
+      .repositories.post({ externalIds: ['2'] });
+    const docs = connected.data!.repositories.find((item) => item.fullName === 'acme/docs')!;
+    const release = fake.hold();
+    const enables = [ctx, { ...ctx, repositoryId: docs.id }].map((item) =>
+      syncSettings(item).patch({ issuesSyncEnabled: true }),
+    );
+    while (fake.waitingLists() < 2) await Bun.sleep(10);
+
+    const waited = await send(ctx, 'issues', { action: 'opened', issue: ghIssue(3) });
+
+    expect(waited.status).toBe(503);
+    release();
+    expect((await Promise.all(enables)).map((item) => item.status)).toEqual([200, 200]);
+    await deliver(ctx, 'issues', { action: 'opened', issue: ghIssue(4, { title: 'After' }) });
+    expect((await listIssues(ctx)).map((item) => item.title)).toEqual(['After']);
+  }, 15_000);
 
   it('processes the redelivery of an issue delivery that failed', async () => {
     const ctx = await setup(fake);
