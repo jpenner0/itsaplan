@@ -56,6 +56,7 @@ import {
   type SyncField,
   type SyncFields,
 } from './normalize';
+import { MAX_ATTEMPTS, errorMessage, retryAt, track } from './queue';
 import { loadSyncRepository, withRepositoryLock } from './service';
 
 // Sends It's a Plan's changes to the provider. Triggers queue every change in
@@ -65,14 +66,8 @@ import { loadSyncRepository, withRepositoryLock } from './service';
 
 type OutboxRow = typeof issueSyncOutbox.$inferSelect;
 
-// The delay doubles from a minute up to an hour, so 20 attempts span about 15 hours.
-const MAX_ATTEMPTS = 20;
-const MAX_BACKOFF_MS = 3_600_000;
-
 // Rows per run, so a long provider outage does not make one run push a whole backlog.
 const BATCH_SIZE = 200;
-
-const inFlight = new Set<Promise<void>>();
 
 // Pushes in one replica run one after another, so they hold at most one of the sync
 // slots in service.ts and leave the others to webhooks and the reconcile.
@@ -81,8 +76,7 @@ let pushQueue: Promise<void> = Promise.resolve();
 function enqueue(work: () => Promise<void>): Promise<void> {
   const run = pushQueue.then(work);
   pushQueue = run.catch(() => undefined);
-  inFlight.add(run);
-  void run.finally(() => inFlight.delete(run)).catch(() => undefined);
+  track(run);
   return run;
 }
 
@@ -93,11 +87,6 @@ export function pushIssueSync(issueId: number): void {
   void enqueue(() => processOutbox(eq(issueSyncOutbox.issueId, issueId), false)).catch(
     (error: unknown) => console.error('[issue-sync] push failed:', error),
   );
-}
-
-// Resolves once every push started by pushIssueSync has finished. For tests.
-export async function issueSyncSettled(): Promise<void> {
-  while (inFlight.size > 0) await Promise.allSettled([...inFlight]);
 }
 
 // Run by the background reconcile. A repository another replica is syncing is skipped.
@@ -206,14 +195,9 @@ async function processRow(row: OutboxRow, wait: boolean): Promise<void> {
       await db.delete(issueSyncOutbox).where(current);
       return;
     }
-    const delay = Math.min(60_000 * 2 ** (attempts - 1), MAX_BACKOFF_MS);
     await db
       .update(issueSyncOutbox)
-      .set({
-        attempts,
-        lastError: error instanceof Error ? error.message : String(error),
-        nextAttemptAt: new Date(Date.now() + delay),
-      })
+      .set({ attempts, lastError: errorMessage(error), nextAttemptAt: retryAt(attempts) })
       .where(eq(issueSyncOutbox.id, row.id));
   }
 }

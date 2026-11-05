@@ -5,6 +5,7 @@ import { agentInvocationConfig, dispatchInvocations } from '#modules/agents/invo
 import { pruneAgentTraces } from '#modules/agents/core/runtime/trace-retention';
 import { sweepStaleIssues } from '#modules/issues/auto-archive';
 import { sweepExpiredShares } from '#modules/share/service';
+import { processIssueSyncInbox } from '#modules/issue-sync/inbox';
 import { reconcileIssueSync } from '#modules/issue-sync/service';
 import { processIssueSyncOutbox } from '#modules/issue-sync/outbound';
 
@@ -30,13 +31,15 @@ export function startBackgroundJobs(): void {
   // token away; once a minute keeps the stored state close to what users see.
   startLoop('share-expiry', expireShares, () => intEnv('SHARE_EXPIRY_INTERVAL_MS', 60_000));
   startLoop('agent-traces', pruneTraces, () => intEnv('AGENT_TRACE_PRUNE_INTERVAL_MS', 3_600_000));
-  // Webhooks bring issue changes at once; the reconcile catches what an instance
-  // without a public URL, or a lost delivery, missed. It then sends the local changes a
-  // write could not push, such as after a provider error.
+  // Webhooks bring issue changes at once. The run first applies the deliveries a busy
+  // repository or an error held back; the reconcile then catches what an instance
+  // without a public URL missed. Last it sends the local changes a write could not
+  // push, such as after a provider error.
   startLoop('issue-sync', syncIssues, () => intEnv('ISSUE_SYNC_INTERVAL_MS', 300_000));
 }
 
 async function syncIssues(): Promise<void> {
+  await processIssueSyncInbox();
   await reconcileIssueSync();
   await processIssueSyncOutbox();
 }

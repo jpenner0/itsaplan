@@ -168,10 +168,14 @@ const RECENT_DELIVERIES_CAP = 50;
 // ring buffer. Returns false when the id is already in the buffer (a replay or a
 // redelivery), in which case the caller must not act on it again. Check and
 // append are one UPDATE, so two concurrent claims of the same id cannot both
-// win.
-export async function claimGitDelivery(projectId: number, deliveryId: string): Promise<boolean> {
+// win. `executor` is a transaction the claim has to commit with.
+export async function claimGitDelivery(
+  projectId: number,
+  deliveryId: string,
+  executor: Pick<typeof db, 'update'> = db,
+): Promise<boolean> {
   const recent = sql`COALESCE(${projectSetting.value}->'recentDeliveries', '[]'::jsonb)`;
-  const claimed = await db
+  const claimed = await executor
     .update(projectSetting)
     .set({
       value: sql`jsonb_set(${projectSetting.value}, '{recentDeliveries}', (
@@ -194,17 +198,6 @@ export async function claimGitDelivery(projectId: number, deliveryId: string): P
     )
     .returning({ projectId: projectSetting.projectId });
   return claimed.length > 0;
-}
-
-// Takes a claimed delivery id back, so a redelivery of a delivery that failed is
-// processed again.
-export async function releaseGitDelivery(projectId: number, deliveryId: string): Promise<void> {
-  await db
-    .update(projectSetting)
-    .set({
-      value: sql`jsonb_set(${projectSetting.value}, '{recentDeliveries}', COALESCE(${projectSetting.value}->'recentDeliveries', '[]'::jsonb) - ${deliveryId}::text)`,
-    })
-    .where(and(eq(projectSetting.projectId, projectId), eq(projectSetting.key, GIT_SETTING_KEY)));
 }
 
 // How many repositories the list keeps. A project delivering from more than this

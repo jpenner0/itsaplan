@@ -2153,6 +2153,32 @@ export const issueSyncOutbox = pgTable(
   ],
 );
 
+// Issue and comment webhook deliveries the issue sync still has to apply. The webhook
+// stores a delivery and answers at once; a background run applies the rows of one
+// repository under its lock, in id order per external issue, and deletes each applied
+// row. A failed row is retried after next_attempt_at; NULL means the sync gave up on
+// it, and the row stays with its last_error. `event` is the parsed provider event.
+export const issueSyncInbox = pgTable(
+  'issue_sync_inbox',
+  {
+    id: serial('id').primaryKey(),
+    managedRepositoryId: integer('managed_repository_id')
+      .notNull()
+      .references(() => gitManagedRepository.id, { onDelete: 'cascade' }),
+    deliveryId: text('delivery_id'),
+    externalNumber: integer('external_number').notNull(),
+    event: jsonb('event').notNull(),
+    attempts: integer('attempts').notNull().default(0),
+    lastError: text('last_error'),
+    nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }).defaultNow(),
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('issue_sync_inbox_delivery_uq').on(t.managedRepositoryId, t.deliveryId),
+    index('issue_sync_inbox_due_idx').on(t.nextAttemptAt),
+  ],
+);
+
 // Saved views (the tabs above a project's work items view). filters and display are jsonb
 // blobs owned by the UI; the server stores and returns them without inspecting
 // them. position orders the tabs.

@@ -9,7 +9,8 @@ import { signUpTestUser } from '#tests/helpers/auth';
 import { resetDb } from '#tests/helpers/db';
 import { getProjectByRef } from '#modules/projects/service';
 import { createMappedImport } from '#modules/imports/service';
-import { issueSyncSettled, processIssueSyncOutbox } from '../../outbound';
+import { processIssueSyncOutbox } from '../../outbound';
+import { issueSyncSettled } from '../../queue';
 
 // It's a Plan → GitHub issue sync against a GitHub served on localhost. As in the inbound
 // tests, each case runs as development so the SSRF guard lets the fake provider through.
@@ -284,6 +285,7 @@ async function deliver(ctx: Ctx, event: string, payload: Row) {
     }),
   );
   expect(res.status).toBe(200);
+  await issueSyncSettled();
 }
 
 describe('GitHub issue sync, outbound', () => {

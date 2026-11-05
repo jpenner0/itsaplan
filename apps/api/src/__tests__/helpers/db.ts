@@ -1,6 +1,6 @@
 import { db, defaultMemberPermissions, teamRole } from '@repo/db';
 import { sql } from 'drizzle-orm';
-import { issueSyncSettled } from '#modules/issue-sync/outbound';
+import { issueSyncSettled } from '#modules/issue-sync/queue';
 
 // Empties every table in the test database so each test starts clean. Two
 // guards keep this from ever running against a real database: NODE_ENV must be

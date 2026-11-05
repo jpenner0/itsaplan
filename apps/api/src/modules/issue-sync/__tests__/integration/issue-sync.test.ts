@@ -1,10 +1,20 @@
 import { createHmac } from 'node:crypto';
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { account, db, issueCommentSyncLink, issueSyncLink } from '@repo/db';
+import {
+  account,
+  db,
+  issueCommentSyncLink,
+  issueSyncInbox,
+  issueSyncLink,
+  projectSetting,
+} from '@repo/db';
+import { eq, sql } from 'drizzle-orm';
 import { app } from '../../../../app';
 import { authedApi, type Api, createProject } from '#tests/helpers/app';
 import { signUpTestUser } from '#tests/helpers/auth';
 import { resetDb } from '#tests/helpers/db';
+import { processIssueSyncInbox } from '../../inbox';
+import { MAX_ATTEMPTS, issueSyncSettled } from '../../queue';
 import { reconcileIssueSync } from '../../service';
 
 // GitHub → It's a Plan issue sync against a GitHub served on localhost. The SSRF guard
@@ -216,6 +226,7 @@ async function send(
 async function deliver(ctx: Ctx, event: 'issues' | 'issue_comment', payload: Row) {
   const res = await send(ctx, event, payload);
   expect(res.status).toBe(200);
+  await issueSyncSettled();
   return res.data!;
 }
 
@@ -270,6 +281,35 @@ async function linkGithubAccount(userId: string, githubId: string) {
     createdAt: new Date(),
     updatedAt: new Date(),
   });
+}
+
+const inboxRows = () => db.select().from(issueSyncInbox).orderBy(issueSyncInbox.id);
+
+// Starts a reconcile that keeps the repository's lock until the returned function runs.
+async function holdLock(fake: Fake) {
+  const release = fake.hold();
+  const reconcile = reconcileIssueSync();
+  while (fake.waitingLists() < 1) await Bun.sleep(10);
+  return async () => {
+    release();
+    await reconcile;
+  };
+}
+
+function unstartedLimit(ctx: Ctx, wipLimit: number | null) {
+  return ctx.asOwner
+    .projects({ projectKey: 'MKT' })
+    .columns({ columnId: columnOf(ctx, 'unstarted') })
+    .patch(wipLimit === null ? { wipLimit } : { wipLimit, wipMode: 'hard' });
+}
+
+// Fills the column imported issues go to, so an import fails.
+async function fillUnstarted(ctx: Ctx) {
+  await ctx.asOwner
+    .projects({ projectKey: 'MKT' })
+    .issues.post({ columnId: columnOf(ctx, 'unstarted'), title: 'Local' });
+  const count = (await listIssues(ctx)).length;
+  await unstartedLimit(ctx, count);
 }
 
 describe('GitHub issue sync, inbound', () => {
@@ -633,6 +673,7 @@ describe('GitHub issue sync, inbound', () => {
     ]);
 
     expect(results.map((result) => result.status)).toEqual(ids.map(() => 200).concat(200));
+    await issueSyncSettled();
     const issue = await issueByTitle(ctx, 'Task');
     const feed = await ctx.asOwner
       .issues({ issueId: issue.id })
@@ -640,7 +681,54 @@ describe('GitHub issue sync, inbound', () => {
     expect(feed.data!.items.length).toBe(ids.length);
   }, 30_000);
 
-  it('answers 503 to a delivery that waits for a sync slot past its deadline', async () => {
+  it('answers deliveries for a busy repository at once and applies them in order later', async () => {
+    const ctx = await setup(fake);
+    fake.put(ghIssue(1, { title: 'Deleted' }));
+    fake.put(ghIssue(2, { title: 'Transferred' }));
+    fake.put(ghIssue(3, { title: 'Commented' }));
+    fake.comments.push(ghComment(801, 3, { body: 'Bye' }));
+    await enable(ctx);
+    const unlock = await holdLock(fake);
+
+    const answers = [
+      await send(ctx, 'issues', { action: 'deleted', issue: ghIssue(1, { updated_at: LATER }) }),
+      await send(ctx, 'issues', {
+        action: 'transferred',
+        issue: ghIssue(2, { updated_at: LATER }),
+      }),
+      await send(ctx, 'issue_comment', {
+        action: 'deleted',
+        issue: { number: 3 },
+        comment: ghComment(801, 3),
+      }),
+      await send(ctx, 'issues', { action: 'opened', issue: ghIssue(7, { title: 'New' }) }),
+      await send(ctx, 'issue_comment', {
+        action: 'created',
+        issue: { number: 7 },
+        comment: ghComment(802, 7, { body: 'On the new one' }),
+      }),
+    ];
+
+    expect(answers.map((answer) => answer.status)).toEqual([200, 200, 200, 200, 200]);
+    expect((await inboxRows()).length).toBe(5);
+    expect((await issueByTitle(ctx, 'Deleted')).columnId).not.toBe(columnOf(ctx, 'canceled'));
+
+    await unlock();
+    await issueSyncSettled();
+
+    const canceled = columnOf(ctx, 'canceled');
+    expect((await issueByTitle(ctx, 'Deleted')).columnId).toBe(canceled);
+    expect((await issueByTitle(ctx, 'Transferred')).columnId).toBe(canceled);
+    const commented = await issueByTitle(ctx, 'Commented');
+    expect(await comments(ctx, commented.id)).toEqual([]);
+    const created = await issueByTitle(ctx, 'New');
+    expect((await comments(ctx, created.id)).map((item) => item.body)).toEqual(['On the new one']);
+    const links = await db.select().from(issueSyncLink);
+    expect(links.map((link) => link.externalNumber).sort()).toEqual([3, 7]);
+    expect(await inboxRows()).toEqual([]);
+  });
+
+  it('keeps a delivery whose run found no free sync slot for the background run', async () => {
     process.env.ISSUE_SYNC_LOCK_WAIT_MS = '300';
     const ctx = await setup(fake);
     const connected = await ctx.asOwner
@@ -648,41 +736,106 @@ describe('GitHub issue sync, inbound', () => {
       .settings.git.connections({ connectionId: ctx.connectionId })
       .repositories.post({ externalIds: ['2'] });
     const docs = connected.data!.repositories.find((item) => item.fullName === 'acme/docs')!;
+    await enable(ctx);
     const release = fake.hold();
-    const enables = [ctx, { ...ctx, repositoryId: docs.id }].map((item) =>
-      syncSettings(item).patch({ issuesSyncEnabled: true }),
-    );
+    const pulls = [reconcileIssueSync(), enable({ ...ctx, repositoryId: docs.id })];
     while (fake.waitingLists() < 2) await Bun.sleep(10);
 
-    const waited = await send(ctx, 'issues', { action: 'opened', issue: ghIssue(3) });
+    const answer = await send(ctx, 'issues', {
+      action: 'opened',
+      issue: ghIssue(4, { title: 'Late' }),
+    });
+    await issueSyncSettled();
 
-    expect(waited.status).toBe(503);
+    expect(answer).toMatchObject({ status: 200, data: { handled: 'issue' } });
+    expect(await inboxRows()).toMatchObject([{ attempts: 0 }]);
     release();
-    expect((await Promise.all(enables)).map((item) => item.status)).toEqual([200, 200]);
-    await deliver(ctx, 'issues', { action: 'opened', issue: ghIssue(4, { title: 'After' }) });
-    expect((await listIssues(ctx)).map((item) => item.title)).toEqual(['After']);
+    await Promise.all(pulls);
+    await processIssueSyncInbox();
+    expect((await listIssues(ctx)).map((item) => item.title)).toEqual(['Late']);
+    expect(await inboxRows()).toEqual([]);
   }, 15_000);
 
-  it('processes the redelivery of an issue delivery that failed', async () => {
+  it('retries a failed delivery and holds back only the later ones for its issue', async () => {
+    const ctx = await setup(fake);
+    fake.put(ghIssue(1, { title: 'Task' }));
+    await enable(ctx);
+    await fillUnstarted(ctx);
+
+    await issueEvent(ctx, 'opened', ghIssue(5, { title: 'Report' }));
+    await commentEvent(ctx, 'created', 5, ghComment(901, 5, { body: 'Details' }));
+    await issueEvent(ctx, 'edited', ghIssue(1, { title: 'Task, renamed', updated_at: LATER }));
+
+    expect((await listIssues(ctx)).map((item) => item.title).sort()).toEqual([
+      'Local',
+      'Task, renamed',
+    ]);
+    const waiting = await inboxRows();
+    expect(waiting).toMatchObject([
+      { externalNumber: 5, attempts: 1, lastError: expect.any(String) },
+      { externalNumber: 5, attempts: 0, lastError: null },
+    ]);
+    expect(waiting[0]!.nextAttemptAt!.getTime()).toBeGreaterThan(Date.now());
+
+    await processIssueSyncInbox();
+    expect(await inboxRows()).toMatchObject([{ attempts: 1 }, { attempts: 0 }]);
+
+    await unstartedLimit(ctx, null);
+    await db.update(issueSyncInbox).set({ nextAttemptAt: sql`now()` });
+    await processIssueSyncInbox();
+
+    const report = await issueByTitle(ctx, 'Report');
+    expect((await comments(ctx, report.id)).map((item) => item.body)).toEqual(['Details']);
+    expect(await inboxRows()).toEqual([]);
+  });
+
+  it('keeps a delivery it gave up on with its error, and goes on with the next ones', async () => {
     const ctx = await setup(fake);
     await enable(ctx);
-    const unstarted = columnOf(ctx, 'unstarted');
-    const columns = ctx.asOwner.projects({ projectKey: 'MKT' }).columns({ columnId: unstarted });
-    await columns.patch({ wipLimit: 1, wipMode: 'hard' });
-    await ctx.asOwner
-      .projects({ projectKey: 'MKT' })
-      .issues.post({ columnId: unstarted, title: 'Local' });
+    await fillUnstarted(ctx);
+    await issueEvent(ctx, 'opened', ghIssue(5, { title: 'Report' }));
+    await commentEvent(ctx, 'created', 5, ghComment(901, 5));
+    await db
+      .update(issueSyncInbox)
+      .set({ attempts: MAX_ATTEMPTS - 1, nextAttemptAt: sql`now()` })
+      .where(eq(issueSyncInbox.externalNumber, 5));
+
+    await processIssueSyncInbox();
+
+    const kept = [{ attempts: MAX_ATTEMPTS, nextAttemptAt: null, lastError: expect.any(String) }];
+    expect(await inboxRows()).toMatchObject(kept);
+    await processIssueSyncInbox();
+    expect(await inboxRows()).toMatchObject(kept);
+    expect((await listIssues(ctx)).map((item) => item.title)).toEqual(['Local']);
+  });
+
+  it('stores a redelivery once, also while the first delivery still waits', async () => {
+    const ctx = await setup(fake);
+    fake.put(ghIssue(1, { title: 'Task' }));
+    await enable(ctx);
+    const unlock = await holdLock(fake);
     const deliveryId = crypto.randomUUID();
-    const payload = { action: 'opened', issue: ghIssue(5, { title: 'Report' }) };
+    const payload = {
+      action: 'edited',
+      issue: ghIssue(1, { title: 'Renamed', updated_at: LATER }),
+    };
+    const redeliver = () => send(ctx, 'issues', payload, deliveryId);
 
-    const failed = await send(ctx, 'issues', payload, deliveryId);
-    expect(failed.status).not.toBe(200);
+    expect((await redeliver()).data).toMatchObject({ handled: 'issue' });
+    expect((await redeliver()).data).toMatchObject({ handled: 'duplicate' });
+    // The project keeps only the latest delivery ids; a stored one is still found.
+    await db
+      .update(projectSetting)
+      .set({ value: sql`${projectSetting.value} - 'recentDeliveries'` });
+    expect((await redeliver()).data).toMatchObject({ handled: 'duplicate' });
+    expect((await inboxRows()).length).toBe(1);
 
-    await columns.patch({ wipLimit: null });
-    const redelivered = await send(ctx, 'issues', payload, deliveryId);
+    await unlock();
+    await issueSyncSettled();
 
-    expect(redelivered).toMatchObject({ status: 200, data: { handled: 'issue' } });
-    expect((await listIssues(ctx)).map((item) => item.title).sort()).toEqual(['Local', 'Report']);
+    expect((await listIssues(ctx)).map((item) => item.title)).toEqual(['Renamed']);
+    expect((await redeliver()).data).toMatchObject({ handled: 'duplicate' });
+    expect(await inboxRows()).toEqual([]);
   });
 
   it('catches up with missed changes from the watermark on reconcile', async () => {
@@ -725,6 +878,21 @@ describe('GitHub issue sync, inbound', () => {
 
     await enable(ctx);
     expect((await listIssues(ctx)).map((item) => item.title).sort()).toEqual(['Renamed', 'Task']);
+  });
+
+  it('turning the sync off deletes the deliveries not yet applied', async () => {
+    process.env.ISSUE_SYNC_LOCK_WAIT_MS = '300';
+    const ctx = await setup(fake);
+    await enable(ctx);
+    const unlock = await holdLock(fake);
+    await send(ctx, 'issues', { action: 'opened', issue: ghIssue(3) });
+    await issueSyncSettled();
+    await unlock();
+    expect((await inboxRows()).length).toBe(1);
+
+    await syncSettings(ctx).patch({ issuesSyncEnabled: false });
+
+    expect(await inboxRows()).toEqual([]);
   });
 
   it('turns the new-issues-to-GitHub switch off without touching the sync', async () => {
