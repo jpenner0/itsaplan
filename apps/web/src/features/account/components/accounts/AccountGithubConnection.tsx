@@ -42,10 +42,7 @@ export default function AccountGithubConnection() {
       onConnect={() => void onConnect()}
       onDisconnect={() => {
         if (!github) return;
-        disconnect.mutate(
-          { providerId: 'github', accountId: github.accountId },
-          { onSuccess: () => toast.success(t('githubDisconnected')) },
-        );
+        disconnect.mutate(github.id, { onSuccess: () => toast.success(t('githubDisconnected')) });
       }}
     />
   );

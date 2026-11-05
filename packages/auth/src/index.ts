@@ -2,7 +2,7 @@ import { randomInt } from 'node:crypto';
 import { createWorkspace, db } from '@repo/db';
 import { and, eq, gt, isNull, sql, type SQL } from 'drizzle-orm';
 import { betterAuth, type BetterAuthPlugin } from 'better-auth';
-import { createAuthMiddleware, APIError, getOAuthState } from 'better-auth/api';
+import { createAuthMiddleware, APIError, getOAuthState, getSessionFromCtx } from 'better-auth/api';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import type { GithubProfile } from 'better-auth/social-providers';
 import { passkey } from '@better-auth/passkey';
@@ -321,6 +321,15 @@ const githubOptions = {
   disableSignUp: true,
   getUserInfo: githubLinkUserInfo,
 };
+
+const isGithub = (row: { providerId: string }) => row.providerId === 'github';
+
+function accountsOf(userId: string) {
+  return db
+    .select({ id: schema.account.id, providerId: schema.account.providerId })
+    .from(schema.account)
+    .where(eq(schema.account.userId, userId));
+}
 
 function withoutGithubTokens<T extends { providerId?: string }>(account: T): T {
   if (account.providerId !== 'github') return account;
@@ -831,6 +840,35 @@ function createAuth() {
             throw new APIError('FORBIDDEN', {
               code: 'GITHUB_DISABLED',
               message: 'GitHub is not configured on this instance',
+            });
+          }
+          // The sync maps a member to exactly one GitHub user. better-auth refuses only
+          // the same GitHub user twice, so a second one is refused here.
+          if (ctx.path === '/link-social') {
+            const session = await getSessionFromCtx(ctx);
+            if (session && (await accountsOf(session.user.id)).some(isGithub)) {
+              throw new APIError('CONFLICT', {
+                code: 'GITHUB_ALREADY_LINKED',
+                message: 'A GitHub account is already linked. Disconnect it first.',
+              });
+            }
+          }
+          return;
+        }
+
+        // better-auth keeps the last account row, but a GitHub row is no way in, so the
+        // last row a person can sign in with is kept here.
+        if (ctx.path === '/unlink-account') {
+          const session = await getSessionFromCtx(ctx);
+          if (!session) return;
+          const rowId = (ctx.body as { accountId?: string } | undefined)?.accountId;
+          const rows = await accountsOf(session.user.id);
+          const target = rows.find((row) => row.id === rowId);
+          const othersToSignIn = rows.filter((row) => row.id !== rowId && !isGithub(row));
+          if (target && !isGithub(target) && othersToSignIn.length === 0) {
+            throw new APIError('BAD_REQUEST', {
+              code: 'FAILED_TO_UNLINK_LAST_ACCOUNT',
+              message: 'This is the last way to sign in to the account',
             });
           }
           return;
