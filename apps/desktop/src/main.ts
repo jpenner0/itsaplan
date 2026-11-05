@@ -50,17 +50,17 @@ function loadDialog(win: BrowserWindow, url: string, error: string): void {
   void win.loadFile(join(app.getAppPath(), 'dist', 'connect.html'), { query: { url, error } });
 }
 
+/** Throws an error with a user-facing message when the server cannot be used. */
 async function connect(win: BrowserWindow, input: string): Promise<void> {
-  let url: string;
-  try {
-    url = normalizeServerUrl(input);
-  } catch (error) {
-    return loadDialog(win, input, (error as Error).message);
-  }
+  const url = normalizeServerUrl(input);
   const failure = await checkReachable(url);
+  if (failure) throw new Error(`Could not reach ${url}. ${failure}`);
   if (win.isDestroyed()) return;
-  if (failure) return loadDialog(win, input, `Could not reach ${url}. ${failure}`);
-  writeServerUrl(url);
+  try {
+    writeServerUrl(url);
+  } catch (error) {
+    throw new Error(`Could not save the server URL. ${(error as Error).message}`);
+  }
   openMainWindow(url);
   win.close();
 }
@@ -85,9 +85,14 @@ function showConnectDialog(url = '', error = ''): void {
     const target = new URL(event.url);
     if (target.origin !== SUBMIT_ORIGIN || busy) return;
     busy = true;
-    void connect(win, target.searchParams.get('url') ?? '').finally(() => {
-      busy = false;
-    });
+    const input = target.searchParams.get('url') ?? '';
+    connect(win, input)
+      .catch((error: unknown) => {
+        if (!win.isDestroyed()) loadDialog(win, input, (error as Error).message);
+      })
+      .finally(() => {
+        busy = false;
+      });
   });
   win.on('closed', () => {
     if (dialogWindow === win) dialogWindow = undefined;
