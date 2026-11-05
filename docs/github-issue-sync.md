@@ -12,9 +12,12 @@ It does not use a GitHub App.
 - A provider connection to GitHub in the team, and the repository linked to the project. See
   [Git webhooks on a private instance](self-hosting.md#git-webhooks-on-a-private-instance) for
   the webhook endpoint the connection uses.
-- An access token that can read and write issues in that repository. For a fine-grained token,
-  add **Issues: Read and write** to the permissions the connection already needs (Metadata,
-  Webhooks, Pull requests).
+- An access token that can read and write issues in that repository, besides the access the
+  connection already needs to manage webhooks. The connection lists only repositories where the
+  token holder is an administrator.
+  - Fine-grained token: add **Issues: Read and write** to Metadata, Webhooks and Pull requests.
+  - Classic token: scope `repo` (or `public_repo` for public repositories only) and
+    `admin:repo_hook`.
 - The permission to manage repositories in the project settings.
 - Optional: a GitHub OAuth app, so members can link their GitHub account. Without it the sync
   works, but GitHub users are not matched to members (see [Linking accounts](#linking-accounts)).

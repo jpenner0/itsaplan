@@ -152,7 +152,7 @@ without a public URL. It is a loop of the API process, not of the worker:
 The loop lives in the API for two reasons. The worker must not import `apps/api`, and the sync
 writes through the existing issue services, which carry the permissions, activity entries,
 WIP checks, mentions and revision triggers. Those services are in the API. Writing from the
-worker would copy them. This differs from the ticket, which put the reconcile in the worker.
+worker would copy them.
 
 Rules of the reconcile:
 
