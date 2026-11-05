@@ -19,6 +19,7 @@ import {
 } from '#shared/access';
 import { boundProjectId, isMcpRequest } from '#shared/mcp-request';
 import { getProjectById } from '#modules/projects/service';
+import { publishIssue } from '#modules/issue-sync/outbound';
 import { HttpError, instantParam } from '#shared/lib';
 import { accessErrors, commonErrors, errors } from '#shared/responses';
 import { deleteObject } from '@repo/storage';
@@ -120,6 +121,7 @@ import {
   LinkablePullRequestPageResponse,
   DevelopmentBranchPageResponse,
   IssueResponse,
+  PublishedIssueResponse,
   IssueLinkResponse,
   IssueWatcherResponse,
   issueWatcherParams,
@@ -943,6 +945,26 @@ export const issueRoutes = new Elysia({ name: 'issues', detail: { tags: ['Issues
         description:
           "Permanently delete an issue by its numeric id. Irreversible. An issue that has subtasks needs the subtasks parameter, which says whether they are deleted with it ('cascade'), detached into ordinary issues ('detach'), or moved to newParentId ('reassign').",
         ...mcpTool('delete_issue'),
+      },
+    },
+  )
+
+  // "Publish to GitHub": creates the synced external issue for an issue that has none.
+  // Existing issues are never sent on their own.
+  .post(
+    '/issues/:issueId/publish',
+    async ({ params, projectId, set }) => {
+      set.status = 201;
+      return publishIssue(params.issueId, projectId);
+    },
+    {
+      params: issueParams,
+      workItem: 'edit',
+      response: { 201: PublishedIssueResponse, ...commonErrors, ...errors(409, 502) },
+      detail: {
+        summary: 'Publish an issue to the synced repository',
+        description:
+          'Create the issue in the repository its project syncs issues with, and link the two. 409 when the issue is already synced or the project does not sync its issues.',
       },
     },
   )

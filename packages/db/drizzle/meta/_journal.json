@@ -1240,6 +1240,13 @@
       "when": 1793885950191,
       "tag": "0176_issue_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 177,
+      "version": "7",
+      "when": 1793888770272,
+      "tag": "0177_issue_sync_outbox",
+      "breakpoints": true
     }
   ]
 }

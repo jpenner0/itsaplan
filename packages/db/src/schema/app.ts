@@ -2111,6 +2111,46 @@ export const issueCommentSyncLink = pgTable(
   (t) => [unique('issue_comment_sync_link_external_uq').on(t.issueSyncLinkId, t.externalId)],
 );
 
+export type IssueSyncOutboxKind = 'issue' | 'comment' | 'close_issue' | 'delete_comment';
+
+// Changes the issue sync still has to send to the provider. A row stays until the push
+// succeeds, so a provider error is retried. `issue` and `comment` rows are written by
+// triggers on issue, issue_label and issue_activity, one row per issue or comment: the
+// push sends the current state. `close_issue` and `delete_comment` rows are written by
+// triggers when a sync link is deleted. They copy the connection, repository and
+// external id, because the link and often the repository are gone by then. A deferred
+// trigger drops them at commit when the issue or comment still exists (an unlink).
+// No foreign keys: a row outlives its issue, and a team delete must not fail on it.
+export const issueSyncOutbox = pgTable(
+  'issue_sync_outbox',
+  {
+    id: serial('id').primaryKey(),
+    kind: text('kind').$type<IssueSyncOutboxKind>().notNull(),
+    issueId: integer('issue_id'),
+    activityId: integer('activity_id'),
+    // An `issue` row for an issue without a link: create the external issue.
+    publish: boolean('publish').notNull().default(false),
+    connectionId: integer('connection_id'),
+    repository: text('repository'),
+    externalId: text('external_id'),
+    attempts: integer('attempts').notNull().default(0),
+    lastError: text('last_error'),
+    nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }).notNull().defaultNow(),
+    // Raised by every new change, so a push only removes the row it read.
+    version: integer('version').notNull().default(0),
+  },
+  (t) => [
+    uniqueIndex('issue_sync_outbox_issue_uq')
+      .on(t.issueId)
+      .where(sql`${t.kind} = 'issue'`),
+    uniqueIndex('issue_sync_outbox_comment_uq')
+      .on(t.activityId)
+      .where(sql`${t.kind} = 'comment'`),
+    index('issue_sync_outbox_due_idx').on(t.nextAttemptAt),
+    index('issue_sync_outbox_issue_idx').on(t.issueId),
+  ],
+);
+
 // Saved views (the tabs above a project's work items view). filters and display are jsonb
 // blobs owned by the UI; the server stores and returns them without inspecting
 // them. position orders the tabs.
