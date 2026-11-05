@@ -169,6 +169,21 @@ hand.
 `ISSUE_SYNC_INTERVAL_MS` changes the interval. See `.env.example` and
 [the developer notes](dev/github-issue-sync.md).
 
+## Agent triggers
+
+An agent schedule can start on GitHub events. Add the schedule in the project's agent settings and
+choose a trigger type:
+
+- **When a new GitHub issue arrives**: a run for each issue that is created on GitHub after the first
+  import. The first import and issues created in It's a Plan start none.
+- **When a pull request is opened**: a run when a pull request is opened (not as a draft) or marked ready
+  for review, and it references a synced issue by `#123`, `owner/repo#123`, the issue URL, a
+  closing word or the issue key. There is one run per pull request and project.
+
+Each run costs model usage. In a public repository, anyone can open an issue or a pull request, so
+give these agents only the tools they need. After an outage of the sync, many new issues can start
+many runs at once. Details are in [the developer notes](dev/github-issue-sync.md).
+
 ## Limits
 
 - A repository that is renamed on GitHub is followed on the next push from It's a Plan.

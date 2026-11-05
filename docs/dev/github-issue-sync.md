@@ -257,6 +257,84 @@ The inbox and the outbox share `queue.ts`. After a failure the delay doubles fro
 row gets `next_attempt_at = NULL` and keeps its `last_error`. A new change raises the outbox
 row's `version`, and a push removes the row only while the version is the one it sent.
 
+## Agent runs for new issues
+
+When `importIssue` in `modules/issue-sync/inbound.ts` imports an issue, it calls `queueEventRuns`
+with the type `synced_issue_created`. The active schedules of that type in the project start one
+run each (see `docs/dev/agents.md`).
+
+The rule: a run starts only when the GitHub `created_at` of the issue is after the
+`issues_watermark` that the repository had before the import. The watermark is read before the
+import, and `SyncRepository.issuesWatermark` carries it. It is `NULL` until the first import
+ends, so the first import starts no run. Issues the sync created on GitHub start none either: the
+link exists before the `opened` webhook, so the issue is not imported again. An issue that has a
+link is never imported again, so it gets at most one run, also after a failed `queueEventRuns`.
+
+The lead holds the issue key, the issue number and the stored `webUrl`. It holds no text from
+GitHub.
+
+Known gaps:
+
+- A closed issue that was created after the watermark of the first import and is reopened before
+  the first reconcile (5 minutes or less) starts a run. The cost is one extra run.
+- When an import fails and the reconcile then moves the watermark past the issue, no run starts
+  for it. The webhook path does not move the watermark, so the retry of the inbox still starts
+  the run. A failure leads to a missing run, never to a second one.
+- After a long outage, the next reconcile imports every issue created meanwhile and starts one
+  run per issue and schedule at once. The concurrency limits in `docs/dev/agents.md` delay the
+  runs but do not reduce their number.
+
+## Agent runs for pull requests
+
+`handleGitEvent` in `modules/git/handler.ts` calls `queuePullRequestReviews`
+(`modules/git/synced-issues.ts`) at the end of its pull request branch. It queues runs for the
+type `pull_request_opened`.
+
+- Only GitHub. `PullRequestEvent.providerAction` keeps the action as GitHub sent it. A run starts
+  for `opened` when the pull request is not a draft, and for `ready_for_review`. `synchronize`,
+  `reopened`, `edited`, `converted_to_draft` and a draft start none.
+- The pull request must reference an issue that has an `issue_sync_link`. The references are the
+  closing words, the other words, the project keys in the branch, and the GitHub references below.
+- A redelivery starts no second run: `claimGitDelivery` answers it with `duplicate` before
+  `handleGitEvent` runs.
+- At most one run per schedule, project and pull request. It runs on the first synced issue in
+  this order: closing words, other references, branch keys, GitHub references. The repository of
+  the event must be a connected GitHub repository of that issue's project, because only then do
+  the pull request tools reach it.
+- The lead names the pull request, its URL and the issue key and tells the agent to read the diff
+  with `get_pull_request_diff` (`issueId`, `linkId`), to post one comment with
+  `comment_on_pull_request` and not to approve or request changes. It holds no GitHub text.
+
+### GitHub references
+
+`resolveGithubIssueRefs` reads `#N`, `owner/repo#N` (the same repository, ignoring case) and
+`<repository web URL>/issues/N` from the title, the body and the branch. Each resolves through
+`issue_sync_link.external_number` on a GitHub repository that the project which received the
+webhook manages, and only to an issue of that project that is not archived. A reference to another
+repository is ignored.
+
+A resolved reference is handled like a project key in the branch.
+
+- It gets the `issue_development_link` of kind `pull_request` on every pull request event.
+- It is listed in the linkback comment when the link is new.
+- It gets the "opened" activity entry and moves to the open column when one is set and the issue
+  is in backlog or unstarted.
+- It never closes the issue on merge, also not after "Fixes #123". GitHub closes its own issue,
+  and the issue sync moves the issue here. Without that rule two moves compete.
+- `skip MKT-5` also removes a `#N` that resolves to MKT-5. `skip #N` is not supported.
+
+The webhook is signed with the secret of the receiving project, so `#N` reaches only that
+project's repositories and issues.
+
+Known gaps:
+
+- In a public repository, anyone who opens a pull request that names a synced issue starts paid
+  runs, and the agent reads a diff that person wrote. Give the review agent only the tools it
+  needs.
+- A branch named like `123-title` is not resolved. Only `#123` in a branch counts.
+- A synced issue that was moved to another project is not resolved by `#N`. Its old key still
+  resolves through `issue_key_alias`.
+
 ## Locking
 
 One sync of a repository runs at a time across replicas. `tryRepositoryLock` in `service.ts`
