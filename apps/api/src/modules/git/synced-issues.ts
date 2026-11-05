@@ -9,7 +9,7 @@ import {
   issueSyncLink,
   project,
 } from '@repo/db';
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { queueEventRuns } from '#modules/agents/schedules/issue-runs';
 import { parseGithubIssueNumbers, type IssueRef } from './magic-words';
 import type { GitProviderKey, PullRequestEvent } from './providers';
@@ -92,18 +92,27 @@ const reviewLead = (fullName: string, number: number) => `Pull request ${fullNam
 // The projects that already had a review run for this pull request, in any state. A
 // pull request marked draft and ready again, or a redelivery older than the delivery
 // log, starts no second paid run.
-async function reviewedProjects(projectIds: number[], fullName: string, number: number) {
-  if (projectIds.length === 0) return new Set<number>();
+async function reviewedProjects(
+  repositories: { projectId: number; fullName: string }[],
+  number: number,
+) {
+  if (repositories.length === 0) return new Set<number>();
   const rows = await db
     .selectDistinct({ projectId: agentRun.projectId })
     .from(agentRun)
     .innerJoin(agentSchedule, eq(agentSchedule.id, agentRun.scheduleId))
     .where(
       and(
-        inArray(agentRun.projectId, projectIds),
         eq(agentRun.trigger, 'event'),
         eq(agentSchedule.type, 'pull_request_opened'),
-        sql`starts_with(${agentRun.prompt}, ${reviewLead(fullName, number)})`,
+        or(
+          ...repositories.map((repository) =>
+            and(
+              eq(agentRun.projectId, repository.projectId),
+              sql`starts_with(${agentRun.prompt}, ${reviewLead(repository.fullName, number)})`,
+            ),
+          ),
+        ),
       ),
     );
   return new Set(rows.map((row) => row.projectId));
@@ -149,7 +158,7 @@ export async function queuePullRequestReviews(
       .map((repository) => [repository.projectId, repository]),
   );
 
-  const reviewed = await reviewedProjects([...repositories.keys()], event.repo, event.number);
+  const reviewed = await reviewedProjects([...repositories.values()], event.number);
   for (const row of ordered) {
     const repository = repositories.get(row.projectId);
     if (row.synced == null || row.linkId == null || !repository || reviewed.has(row.projectId))

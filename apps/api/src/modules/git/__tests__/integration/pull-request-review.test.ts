@@ -284,6 +284,21 @@ describe('review runs for pull requests', () => {
     expect(await runs()).toHaveLength(1);
   });
 
+  it('queues no second run when the repository name differs in case', async () => {
+    const ctx = await setup(fake);
+    const issue = await createIssue(ctx.asOwner);
+    await syncIssue(issue.id, ctx.repositoryId, 11);
+
+    await deliver(ctx, prPayload({ body: 'Fixes #11' }));
+    await deliver(ctx, prPayload({ action: 'converted_to_draft', body: 'Fixes #11', draft: true }));
+    await deliver(
+      ctx,
+      prPayload({ action: 'ready_for_review', body: 'Fixes #11', repo: 'Acme/Site' }),
+    );
+
+    expect(await runs()).toHaveLength(1);
+  });
+
   it('queues a run for another pull request on a reviewed issue', async () => {
     const ctx = await setup(fake);
     const issue = await createIssue(ctx.asOwner);
