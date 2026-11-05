@@ -440,7 +440,7 @@
     "nativeAskTeamManager": "请联系团队所有者或管理员连接代码托管平台账户。",
     "nativeConnectTitle": "连接 {provider}",
     "nativeTokenHint": {
-      "github": "请使用对目标仓库具有 Metadata 读取、Webhooks 写入和 Pull requests 写入权限的 fine-grained token。",
+      "github": "请使用对目标仓库具有 Metadata 读取、Webhooks 写入、Pull requests 写入以及 Issues 读取和写入权限的 fine-grained token。经典令牌需要 repo 范围（仅公开仓库可用 public_repo）和 admin:repo_hook。",
       "gitlab": "请使用具有 API 权限的 personal access token。列表仅显示你拥有 Maintainer 或 Owner 权限的项目。",
       "gitea": "请使用能够管理目标仓库 webhook 的访问令牌。",
       "forgejo": "请使用能够管理目标仓库 webhook 的访问令牌。",

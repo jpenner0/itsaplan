@@ -440,7 +440,7 @@
     "nativeAskTeamManager": "Demandez à un propriétaire ou à un gestionnaire de l'équipe de connecter un compte de fournisseur.",
     "nativeConnectTitle": "Connecter {provider}",
     "nativeTokenHint": {
-      "github": "Utilisez un token fine-grained avec les accès Metadata en lecture, Webhooks en écriture et Pull requests en écriture sur les dépôts que vous voulez connecter.",
+      "github": "Utilisez un token fine-grained avec les accès Metadata en lecture, Webhooks en écriture, Pull requests en écriture et Issues en lecture et écriture sur les dépôts que vous voulez connecter. Un token classique nécessite le scope repo (public_repo pour les dépôts publics uniquement) et admin:repo_hook.",
       "gitlab": "Utilisez un token d'accès personnel avec accès à l'API. Seuls les projets où vous êtes Maintainer ou Owner sont listés.",
       "gitea": "Utilisez un token d'accès pouvant administrer les hooks des dépôts que vous voulez connecter.",
       "forgejo": "Utilisez un token d'accès pouvant administrer les hooks des dépôts que vous voulez connecter.",

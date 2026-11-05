@@ -12,11 +12,17 @@ function answerGithub() {
   globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
     const url = input instanceof Request ? input.url : String(input);
     if (url.startsWith('https://github.com/login/oauth/access_token')) {
-      return Response.json({ access_token: 'gho_token', token_type: 'bearer', scope: 'read:user' });
+      const code = new URLSearchParams(String(init?.body)).get('code');
+      return Response.json({
+        access_token: `gho_${code}`,
+        token_type: 'bearer',
+        scope: 'read:user',
+      });
     }
     if (url === 'https://api.github.com/user') {
+      const token = new Headers(init?.headers).get('authorization');
       return Response.json({
-        id: 4242,
+        id: token?.endsWith('code-2') ? 4343 : 4242,
         login: 'octo',
         name: 'Octo Cat',
         email: 'octo@github.example',
@@ -145,6 +151,44 @@ describe('GitHub account link', () => {
 
     expect(res.status).toBe(409);
     expect(await res.json()).toMatchObject({ code: 'GITHUB_ALREADY_LINKED' });
+    expect((await rowsOf(god.userId)).filter((r) => r.providerId === 'github')).toHaveLength(1);
+  });
+
+  it('links one GitHub account when two flows were started before either finished', async () => {
+    const god = await signUpTestUser({ name: 'Root' });
+    await configureGithub(god.cookie);
+    answerGithub();
+    const starts = await Promise.all(
+      [1, 2].map(() =>
+        post(
+          '/link-social',
+          { provider: 'github', callbackURL: 'http://localhost:3001/account/accounts' },
+          god.cookie,
+        ),
+      ),
+    );
+    expect(starts.map((r) => r.status)).toEqual([200, 200]);
+
+    const callbacks: Response[] = [];
+    for (const [index, start] of starts.entries()) {
+      const state = new URL(((await start.json()) as { url: string }).url).searchParams.get(
+        'state',
+      );
+      callbacks.push(
+        await app.handle(
+          new Request(
+            `http://localhost/api/auth/callback/github?code=code-${index + 1}&state=${state}`,
+            {
+              headers: { cookie: `${god.cookie}; ${cookiesOf(start)}` },
+            },
+          ),
+        ),
+      );
+    }
+
+    expect(callbacks[0]!.headers.get('location')).not.toContain('error=');
+    expect(callbacks[1]!.status).toBe(409);
+    expect(await callbacks[1]!.json()).toMatchObject({ code: 'GITHUB_ALREADY_LINKED' });
     expect((await rowsOf(god.userId)).filter((r) => r.providerId === 'github')).toHaveLength(1);
   });
 

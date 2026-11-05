@@ -440,7 +440,7 @@
     "nativeAskTeamManager": "請聯絡團隊所有者或管理者連線程式碼託管平臺帳號。",
     "nativeConnectTitle": "連線 {provider}",
     "nativeTokenHint": {
-      "github": "請使用對目標存放庫具有 Metadata 讀取、Webhooks 寫入和 Pull requests 寫入權限的 fine-grained token。",
+      "github": "請使用對目標存放庫具有 Metadata 讀取、Webhooks 寫入、Pull requests 寫入以及 Issues 讀取和寫入權限的 fine-grained token。經典權杖需要 repo 範圍（僅公開存放庫可用 public_repo）和 admin:repo_hook。",
       "gitlab": "請使用具有 API 權限的 personal access token。清單僅顯示你擁有 Maintainer 或 Owner 權限的專案。",
       "gitea": "請使用能夠管理目標存放庫 webhook 的存取權杖。",
       "forgejo": "請使用能夠管理目標存放庫 webhook 的存取權杖。",
