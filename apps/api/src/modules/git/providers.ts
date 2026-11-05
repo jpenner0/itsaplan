@@ -1,4 +1,14 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import {
+  githubIssue,
+  githubIssueComment,
+  githubLabel,
+  githubUser,
+  type ProviderIssue,
+  type ProviderIssueComment,
+  type ProviderLabel,
+  type ProviderUser,
+} from './issues-normalize';
 
 // The provider adapters behind the one inbound webhook receiver. An adapter
 // recognises a delivery by its headers, verifies it with the credential its
@@ -57,7 +67,40 @@ export interface CheckEvent {
   url: string | null;
 }
 
-export type GitEvent = PullRequestEvent | BranchEvent | PipelineEvent | CheckEvent;
+// An issue delivery. `label` is set for labeled/unlabeled and `assignee` for
+// assigned/unassigned. `transferredTo` is the new repository of a transferred issue.
+// `sender` is the account that made the change.
+export interface IssueEvent {
+  kind: 'issue';
+  action:
+    | 'opened'
+    | 'edited'
+    | 'closed'
+    | 'reopened'
+    | 'deleted'
+    | 'transferred'
+    | 'labeled'
+    | 'unlabeled'
+    | 'assigned'
+    | 'unassigned';
+  repo: string;
+  issue: ProviderIssue;
+  label: ProviderLabel | null;
+  assignee: ProviderUser | null;
+  transferredTo: string | null;
+  sender: ProviderUser | null;
+}
+
+export interface IssueCommentEvent {
+  kind: 'issue_comment';
+  action: 'created' | 'edited' | 'deleted';
+  repo: string;
+  comment: ProviderIssueComment;
+  sender: ProviderUser | null;
+}
+
+export type GitEvent =
+  PullRequestEvent | BranchEvent | PipelineEvent | CheckEvent | IssueEvent | IssueCommentEvent;
 
 export type DeliveryHeaders = Record<string, string | undefined>;
 
@@ -138,6 +181,12 @@ interface GithubPayload {
     app?: { id?: number };
   };
   repository?: { full_name?: string; default_branch?: string; html_url?: string };
+  issue?: { number?: number; pull_request?: unknown };
+  comment?: unknown;
+  label?: unknown;
+  assignee?: unknown;
+  sender?: unknown;
+  changes?: { new_repository?: { full_name?: string } };
 }
 
 function githubRepo(payload: unknown): string | undefined {
@@ -240,9 +289,61 @@ function parseGithubBranch(payload: unknown, headers: DeliveryHeaders): BranchEv
   };
 }
 
+const ISSUE_ACTIONS: readonly string[] = [
+  'opened',
+  'edited',
+  'closed',
+  'reopened',
+  'deleted',
+  'transferred',
+  'labeled',
+  'unlabeled',
+  'assigned',
+  'unassigned',
+];
+const COMMENT_ACTIONS: readonly string[] = ['created', 'edited', 'deleted'];
+
+function parseGithubIssue(payload: unknown): IssueEvent | null {
+  const value = payload as GithubPayload;
+  const issue = githubIssue(value.issue);
+  if (!issue || !value.repository?.full_name || !ISSUE_ACTIONS.includes(value.action ?? ''))
+    return null;
+  return {
+    kind: 'issue',
+    action: value.action as IssueEvent['action'],
+    repo: value.repository.full_name,
+    issue,
+    label: githubLabel(value.label),
+    assignee: githubUser(value.assignee),
+    transferredTo: value.changes?.new_repository?.full_name ?? null,
+    sender: githubUser(value.sender),
+  };
+}
+
+// A comment on a pull request arrives as an issue_comment too; it is ignored.
+function parseGithubIssueComment(payload: unknown): IssueCommentEvent | null {
+  const value = payload as GithubPayload;
+  if (!value.issue?.number || value.issue.pull_request != null) return null;
+  const comment = githubIssueComment(value.comment, value.issue.number);
+  if (!comment || !value.repository?.full_name || !COMMENT_ACTIONS.includes(value.action ?? ''))
+    return null;
+  return {
+    kind: 'issue_comment',
+    action: value.action as IssueCommentEvent['action'],
+    repo: value.repository.full_name,
+    comment,
+    sender: githubUser(value.sender),
+  };
+}
+
 function parseGithubPayload(payload: unknown, headers: DeliveryHeaders): GitEvent | null {
   const event = headers['x-github-event'] ?? headers['x-gitea-event'] ?? headers['x-forgejo-event'];
   if (event === 'check_run') return parseGithubCheck(payload);
+  // Issue sync supports GitHub only; Gitea and Forgejo also send GitHub's header.
+  if (event === 'issues' || event === 'issue_comment') {
+    if (gitea.matches(headers)) return null;
+    return event === 'issues' ? parseGithubIssue(payload) : parseGithubIssueComment(payload);
+  }
   if (event === 'create' || event === 'delete') return parseGithubBranch(payload, headers);
   return parseGithubPullRequest(payload);
 }

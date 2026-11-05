@@ -62,7 +62,7 @@ export async function handleGitEvent(
   providerKey: GitProviderKey,
   providerLabel: string,
   event: GitEvent,
-): Promise<PullRequestOutcome | 'branch' | 'pipeline' | 'check'> {
+): Promise<PullRequestOutcome | 'branch' | 'pipeline' | 'check' | 'issue'> {
   if (event.kind === 'check') {
     await updateCheckLinks(project.id, providerKey, event);
     return 'check';
@@ -71,6 +71,9 @@ export async function handleGitEvent(
     await updatePipelineLinks(project.id, providerKey, event);
     return 'pipeline';
   }
+
+  // Issue events are processed by the issue sync.
+  if (event.kind === 'issue' || event.kind === 'issue_comment') return 'issue';
 
   if (event.kind === 'branch') {
     if (event.action === 'deleted') {

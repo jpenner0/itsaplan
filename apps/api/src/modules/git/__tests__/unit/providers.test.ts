@@ -255,3 +255,137 @@ describe('repository provider events', () => {
     });
   });
 });
+
+describe('GitHub issue events', () => {
+  const repository = { full_name: 'acme/site' };
+  const issue = {
+    id: 900,
+    number: 12,
+    title: 'Broken link',
+    body: null,
+    state: 'closed',
+    state_reason: 'not_planned',
+    html_url: 'https://github.com/acme/site/issues/12',
+    repository_url: 'https://api.github.com/repos/acme/site',
+    user: { id: 5, login: 'octo' },
+    assignees: [{ id: 6, login: 'hubot' }],
+    labels: [{ name: 'bug', color: 'd73a4a' }],
+    created_at: '2026-01-01T10:00:00Z',
+    updated_at: '2026-01-02T10:00:00Z',
+    closed_at: '2026-01-02T10:00:00Z',
+  };
+  const headers = { 'x-github-event': 'issues' };
+  const parse = (payload: unknown, h: Record<string, string> = headers) =>
+    detectProvider(h)!.parse(payload, h);
+
+  it('normalizes a closed issue', () => {
+    expect(
+      parse({ action: 'closed', issue, repository, sender: { id: 5, login: 'octo' } }),
+    ).toEqual({
+      kind: 'issue',
+      action: 'closed',
+      repo: 'acme/site',
+      issue: {
+        externalId: '900',
+        number: 12,
+        title: 'Broken link',
+        body: '',
+        state: 'closed',
+        stateReason: 'not_planned',
+        url: 'https://github.com/acme/site/issues/12',
+        repo: 'acme/site',
+        author: { id: '5', login: 'octo' },
+        assignees: [{ id: '6', login: 'hubot' }],
+        labels: [{ name: 'bug', color: 'd73a4a' }],
+        createdAt: '2026-01-01T10:00:00.000Z',
+        updatedAt: '2026-01-02T10:00:00.000Z',
+        closedAt: '2026-01-02T10:00:00.000Z',
+      },
+      label: null,
+      assignee: null,
+      transferredTo: null,
+      sender: { id: '5', login: 'octo' },
+    });
+  });
+
+  it('carries the label, assignee and transfer target', () => {
+    expect(
+      parse({ action: 'labeled', issue, repository, label: { name: 'bug', color: 'd73a4a' } }),
+    ).toMatchObject({ action: 'labeled', label: { name: 'bug', color: 'd73a4a' } });
+    expect(
+      parse({ action: 'assigned', issue, repository, assignee: { id: 6, login: 'hubot' } }),
+    ).toMatchObject({ action: 'assigned', assignee: { id: '6', login: 'hubot' } });
+    expect(
+      parse({
+        action: 'transferred',
+        issue,
+        repository,
+        changes: { new_repository: { full_name: 'acme/other' } },
+      }),
+    ).toMatchObject({ action: 'transferred', transferredTo: 'acme/other' });
+  });
+
+  it('ignores unknown actions and pull requests', () => {
+    expect(parse({ action: 'pinned', issue, repository })).toBeNull();
+    expect(
+      parse({ action: 'opened', issue: { ...issue, pull_request: { url: 'x' } }, repository }),
+    ).toBeNull();
+  });
+
+  it('ignores issue events from Gitea and Forgejo', () => {
+    expect(
+      parse(
+        { action: 'opened', issue, repository },
+        { 'x-gitea-event': 'issues', 'x-github-event': 'issues' },
+      ),
+    ).toBeNull();
+  });
+
+  const comment = {
+    id: 77,
+    body: 'Looks good',
+    html_url: 'https://github.com/acme/site/issues/12#issuecomment-77',
+    user: { id: 5, login: 'octo' },
+    created_at: '2026-01-03T10:00:00Z',
+    updated_at: '2026-01-03T11:00:00Z',
+  };
+
+  it('normalizes an issue comment', () => {
+    expect(
+      parse(
+        { action: 'edited', issue: { number: 12 }, comment, repository },
+        {
+          'x-github-event': 'issue_comment',
+        },
+      ),
+    ).toEqual({
+      kind: 'issue_comment',
+      action: 'edited',
+      repo: 'acme/site',
+      comment: {
+        externalId: '77',
+        issueNumber: 12,
+        body: 'Looks good',
+        url: 'https://github.com/acme/site/issues/12#issuecomment-77',
+        author: { id: '5', login: 'octo' },
+        createdAt: '2026-01-03T10:00:00.000Z',
+        updatedAt: '2026-01-03T11:00:00.000Z',
+      },
+      sender: null,
+    });
+  });
+
+  it('ignores a comment on a pull request', () => {
+    expect(
+      parse(
+        {
+          action: 'created',
+          issue: { number: 3, pull_request: { url: 'x' } },
+          comment,
+          repository,
+        },
+        { 'x-github-event': 'issue_comment' },
+      ),
+    ).toBeNull();
+  });
+});
