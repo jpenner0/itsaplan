@@ -3,7 +3,6 @@ import { eq } from 'drizzle-orm';
 import { setAuthSettings, setWorkspaceScim } from '@repo/auth';
 import { db, workspace } from '@repo/db';
 import { deleteAccount } from '#shared/account-deletion';
-import { setOwnedWorkspaceLimit } from '#shared/limits';
 import { apiKeyApi, app, authedApi, createProject } from '#tests/helpers/app';
 import { createAgent } from '#tests/helpers/agents';
 import { signUpTestUser, type TestUser } from '#tests/helpers/auth';
@@ -210,16 +209,26 @@ describe('workspaces', () => {
       ]);
     });
 
-    it('refuses somebody who is not its admin, or who owns a workspace already', async () => {
+    it('refuses somebody who is not its admin', async () => {
+      const { person, workspaceId } = await withAdmin();
+      const other = await signUpTestUser({ team: false });
+
+      await expect(transferWorkspace(workspaceId, person.userId, other.userId)).rejects.toThrow(
+        'This person is not an admin of the workspace',
+      );
+    });
+
+    it('hands it to an admin who owns a workspace already', async () => {
       const { person, personApi, workspaceId, teamId } = await withAdmin();
       await setAuthSettings({ personalWorkspaces: true });
       const other = await signUpTestUser({ team: false });
-      const transfer = () => transferWorkspace(workspaceId, person.userId, other.userId);
-
-      await expect(transfer()).rejects.toThrow('This person is not an admin of the workspace');
       await joinTeam(personApi, teamId, other);
       await personApi.workspaces({ workspaceId }).managers.post({ userId: other.userId });
-      await expect(transfer()).rejects.toThrow('already owns as many workspaces');
+
+      await transferWorkspace(workspaceId, person.userId, other.userId);
+
+      const owned = (await authedApi(other.cookie).workspaces.get()).data!;
+      expect(owned.filter((w) => w.role === 'owner')).toHaveLength(2);
     });
   });
 
@@ -446,18 +455,16 @@ describe('workspaces', () => {
   });
 
   describe('createOwnWorkspace', () => {
-    afterEach(() => setOwnedWorkspaceLimit());
-
-    it('keeps a person to one workspace unless the limit is raised', async () => {
+    it('lets a person own more than one workspace', async () => {
       await setup();
       const person = await signUpTestUser({ team: false });
       const account = { id: person.userId, role: 'user' };
 
-      await expect(createOwnWorkspace(account, 'Second')).rejects.toThrow(
-        'You already own a workspace',
-      );
-      setOwnedWorkspaceLimit(0);
-      expect(await createOwnWorkspace(account, 'Second')).toBeNumber();
+      await createOwnWorkspace(account, 'Second');
+      await createOwnWorkspace(account, 'Third');
+
+      const owned = (await authedApi(person.cookie).workspaces.get()).data!;
+      expect(owned.filter((w) => w.role === 'owner')).toHaveLength(3);
     });
 
     it('leaves creation to the instance owner while personal workspaces are off', async () => {

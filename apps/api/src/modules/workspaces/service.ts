@@ -9,7 +9,6 @@ import {
   user,
   workspace,
   workspaceManager,
-  type DbExecutor,
 } from '@repo/db';
 import {
   and,
@@ -26,7 +25,7 @@ import {
 } from 'drizzle-orm';
 import { requireUser, type AuthUser } from '#shared/access';
 import { HttpError } from '#shared/lib';
-import { getLimits, getOwnedWorkspaceLimit, tightestLimit } from '#shared/limits';
+import { getLimits, tightestLimit } from '#shared/limits';
 import { getAgentSettings } from '#modules/settings/service';
 import { workspaceRoleGrant, type WorkspaceGrant } from '#shared/workspace-roles';
 
@@ -253,42 +252,19 @@ export async function deleteWorkspace(workspaceId: number, ownerId: string): Pro
   forgetPersonalWorkspace(ownerId);
 }
 
-export type WorkspaceCreationBlock = 'restricted' | 'limit';
-
-// Whether a person may create a workspace, and if not, why: the instance keeps
-// workspaces to its owner, or they already own as many as one person may. An agent's bot
-// user is no person and creates none. No core route calls this or createOwnWorkspace;
-// an edition that lets a person own more workspaces mounts its route on them.
-export async function workspaceCreation(
-  current: AuthUser,
-  executor: DbExecutor = db,
-): Promise<{ allowed: boolean; reason: WorkspaceCreationBlock | null }> {
-  if (await executor.$count(aiAgent, eq(aiAgent.userId, current.id))) {
-    return { allowed: false, reason: 'restricted' };
-  }
-  if (current.role !== 'god' && !(await getAuthSettings()).personalWorkspaces) {
-    return { allowed: false, reason: 'restricted' };
-  }
-  const limit = getOwnedWorkspaceLimit();
-  const owned = await executor.$count(
-    workspaceManager,
-    and(eq(workspaceManager.userId, current.id), eq(workspaceManager.role, 'owner')),
-  );
-  if (limit > 0 && owned >= limit) return { allowed: false, reason: 'limit' };
-  return { allowed: true, reason: null };
+// Whether a person may create a workspace: the instance may keep workspaces to its owner,
+// and an agent's bot user is no person and creates none. No core route calls this or
+// createOwnWorkspace; an edition that lets a person create workspaces mounts its route on them.
+export async function mayCreateWorkspace(current: AuthUser): Promise<boolean> {
+  if (await db.$count(aiAgent, eq(aiAgent.userId, current.id))) return false;
+  return current.role === 'god' || (await getAuthSettings()).personalWorkspaces;
 }
 
 export async function createOwnWorkspace(current: AuthUser, name: string): Promise<number> {
-  return db.transaction(async (tx) => {
-    // Two requests at once would otherwise both count the same owned workspaces.
-    await tx.select({ id: user.id }).from(user).where(eq(user.id, current.id)).for('update');
-    const { reason } = await workspaceCreation(current, tx);
-    if (reason === 'restricted') {
-      throw new HttpError(403, 'Only the instance owner can create workspaces');
-    }
-    if (reason === 'limit') throw new HttpError(409, 'You already own a workspace');
-    return createWorkspace(tx, name, current.id);
-  });
+  if (!(await mayCreateWorkspace(current))) {
+    throw new HttpError(403, 'Only the instance owner can create workspaces');
+  }
+  return db.transaction((tx) => createWorkspace(tx, name, current.id));
 }
 
 // A manager renames and recolours it; who creates teams and how many agents run at once
@@ -320,11 +296,9 @@ export async function updateWorkspace(
 }
 
 // Hands the workspace to one of its admins; the owner stays on as an admin. No core route
-// calls it: an edition that offers handing a workspace over mounts its route here. Nobody
-// takes on more workspaces than one person may own, so handing over is no way around the
-// limit; the instance owner is the exception, as deleted accounts' workspaces pass to
-// them anyway. An owner left with no workspace gets a fresh personal one: the instance
-// owner always, anyone else while personal workspaces are on.
+// calls it: an edition that offers handing a workspace over mounts its route here. An owner
+// left with no workspace gets a fresh personal one: the instance owner always, anyone else
+// while personal workspaces are on.
 export async function transferWorkspace(
   workspaceId: number,
   ownerId: string,
@@ -332,17 +306,6 @@ export async function transferWorkspace(
 ): Promise<void> {
   if ((await getWorkspaceRole(workspaceId, toUserId)) !== 'admin') {
     throw new HttpError(404, 'This person is not an admin of the workspace');
-  }
-  const [target] = await db.select({ role: user.role }).from(user).where(eq(user.id, toUserId));
-  const limit = getOwnedWorkspaceLimit();
-  if (target?.role !== 'god' && limit > 0) {
-    const owned = await db.$count(
-      workspaceManager,
-      and(eq(workspaceManager.userId, toUserId), eq(workspaceManager.role, 'owner')),
-    );
-    if (owned >= limit) {
-      throw new HttpError(409, 'This person already owns as many workspaces as one person may');
-    }
   }
   // One owner per workspace: the current one steps down before the admin steps up.
   await db.transaction(async (tx) => {
