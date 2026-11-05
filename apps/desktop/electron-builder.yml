@@ -17,8 +17,11 @@ mac:
     - target: dmg
       arch: [arm64, x64]
   category: public.app-category.productivity
-  # Unsigned builds: the workflow uploads the files, nothing is published here.
-  identity: null
+  # Ad-hoc signature, no certificate: an arm64 app without any signature is
+  # reported as damaged instead of offering "Open Anyway".
+  identity: '-'
+  # The hardened runtime would need an entitlement for ad-hoc signed apps to launch.
+  hardenedRuntime: false
 win:
   target:
     - target: nsis
