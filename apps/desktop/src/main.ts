@@ -104,8 +104,13 @@ function showConnectDialog(url = '', error = ''): void {
 
 function changeServer(): void {
   const url = readServerUrl();
-  clearServerUrl();
-  showConnectDialog(url);
+  let message = '';
+  try {
+    clearServerUrl();
+  } catch (error) {
+    message = `Could not remove the stored server URL. ${(error as Error).message}`;
+  }
+  showConnectDialog(url, message);
 }
 
 function buildMenu(): Menu {
