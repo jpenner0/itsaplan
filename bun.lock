@@ -142,6 +142,7 @@
         "sonner": "^2.0.8",
         "tiptap-markdown": "^0.9.0",
         "transliteration": "^2.6.1",
+        "yaml": "^2.9.1",
       },
       "devDependencies": {
         "@repo/eslint-config": "workspace:*",
