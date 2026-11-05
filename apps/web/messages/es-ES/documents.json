@@ -206,6 +206,13 @@
     "linkCopied": "Enlace copiado",
     "copyFailed": "No se pudo copiar el enlace"
   },
+  "mermaid": {
+    "editCode": "Editar código",
+    "done": "Listo",
+    "copyCode": "Copiar código",
+    "codeCopied": "Código copiado",
+    "copyFailed": "No se pudo copiar el código"
+  },
   "sync": {
     "connecting": "Conectando con el documento…",
     "offline": "Sin conexión. Los cambios se guardan en esta pestaña y se sincronizarán al reconectar.",

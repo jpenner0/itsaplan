@@ -206,6 +206,13 @@
     "linkCopied": "已複製連結",
     "copyFailed": "無法複製連結"
   },
+  "mermaid": {
+    "editCode": "編輯程式碼",
+    "done": "完成",
+    "copyCode": "複製程式碼",
+    "codeCopied": "已複製程式碼",
+    "copyFailed": "無法複製程式碼"
+  },
   "sync": {
     "connecting": "正在連線到文件…",
     "offline": "目前離線。變更會留在此分頁，重新連線後會同步。",
