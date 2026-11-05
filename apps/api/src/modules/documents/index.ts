@@ -45,6 +45,8 @@ import {
   documentVersionBody,
   documentIssueParams,
   duplicateDocumentBody,
+  importMarkdownBody,
+  MarkdownImportResponse,
   issueDocumentsParams,
   linkDocumentIssueBody,
   documentInitiativeParams,
@@ -81,6 +83,8 @@ import {
   type DocumentAssetRow,
   documentAssetPath,
 } from './service';
+import { MARKDOWN_IMPORT_LIMITS } from './markdown-import';
+import { importMarkdownZip } from './markdown-import-service';
 import {
   addDocumentInitiativeLink,
   addDocumentIssueLink,
@@ -110,6 +114,9 @@ function documentAssetDto(
     embedUrl: `/protected-media${url}`,
   };
 }
+
+// The ZIP limit plus room for the multipart framing; the parser checks the ZIP itself exactly.
+const MARKDOWN_IMPORT_BODY_BYTES = MARKDOWN_IMPORT_LIMITS.zipBytes + 64 * 1024;
 
 const OWNER_ONLY = 'Only the page owner can do this, or a project owner on a public page.';
 const EMBED_HINT =
@@ -659,6 +666,38 @@ export const documentRoutes = new Elysia({
         description:
           'Create a public or private Markdown page, optionally nested under another page.',
         ...mcpTool('create_document'),
+      },
+    },
+  )
+  .post(
+    '/projects/:projectKey/documents/import',
+    async ({ project, user, body, set }) => {
+      const current = requireUser(user);
+      await assertPermission(project.id, current, 'documents', 'create');
+      const result = await importMarkdownZip({
+        projectId: project.id,
+        userId: current.id,
+        parentId: body.parentId ?? null,
+        bytes: new Uint8Array(await body.file.arrayBuffer()),
+      });
+      set.status = 201;
+      return result;
+    },
+    {
+      permission: ['documents', 'edit'],
+      feature: 'documents',
+      // Bun buffers up to its server-wide limit, so this route refuses a larger upload by its header.
+      parse: ({ request }) => {
+        if (Number(request.headers.get('content-length') ?? 0) > MARKDOWN_IMPORT_BODY_BYTES) {
+          throw new HttpError(413, 'The upload is larger than 50 MB.');
+        }
+      },
+      body: importMarkdownBody,
+      response: { 201: MarkdownImportResponse, ...commonErrors, ...errors(409, 413, 502) },
+      detail: {
+        summary: 'Import a Markdown folder',
+        description:
+          'Create a page tree from a ZIP of Markdown files, at the top level or under `parentId`. Folders become parent pages, referenced files become page assets. Returns the created top-level pages, the number of all created pages and the skipped files.',
       },
     },
   )
