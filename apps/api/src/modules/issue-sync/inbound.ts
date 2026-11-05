@@ -38,6 +38,7 @@ import {
   providerStatus,
   stateHash,
   stateTypeStatus,
+  stripCommentHeader,
   type FieldHashes,
   type SyncField,
   type SyncFields,
@@ -133,7 +134,10 @@ async function linkedMembers(
   return members;
 }
 
-async function providerFields(projectId: number, external: ProviderIssue): Promise<SyncFields> {
+export async function providerFields(
+  projectId: number,
+  external: ProviderIssue,
+): Promise<SyncFields> {
   const members = await linkedMembers(
     projectId,
     external.assignees.map((assignee) => assignee.id),
@@ -189,7 +193,7 @@ async function labelIds(projectId: number, labels: ProviderLabel[]): Promise<num
   return [...new Set(ids)];
 }
 
-async function localChangedAt(issueId: number, field: SyncField): Promise<Date | null> {
+export async function localChangedAt(issueId: number, field: SyncField): Promise<Date | null> {
   const [row] = await db
     .select({ createdAt: issueActivity.createdAt })
     .from(issueActivity)
@@ -205,7 +209,11 @@ async function localChangedAt(issueId: number, field: SyncField): Promise<Date |
   return row?.createdAt ?? null;
 }
 
-async function upsertIssueLink(repo: SyncRepository, issueId: number, external: ProviderIssue) {
+export async function upsertIssueLink(
+  repo: SyncRepository,
+  issueId: number,
+  external: ProviderIssue,
+) {
   const values = {
     number: external.number,
     title: external.title,
@@ -413,6 +421,7 @@ export async function applyProviderComment(
       id: issueCommentSyncLink.id,
       activityId: issueCommentSyncLink.activityId,
       syncedHash: issueCommentSyncLink.syncedHash,
+      externalAuthorLogin: issueCommentSyncLink.externalAuthorLogin,
       externalUpdatedAt: issueCommentSyncLink.externalUpdatedAt,
       body: issueActivity.body,
       authorId: issueActivity.actorUserId,
@@ -441,7 +450,10 @@ export async function applyProviderComment(
     const localChanged = commentHash(synced.body ?? '') !== synced.syncedHash;
     if (localChanged && synced.editedAt && synced.editedAt > externalUpdatedAt) return;
     const fromBot = synced.authorId !== null && synced.authorId === (await readBotUserId(repo));
-    await updateComment(synced.activityId, comment.body, synced.authorId, synced.projectId, {
+    // A comment It's a Plan posted carries a header there, which is not part of its text.
+    const body =
+      synced.externalAuthorLogin === null ? stripCommentHeader(comment.body) : comment.body;
+    await updateComment(synced.activityId, body, synced.authorId, synced.projectId, {
       mentions: !fromBot,
     });
     await db

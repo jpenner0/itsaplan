@@ -153,7 +153,7 @@ async function tryRepositoryLock(
 
 // One sync of a repository at a time across replicas. Without `wait`, a held lock skips
 // fn; with it, the caller retries until its deadline.
-async function withRepositoryLock(
+export async function withRepositoryLock(
   repositoryId: number,
   wait: boolean,
   fn: () => Promise<void>,
@@ -168,6 +168,12 @@ async function withRepositoryLock(
 
 const enabledRepository = (id: number) =>
   and(eq(gitManagedRepository.id, id), eq(gitManagedRepository.issuesSyncEnabled, true));
+
+// A repository with sync on, ready for provider calls. Null when it does not sync.
+export async function loadSyncRepository(id: number): Promise<SyncRepository | null> {
+  const row = await loadRepository(enabledRepository(id));
+  return row ? syncRepository(row) : null;
+}
 
 // One item the services refuse, such as an issue for a full column, must not hold back
 // the rest of the repository.

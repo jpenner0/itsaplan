@@ -28,6 +28,23 @@ export function stripFooter(body: string): string {
   return body.replace(FOOTER, '');
 }
 
+// The footer the outbound sync appends, in the form FOOTER matches.
+export function footerLine(identifier: string, url: string): string {
+  return `Tracked in It's a Plan: [${identifier}](${url})`;
+}
+
+// The first line of a comment the outbound sync posts, and the blank line after it.
+const COMMENT_HEADER = /^\*\*.+\*\* \((?:@[^\s,]+, )?via It[’']s a Plan\):\n\n/;
+
+export function commentHeader(name: string, login: string | null): string {
+  const escaped = name.replace(/[\\*_`[\]]/g, '\\$&');
+  return `**${escaped}** (${login ? `@${login}, ` : ''}via It's a Plan):\n\n`;
+}
+
+export function stripCommentHeader(body: string): string {
+  return body.replace(/\r\n/g, '\n').replace(COMMENT_HEADER, '');
+}
+
 function normalizeText(value: string): string {
   return value.replace(/\r\n/g, '\n').trimEnd();
 }

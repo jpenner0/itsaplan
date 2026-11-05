@@ -23,6 +23,7 @@ import {
   notifyTextMentions,
 } from '#modules/notifications/service';
 import { listStatusTimeline } from './status-history';
+import { pushIssueSync } from '#modules/issue-sync/outbound';
 
 // Issue timeline: comments and change-log activity in one table (issue_activity).
 // kind selects which columns a row uses. The author is the session user
@@ -369,6 +370,7 @@ export async function createComment(input: {
     await enqueueMentionRuns(projectId, comment, mentioned.agentUserIds);
     await notifyComment(projectId, comment, mentioned);
   }
+  pushIssueSync(input.issueId);
 
   return comment;
 }
@@ -433,6 +435,7 @@ export async function updateComment(
       await enqueueMentionRuns(projectId, { ...comment, replyToId: null }, mentioned.agentUserIds);
     await notifyEditedCommentMentions(projectId, comment, mentioned);
   }
+  pushIssueSync(comment.issueId);
   return comment;
 }
 
@@ -452,6 +455,7 @@ export async function deleteComment(
   await db.delete(issueActivity).where(eq(issueActivity.id, commentId));
   await recordActivity(before.issueId as number, [{ action: 'comment_deleted' }], actorUserId);
   await emitCommentEvent(projectId, 'comment.deleted', mapFeedItem(before), actorUserId);
+  pushIssueSync(before.issueId as number);
   return true;
 }
 

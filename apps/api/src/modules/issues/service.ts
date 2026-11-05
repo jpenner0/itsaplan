@@ -81,6 +81,7 @@ import { deleteThreadsWhere } from '#modules/agents/core/runtime/memory';
 import { queueStatusRuns } from '#modules/agents/schedules/issue-runs';
 import { applySubtaskAutomation } from './automation';
 import { assertWipLimit, columnAutoAssignee, wipLimitBreach } from '#modules/columns/service';
+import { publishNewIssue, pushIssueSync } from '#modules/issue-sync/outbound';
 
 // Data access for issues and their per-issue data: labels, custom field values,
 // and selected options. The human identifier (e.g. "MKT-42") is the project key
@@ -1222,6 +1223,7 @@ export async function createIssue(
     before: '',
     after: created.description,
   });
+  await publishNewIssue(issueId, project.id);
   return created;
 }
 
@@ -1384,6 +1386,7 @@ export async function updateIssue(
         await queueStatusRuns([id], after.columnId, actorId(actor));
         await applySubtaskAutomation(after, actor);
       }
+      pushIssueSync(id);
     }
   }
   return after;
@@ -1432,6 +1435,7 @@ export async function deleteIssue(
   if (!attachments) return null;
   await deleteThreadsWhere({ issueId });
   await emitIssueEvent('issue.deleted', deleted, actorUserId);
+  pushIssueSync(issueId);
   return attachments;
 }
 
@@ -1490,6 +1494,7 @@ export async function setIssueLabels(
       });
     }
   }
+  if (added.length > 0 || removed.length > 0) pushIssueSync(issueId);
 }
 
 // --- Bulk actions ----------------------------------------------------------------

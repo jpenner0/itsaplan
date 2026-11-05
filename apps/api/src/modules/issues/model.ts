@@ -82,6 +82,12 @@ export const IssueFieldValueEntry = t.Object({
   optionIds: t.Array(t.Number()),
 });
 
+export const PublishedIssueResponse = t.Object({
+  issueId: t.Number(),
+  externalNumber: t.Number(),
+  externalUrl: t.String(),
+});
+
 // IssueRow from the service.
 export const IssueResponse = t.Object({
   id: t.Number(),

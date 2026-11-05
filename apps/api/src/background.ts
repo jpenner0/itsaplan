@@ -6,6 +6,7 @@ import { pruneAgentTraces } from '#modules/agents/core/runtime/trace-retention';
 import { sweepStaleIssues } from '#modules/issues/auto-archive';
 import { sweepExpiredShares } from '#modules/share/service';
 import { reconcileIssueSync } from '#modules/issue-sync/service';
+import { processIssueSyncOutbox } from '#modules/issue-sync/outbound';
 
 // The api's background jobs, started by index.ts rather than assembled into the app,
 // so importing the app in a test starts nothing. Several api replicas run them without
@@ -30,8 +31,14 @@ export function startBackgroundJobs(): void {
   startLoop('share-expiry', expireShares, () => intEnv('SHARE_EXPIRY_INTERVAL_MS', 60_000));
   startLoop('agent-traces', pruneTraces, () => intEnv('AGENT_TRACE_PRUNE_INTERVAL_MS', 3_600_000));
   // Webhooks bring issue changes at once; the reconcile catches what an instance
-  // without a public URL, or a lost delivery, missed.
-  startLoop('issue-sync', reconcileIssueSync, () => intEnv('ISSUE_SYNC_INTERVAL_MS', 300_000));
+  // without a public URL, or a lost delivery, missed. It then sends the local changes a
+  // write could not push, such as after a provider error.
+  startLoop('issue-sync', syncIssues, () => intEnv('ISSUE_SYNC_INTERVAL_MS', 300_000));
+}
+
+async function syncIssues(): Promise<void> {
+  await reconcileIssueSync();
+  await processIssueSyncOutbox();
 }
 
 async function autoArchive(): Promise<void> {
