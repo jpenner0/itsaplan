@@ -19,19 +19,20 @@ import type { GenericEndpointContext } from 'better-auth';
 // Authentication settings: who may register, whether email has to be confirmed,
 // which sign-in methods are offered, the mail provider used for authentication email,
 // and the credentials of the OAuth providers. Read by the better-auth instance in
-// ./index.ts (the registration gate, the mail senders, the Google and OIDC providers)
-// and written by the api, so it lives here rather than in the api.
+// ./index.ts (the registration gate, the mail senders, the Google, GitHub and OIDC
+// providers) and written by the api, so it lives here rather than in the api.
 //
 // Non-secret settings are one jsonb blob in app_setting under the 'auth' key; the
 // credentials are encrypted in app_secret, each with a `redacted` mirror the settings
 // UI can read without decrypting. The instance's own are under 'auth.email',
-// 'auth.google', 'auth.oidc' and 'auth.scim', set in god mode; a workspace's SCIM, where
-// a build sets it up per workspace, is under 'workspace.<id>.scim'. The mail config is
-// also read by the api and the worker, so its shape and reader live in @repo/db; what
-// stays here is the write side.
+// 'auth.google', 'auth.github', 'auth.oidc' and 'auth.scim', set in god mode; a
+// workspace's SCIM, where a build sets it up per workspace, is under
+// 'workspace.<id>.scim'. The mail config is also read by the api and the worker, so
+// its shape and reader live in @repo/db; what stays here is the write side.
 
 const AUTH_SETTING_KEY = 'auth';
 const GOOGLE_SECRET_KEY = 'auth.google';
+const GITHUB_SECRET_KEY = 'auth.github';
 const OIDC_SECRET_KEY = 'auth.oidc';
 
 const scimSecretKey = (workspaceId: number | null) =>
@@ -289,11 +290,12 @@ export async function setEmailSettings(patch: InstanceEmailPatch): Promise<Insta
   return redacted;
 }
 
-// ── Google OAuth ──────────────────────────────────────────────────────────────
+// ── Google and GitHub OAuth apps ──────────────────────────────────────────────
 
-// The stored, decrypted credentials. Read by the Google provider in ./index.ts on
-// every social request, never returned over HTTP.
-export interface InstanceGoogleConfig {
+// The stored, decrypted credentials of an OAuth app. Read by the provider in ./index.ts
+// on every social request, never returned over HTTP. Google signs people in; GitHub
+// only links an identity to an account that is already signed in.
+export interface InstanceOAuthAppConfig {
   enabled: boolean;
   clientId: string;
   clientSecret: string;
@@ -301,7 +303,7 @@ export interface InstanceGoogleConfig {
 
 // The config as returned to the client: the secret replaced by a boolean telling
 // whether a value is stored.
-export interface InstanceGoogleDto {
+export interface InstanceOAuthAppDto {
   enabled: boolean;
   clientId: string;
   hasClientSecret: boolean;
@@ -309,17 +311,13 @@ export interface InstanceGoogleDto {
 
 // A partial write. The secret keeps its stored value when omitted or sent empty (a
 // masked field the user did not edit).
-export interface InstanceGooglePatch {
+export interface InstanceOAuthAppPatch {
   enabled?: boolean;
   clientId?: string;
   clientSecret?: string;
 }
 
-function defaultGoogleConfig(): InstanceGoogleConfig {
-  return { enabled: false, clientId: '', clientSecret: '' };
-}
-
-function toGoogleDto(config: InstanceGoogleConfig): InstanceGoogleDto {
+function toOAuthAppDto(config: InstanceOAuthAppConfig): InstanceOAuthAppDto {
   return {
     enabled: config.enabled,
     clientId: config.clientId,
@@ -327,37 +325,44 @@ function toGoogleDto(config: InstanceGoogleConfig): InstanceGoogleDto {
   };
 }
 
-export async function getGoogleConfig(): Promise<InstanceGoogleConfig> {
-  const stored = await readSecret<InstanceGoogleConfig>(GOOGLE_SECRET_KEY);
+async function readOAuthApp(key: string): Promise<InstanceOAuthAppConfig> {
+  const stored = await readSecret<InstanceOAuthAppConfig>(key);
   // Merge over the default so a config written before a field was added stays valid.
-  return { ...defaultGoogleConfig(), ...(stored ?? {}) };
+  return { enabled: false, clientId: '', clientSecret: '', ...(stored ?? {}) };
 }
 
-export async function getGoogleSettings(): Promise<InstanceGoogleDto> {
-  return toGoogleDto(await getGoogleConfig());
-}
-
-// Whether Google sign-in can run right now. The provider is always mounted, so this
-// is what both the god settings and the public sign-in screen ask before offering it.
-export function isGoogleUsable(config: InstanceGoogleConfig): boolean {
-  return config.enabled && config.clientId.length > 0 && config.clientSecret.length > 0;
-}
-
-export async function hasConfiguredGoogle(): Promise<boolean> {
-  return isGoogleUsable(await getGoogleConfig());
-}
-
-export async function setGoogleSettings(patch: InstanceGooglePatch): Promise<InstanceGoogleDto> {
-  const current = await getGoogleConfig();
-  const next: InstanceGoogleConfig = {
+async function writeOAuthApp(
+  key: string,
+  patch: InstanceOAuthAppPatch,
+): Promise<InstanceOAuthAppDto> {
+  const current = await readOAuthApp(key);
+  const next: InstanceOAuthAppConfig = {
     enabled: patch.enabled ?? current.enabled,
     clientId: patch.clientId ?? current.clientId,
     clientSecret: mergeSecret(current.clientSecret, patch.clientSecret),
   };
-  const redacted = toGoogleDto(next);
-  await writeSecret(GOOGLE_SECRET_KEY, next, redacted);
+  const redacted = toOAuthAppDto(next);
+  await writeSecret(key, next, redacted);
   return redacted;
 }
+
+// Whether the provider can run right now. Both providers are always mounted, so this
+// is what god mode, the sign-in screen and the profile ask before offering one.
+export function isOAuthAppUsable(config: InstanceOAuthAppConfig): boolean {
+  return config.enabled && config.clientId.length > 0 && config.clientSecret.length > 0;
+}
+
+export const getGoogleConfig = () => readOAuthApp(GOOGLE_SECRET_KEY);
+export const getGoogleSettings = async () => toOAuthAppDto(await getGoogleConfig());
+export const hasConfiguredGoogle = async () => isOAuthAppUsable(await getGoogleConfig());
+export const setGoogleSettings = (patch: InstanceOAuthAppPatch) =>
+  writeOAuthApp(GOOGLE_SECRET_KEY, patch);
+
+export const getGithubConfig = () => readOAuthApp(GITHUB_SECRET_KEY);
+export const getGithubSettings = async () => toOAuthAppDto(await getGithubConfig());
+export const hasConfiguredGithub = async () => isOAuthAppUsable(await getGithubConfig());
+export const setGithubSettings = (patch: InstanceOAuthAppPatch) =>
+  writeOAuthApp(GITHUB_SECRET_KEY, patch);
 
 // ── Generic OIDC / OAuth2 ─────────────────────────────────────────────────────
 

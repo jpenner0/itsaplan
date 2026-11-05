@@ -2,36 +2,48 @@
 
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
-import type { InstanceGoogleSettings, InstanceOidcSettings } from '@/lib/api/endpoints/god';
+import type {
+  InstanceGithubSettings,
+  InstanceGoogleSettings,
+  InstanceOidcSettings,
+} from '@/lib/api/endpoints/god';
 import { Button } from '@/components/ui/button';
 import GodSectionPage from '../GodSectionPage';
-import GodGoogleSettings from './GodGoogleSettings';
+import GodOAuthAppSettings from './GodOAuthAppSettings';
 import GodOidcSettings from './GodOidcSettings';
-import { useGodGoogleForm } from '../../hooks/useGodGoogleForm';
+import { useGodOAuthAppForm } from '../../hooks/useGodOAuthAppForm';
+import {
+  useUpdateInstanceGithubSettings,
+  useUpdateInstanceGoogleSettings,
+} from '../../services/god.service';
 import { useGodOidcForm } from '../../hooks/useGodOidcForm';
 
-// One section per provider, committed through the page's single Save. A third
-// provider is another section with its own form hook.
+// One section per provider, committed through the page's single Save. GitHub sits here
+// as an OAuth app too, though it only links accounts and signs nobody in.
 export default function GodAuthProviderForm({
   googleSettings,
+  githubSettings,
   oidcSettings,
 }: {
   googleSettings: InstanceGoogleSettings;
+  githubSettings: InstanceGithubSettings;
   oidcSettings: InstanceOidcSettings;
 }) {
   const t = useTranslations('god.authProvider');
   const tCommon = useTranslations('common');
-  const google = useGodGoogleForm(googleSettings);
+  const google = useGodOAuthAppForm(googleSettings, useUpdateInstanceGoogleSettings());
+  const github = useGodOAuthAppForm(githubSettings, useUpdateInstanceGithubSettings());
   const oidc = useGodOidcForm(oidcSettings);
 
-  const dirty = google.dirty || oidc.dirty;
-  const saving = google.saving || oidc.saving;
+  const dirty = google.dirty || github.dirty || oidc.dirty;
+  const saving = google.saving || github.saving || oidc.saving;
 
   // Only the sections that changed are written, so saving one provider does not
   // resubmit the other's credentials.
   async function save() {
     try {
       if (google.dirty) await google.save();
+      if (github.dirty) await github.save();
       if (oidc.dirty) await oidc.save();
       toast.success(t('saved'));
     } catch {
@@ -50,7 +62,8 @@ export default function GodAuthProviderForm({
     >
       <div className="space-y-10">
         <GodOidcSettings form={oidc} />
-        <GodGoogleSettings form={google} />
+        <GodOAuthAppSettings provider="google" form={google} />
+        <GodOAuthAppSettings provider="github" form={github} />
       </div>
     </GodSectionPage>
   );
