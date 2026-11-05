@@ -40,7 +40,7 @@ function outline(pages: MarkdownImportPage[]): unknown[] {
   );
 }
 
-/** Sets the declared uncompressed size of the first central-directory entry. */
+/** Sets the declared uncompressed size of the first entry in the central directory. */
 function withDeclaredSize(bytes: Uint8Array, size: number): Uint8Array {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   for (let offset = 0; offset < bytes.length - 4; offset += 1) {
@@ -316,11 +316,13 @@ describe('parseMarkdownZip: limits', () => {
   });
 
   it('accepts the total uncompressed size and rejects one byte more', () => {
+    // The budget uses declared sizes, so no 200 MB is inflated. At the limit the entry passes
+    // the budget and then fails as damaged (400).
     const page = '![](big.bin)';
-    const big = new Uint8Array(MARKDOWN_IMPORT_LIMITS.uncompressedBytes - page.length);
-    expect(parse({ 'a.md': page, 'big.bin': big }).assets).toHaveLength(1);
-    const over = new Uint8Array(big.length + 1);
-    expect(failure(() => parse({ 'a.md': page, 'big.bin': over })).status).toBe(413);
+    const declare = (size: number) => withDeclaredSize(zip({ 'big.bin': 'x', 'a.md': page }), size);
+    const atLimit = MARKDOWN_IMPORT_LIMITS.uncompressedBytes - page.length;
+    expect(failure(() => parseMarkdownZip(declare(atLimit), opts)).status).toBe(400);
+    expect(failure(() => parseMarkdownZip(declare(atLimit + 1), opts)).status).toBe(413);
   });
 
   it('rejects a declared size over the limit before inflating', () => {
