@@ -61,6 +61,26 @@ describe('page tree', () => {
     expect(plan.pages).toHaveLength(3);
   });
 
+  it('keeps .md files whose names differ only by case as separate pages', async () => {
+    const plan = await readMarkdownZip(
+      await zipOf({
+        'Notes.md': 'upper',
+        'notes.md': 'lower',
+        'dir/README.md': 'first',
+        'dir/readme.md': 'second',
+      }),
+    );
+    expect(plan.pages.map((page) => [page.path, page.content])).toEqual([
+      ['dir/README.md', 'first'],
+      ['Notes.md', 'upper'],
+      ['notes.md', 'lower'],
+    ]);
+    expect(plan.pages[0].children.map((page) => [page.path, page.content])).toEqual([
+      ['dir/readme.md', 'second'],
+    ]);
+    expect(plan.skipped).toEqual([]);
+  });
+
   it('sorts siblings naturally by file name', async () => {
     const plan = await readMarkdownZip(
       await zipOf({ '10-ten.md': '', '2-two.md': '', '1-one/x.md': '', 'b.md': '' }),

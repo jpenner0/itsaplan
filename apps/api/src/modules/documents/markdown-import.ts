@@ -60,18 +60,15 @@ export async function readMarkdownZip(data: Uint8Array): Promise<ImportPlan> {
   const { entries, skipped } = await openZip(data);
   const budget = { left: MAX_UNCOMPRESSED_BYTES };
 
-  const markdown = new Map<string, string>();
-  for (const path of entries.keys()) {
-    if (MARKDOWN.test(path)) markdown.set(path.toLowerCase(), path);
-  }
+  const markdown = [...entries.keys()].filter((path) => MARKDOWN.test(path)).sort();
   const roots = buildTree(markdown);
   const pageCount = countNodes(roots);
   if (pageCount > MAX_IMPORT_PAGES) {
     throw new HttpError(400, `The import has ${pageCount} pages, the limit is ${MAX_IMPORT_PAGES}`);
   }
 
-  assertDeclaredSizes(entries, [...markdown.values()], budget);
-  const pagePaths = new Set(markdown.values());
+  assertDeclaredSizes(entries, markdown, budget);
+  const pagePaths = new Set(markdown);
   const readNode = async (node: TreeNode): Promise<ImportPage> => {
     const page = node.source
       ? await readPage(entries, node.source, node.name, budget, pagePaths)
@@ -149,10 +146,17 @@ function entrySegments(name: string): string[] {
 }
 
 // Folder content comes from index.md, then README.md inside it, then a sibling
-// <folder>.md. That file then is no page of its own.
-function buildTree(markdown: Map<string, string>): TreeNode[] {
+// <folder>.md, matched case-insensitively. That file then is no page of its own. Of
+// names that differ only by case (README.md, readme.md) the first in sorted order is
+// the content and the others stay pages.
+function buildTree(markdown: string[]): TreeNode[] {
+  const byLowerCase = new Map<string, string[]>();
+  for (const path of markdown) {
+    const key = path.toLowerCase();
+    byLowerCase.set(key, [...(byLowerCase.get(key) ?? []), path]);
+  }
   const folders = new Set<string>();
-  for (const path of markdown.values()) {
+  for (const path of markdown) {
     const parts = path.split('/');
     for (let i = 1; i < parts.length; i++) folders.add(parts.slice(0, i).join('/'));
   }
@@ -170,14 +174,14 @@ function buildTree(markdown: Map<string, string>): TreeNode[] {
   for (const folder of byDepth) {
     const source =
       [`${folder}/index.md`, `${folder}/readme.md`, `${folder}.md`]
-        .map((candidate) => markdown.get(candidate.toLowerCase()))
-        .find((path) => path !== undefined && !used.has(path)) ?? null;
+        .flatMap((candidate) => byLowerCase.get(candidate.toLowerCase()) ?? [])
+        .find((path) => !used.has(path)) ?? null;
     if (source) used.add(source);
     const node: TreeNode = { key: folder, name: posix.basename(folder), source, children: [] };
     folderNodes.set(folder, node);
     attach(node);
   }
-  for (const path of markdown.values()) {
+  for (const path of markdown) {
     if (used.has(path)) continue;
     attach({ key: path, name: posix.basename(path), source: path, children: [] });
   }
