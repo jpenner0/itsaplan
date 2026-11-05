@@ -14,6 +14,7 @@ import {
 import {
   MAX_IMPORT_DEPTH,
   MAX_PAGE_CHARS,
+  MAX_UNCOMPRESSED_BYTES,
   readMarkdownZip,
   rewriteReferences,
   type ImportFile,
@@ -54,6 +55,7 @@ interface PlannedAsset {
 }
 
 const POSITION_STEP = 1024;
+const MB = 1024 * 1024;
 
 // Creates the pages of a Markdown ZIP below `parentId`. The files are uploaded before
 // the transaction, so it holds no lock during the uploads; a failure afterwards
@@ -129,6 +131,14 @@ export async function importMarkdownZip(input: {
   });
 
   const assetBytes = assets.reduce((sum, asset) => sum + asset.file.bytes.byteLength, 0);
+  // A file referenced by several pages is stored once per page, so the unpack limit alone
+  // does not bound what is uploaded.
+  if (assetBytes > MAX_UNCOMPRESSED_BYTES) {
+    throw new HttpError(
+      413,
+      `The import would store ${Math.ceil(assetBytes / MB)} MB of files, the limit is ${MAX_UNCOMPRESSED_BYTES / MB} MB`,
+    );
+  }
   if (assets.length > 0) await assertAttachmentStorageCapacity(project.id, assetBytes);
 
   const uploaded: string[] = [];

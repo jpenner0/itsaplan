@@ -206,6 +206,22 @@ describe('POST /projects/:projectKey/documents/import', () => {
     expect(await res!.json()).toEqual({ error: 'The ZIP file exceeds the 50 MB limit' });
   });
 
+  it('refuses an import whose page copies of one file exceed the unpack limit', async () => {
+    const { asOwner } = await setupProject();
+    // 9 copies of a 25 MB file (the default per-file limit) are 225 MB, while the ZIP
+    // unpacks to about 25 MB.
+    const files: Record<string, string | Uint8Array> = {
+      'big.png': new Uint8Array(25 * 1024 * 1024),
+    };
+    for (let i = 0; i < 9; i++) files[`p${i}.md`] = '![big](big.png)';
+    const res = await importZip(asOwner, await zipOf(files));
+    expect(res.status).toBe(413);
+    expect((res.error!.value as { error: string }).error).toBe(
+      'The import would store 225 MB of files, the limit is 200 MB',
+    );
+    expect(await tree(asOwner)).toEqual([]);
+  });
+
   it('refuses more pages than the limit', async () => {
     const { asOwner } = await setupProject();
     const files: Record<string, string> = {};
