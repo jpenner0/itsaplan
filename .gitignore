@@ -44,3 +44,6 @@ coverage
 
 # agent scratch space (test docs, drafts)
 .workspace/
+
+# desktop app
+apps/desktop/release
