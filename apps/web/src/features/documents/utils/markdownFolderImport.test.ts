@@ -110,7 +110,7 @@ describe('previewMarkdownImport', () => {
       }),
     );
     assert.deepEqual(titles(preview.tree), [['a', []]]);
-    assert.equal(preview.skipped.length, 4);
+    assert.deepEqual(preview.skipped, ['.git/', '.obsidian/', '__MACOSX/', 'x/.hidden.md']);
   });
 
   test('skips a folder that holds no pages', async () => {
@@ -137,10 +137,86 @@ describe('previewMarkdownImport', () => {
     assert.deepEqual(violations, [{ kind: 'pageLength', path: 'big.md' }]);
   });
 
-  test('reports a total size over 50 MB', async () => {
-    const big = { path: 'big.bin', file: { size: 50 * 1024 * 1024 + 1 } as File };
+  test('does not count skipped files towards the size limits', async () => {
+    const big = { path: '.git/pack', file: { size: 300 * 1024 * 1024 } as File };
     const { violations } = await previewMarkdownImport([...pick({ 'a.md': '' }), big]);
+    assert.deepEqual(violations, []);
+  });
+
+  test('reports more than 200 MB of referenced files', async () => {
+    const big = { path: 'big.bin', file: { size: 200 * 1024 * 1024 + 1 } as File };
+    const { violations } = await previewMarkdownImport([...pick({ 'a.md': '[b](big.bin)' }), big]);
+    assert.deepEqual(violations, [{ kind: 'unpackedSize' }]);
+  });
+
+  test('reports a packed ZIP over 50 MB', async () => {
+    const random = new Uint8Array(51 * 1024 * 1024);
+    for (let offset = 0; offset < random.length; offset += 65_536) {
+      crypto.getRandomValues(random.subarray(offset, offset + 65_536));
+    }
+    const { violations } = await previewMarkdownImport(
+      pick({ 'a.md': '[b](b.bin)', 'b.bin': random }),
+    );
     assert.deepEqual(violations, [{ kind: 'zipSize' }]);
+  });
+
+  test('reports a page nested deeper than 10 levels', async () => {
+    const deep = Array.from({ length: 9 }, (_, i) => `d${i}`).join('/');
+    const ok = await previewMarkdownImport(pick({ [`${deep}/a.md`]: '' }));
+    assert.deepEqual(ok.violations, []);
+    const { violations } = await previewMarkdownImport(pick({ [`${deep}/e/a.md`]: '' }));
+    assert.deepEqual(violations, [{ kind: 'depth', path: `${deep}/e` }]);
+  });
+
+  test('sorts case-insensitively with a plain tie-break', async () => {
+    const preview = await previewMarkdownImport(pick({ 'b.md': '', 'A.md': '', 'a.md': '' }));
+    assert.deepEqual(
+      preview.tree.map((node) => node.title),
+      ['A', 'a', 'b'],
+    );
+  });
+
+  test('matches the sibling folder file by exact name', async () => {
+    const preview = await previewMarkdownImport(pick({ 'Guide/x.md': '', 'guide.md': '' }));
+    assert.deepEqual(titles(preview.tree), [
+      ['Guide', [['x', []]]],
+      ['guide', []],
+    ]);
+  });
+
+  test('ignores references inside code', async () => {
+    const preview = await previewMarkdownImport(
+      pick({
+        'a.md': '`![x](one.png)`\n\n```md\n![y](two.png)\n```\n\n![z](three.png)',
+        'one.png': 'x',
+        'two.png': 'x',
+        'three.png': 'x',
+      }),
+    );
+    assert.equal(preview.assetCount, 1);
+    assert.deepEqual(preview.skipped, ['one.png', 'two.png']);
+  });
+
+  test('reads frontmatter as a YAML mapping', async () => {
+    const preview = await previewMarkdownImport(
+      pick({
+        'a.md': '---\ntitle: Foo # note\n---',
+        'b.md': '---\ntitle: 42\n---',
+        'c.md': '---\n- list\n---\n',
+        'd.md': '---\ntitle: |\n  Block\n---',
+      }),
+    );
+    assert.deepEqual(
+      preview.tree.map((node) => node.title),
+      ['Foo', '42', 'c', 'Block'],
+    );
+  });
+
+  test('removes a leading H1 equal to the title before counting characters', async () => {
+    const { violations } = await previewMarkdownImport(
+      pick({ 'a.md': `# a\n\n${'x'.repeat(250_000)}` }),
+    );
+    assert.deepEqual(violations, []);
   });
 
   test('names a file that is not valid UTF-8', async () => {
