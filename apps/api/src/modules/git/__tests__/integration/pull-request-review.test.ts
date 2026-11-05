@@ -258,6 +258,49 @@ describe('review runs for pull requests', () => {
     expect(await runs()).toHaveLength(1);
   });
 
+  it('queues one run when a reviewed pull request goes back to draft and is ready again', async () => {
+    const ctx = await setup(fake);
+    const issue = await createIssue(ctx.asOwner);
+    await syncIssue(issue.id, ctx.repositoryId, 11);
+
+    await deliver(ctx, prPayload({ body: 'Fixes #11' }));
+    await deliver(ctx, prPayload({ action: 'converted_to_draft', body: 'Fixes #11', draft: true }));
+    await deliver(ctx, prPayload({ action: 'ready_for_review', body: 'Fixes #11' }));
+
+    expect(await runs()).toHaveLength(1);
+  });
+
+  it('queues one run for a draft marked ready twice, also once the run has finished', async () => {
+    const ctx = await setup(fake);
+    const issue = await createIssue(ctx.asOwner);
+    await syncIssue(issue.id, ctx.repositoryId, 11);
+
+    await deliver(ctx, prPayload({ body: 'Fixes #11', draft: true }));
+    await deliver(ctx, prPayload({ action: 'ready_for_review', body: 'Fixes #11' }));
+    await db.update(agentRun).set({ status: 'success' });
+    await deliver(ctx, prPayload({ action: 'converted_to_draft', body: 'Fixes #11', draft: true }));
+    await deliver(ctx, prPayload({ action: 'ready_for_review', body: 'Fixes #11' }));
+
+    expect(await runs()).toHaveLength(1);
+  });
+
+  it('queues a run for another pull request on a reviewed issue', async () => {
+    const ctx = await setup(fake);
+    const issue = await createIssue(ctx.asOwner);
+    await syncIssue(issue.id, ctx.repositoryId, 11);
+
+    await deliver(ctx, prPayload({ body: 'Fixes #11' }));
+    const other = prPayload({ body: 'Fixes #11', headRef: 'farewell' });
+    other.pull_request.number = 70;
+    other.pull_request.html_url = `${WEB_URL}/pull/70`;
+    await deliver(ctx, other);
+
+    expect((await runs()).map((run) => run.prompt.split(' (')[0])).toEqual([
+      'Pull request acme/site#7',
+      'Pull request acme/site#70',
+    ]);
+  });
+
   it('queues no run on a push, a reopen or an edit', async () => {
     const ctx = await setup(fake);
     const issue = await createIssue(ctx.asOwner);

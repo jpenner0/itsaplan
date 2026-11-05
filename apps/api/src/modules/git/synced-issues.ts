@@ -1,4 +1,6 @@
 import {
+  agentRun,
+  agentSchedule,
   db,
   gitManagedRepository,
   gitProviderConnection,
@@ -84,9 +86,33 @@ function startsReview(providerKey: GitProviderKey, event: PullRequestEvent): boo
   );
 }
 
-// Queues the pull_request_opened schedules of each project once, on the first of the
-// linked issues in that project that is synced. The prompt holds no text from the
-// pull request: the repository name and the URL come from the stored repository.
+// The start of every review run's prompt for this pull request.
+const reviewLead = (fullName: string, number: number) => `Pull request ${fullName}#${number} (`;
+
+// The projects that already had a review run for this pull request, in any state. A
+// pull request marked draft and ready again, or a redelivery older than the delivery
+// log, starts no second paid run.
+async function reviewedProjects(projectIds: number[], fullName: string, number: number) {
+  if (projectIds.length === 0) return new Set<number>();
+  const rows = await db
+    .selectDistinct({ projectId: agentRun.projectId })
+    .from(agentRun)
+    .innerJoin(agentSchedule, eq(agentSchedule.id, agentRun.scheduleId))
+    .where(
+      and(
+        inArray(agentRun.projectId, projectIds),
+        eq(agentRun.trigger, 'event'),
+        eq(agentSchedule.type, 'pull_request_opened'),
+        sql`starts_with(${agentRun.prompt}, ${reviewLead(fullName, number)})`,
+      ),
+    );
+  return new Set(rows.map((row) => row.projectId));
+}
+
+// Queues the pull_request_opened schedules of each project once per pull request, on
+// the first of the linked issues in that project that is synced. The prompt holds no
+// text from the pull request: the repository name and the URL come from the stored
+// repository.
 export async function queuePullRequestReviews(
   providerKey: GitProviderKey,
   event: PullRequestEvent,
@@ -123,7 +149,7 @@ export async function queuePullRequestReviews(
       .map((repository) => [repository.projectId, repository]),
   );
 
-  const reviewed = new Set<number>();
+  const reviewed = await reviewedProjects([...repositories.keys()], event.repo, event.number);
   for (const row of ordered) {
     const repository = repositories.get(row.projectId);
     if (row.synced == null || row.linkId == null || !repository || reviewed.has(row.projectId))
@@ -137,7 +163,7 @@ export async function queuePullRequestReviews(
       projectId: row.projectId,
       issueId: row.issueId,
       lead:
-        `Pull request ${repository.fullName}#${event.number} (${url}) references work item ` +
+        `${reviewLead(repository.fullName, event.number)}${url}) references work item ` +
         `${row.identifier}${alsoNamed}. ` +
         `Review it: read the diff with get_pull_request_diff (issueId ${row.issueId}, linkId ` +
         `${row.linkId}) and post one review comment with comment_on_pull_request. ` +
