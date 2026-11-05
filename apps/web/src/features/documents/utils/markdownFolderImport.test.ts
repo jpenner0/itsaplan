@@ -277,10 +277,12 @@ describe('packMarkdownImport', () => {
     assert.equal(preview.assetCount, 1);
   });
 
-  test('rejects a ZIP file over 50 MB', async () => {
-    const zip = new JSZip().file('a.md', '');
+  test('reads a picked ZIP over 50 MB; only the packed size counts', async () => {
+    const zip = new JSZip().file('a.md', '').file('.git/pack', 'x');
     const file = new File([await zip.generateAsync({ type: 'blob' })], 'a.zip');
-    Object.defineProperty(file, 'size', { value: 50 * 1024 * 1024 + 1 });
-    assert.deepEqual((await readMarkdownZip(file)).violations, [{ kind: 'zipSize' }]);
+    Object.defineProperty(file, 'size', { value: 60 * 1024 * 1024 });
+    const { files, violations } = await readMarkdownZip(file);
+    assert.deepEqual(violations, []);
+    assert.deepEqual((await previewMarkdownImport(files)).violations, []);
   });
 });

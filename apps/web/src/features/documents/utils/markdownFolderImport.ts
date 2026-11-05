@@ -62,12 +62,12 @@ export function dropCommonRoot(files: PickedFile[]): PickedFile[] {
 export const pickedFolderFiles = (files: File[]): PickedFile[] =>
   dropCommonRoot(files.map((file) => ({ path: file.webkitRelativePath || file.name, file })));
 
-// Stops reading once the unpacked size passes the limit, so a ZIP bomb is not fully expanded.
+// The ZIP size limit applies to the repacked ZIP in `previewMarkdownImport`, not to the picked
+// file. Stops reading once the unpacked size passes the limit, so a ZIP bomb is not fully expanded.
 export async function readMarkdownZip(zipFile: File): Promise<{
   files: PickedFile[];
   violations: ImportViolation[];
 }> {
-  if (zipFile.size > MAX_ZIP_BYTES) return { files: [], violations: [{ kind: 'zipSize' }] };
   const zip = await JSZip.loadAsync(zipFile);
   const entries = Object.values(zip.files);
   if (entries.length > MAX_ENTRIES) return { files: [], violations: [{ kind: 'entryCount' }] };
