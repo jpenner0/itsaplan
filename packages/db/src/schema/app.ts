@@ -215,10 +215,6 @@ export const projectTemplate = pgTable(
     description: text('description').notNull().default(''),
     snapshot: jsonb('snapshot').notNull(),
     allTeams: boolean('all_teams').notNull().default(true),
-    // The template's page in the gallery at itsaplan.dev, NULL while it is not published.
-    publicationId: text('publication_id'),
-    publicationUrl: text('publication_url'),
-    publishedAt: timestamp('published_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('project_template_workspace_idx').on(t.workspaceId)],
@@ -240,24 +236,6 @@ export const projectTemplateTeam = pgTable(
     index('project_template_team_team_idx').on(t.teamId),
   ],
 );
-
-// The gallery publisher a workspace publishes its project templates under: the email it
-// confirmed with a code, and the key the gallery issued for it. The key is read back for
-// every publish, so it is kept encrypted rather than hashed. The author is the name the
-// gallery shows on every template of the address; the workspace keeps a copy to show in
-// its dialogs and refuses a publish until it is set.
-export const templatePublisher = pgTable('template_publisher', {
-  workspaceId: integer('workspace_id')
-    .primaryKey()
-    .references(() => workspace.id, { onDelete: 'cascade' }),
-  email: text('email').notNull(),
-  keyCiphertext: text('key_ciphertext').notNull(),
-  keyIv: text('key_iv').notNull(),
-  keyAuthTag: text('key_auth_tag').notNull(),
-  authorName: text('author_name').notNull().default(''),
-  authorUrl: text('author_url'),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
 
 // Per-project key-value settings, mirroring app_setting but scoped to a project.
 // The value is a jsonb blob owned by whatever feature reads the key, so one table

@@ -1226,6 +1226,13 @@
       "when": 1793804244937,
       "tag": "0174_agent_schedules_permission",
       "breakpoints": true
+    },
+    {
+      "idx": 175,
+      "version": "7",
+      "when": 1793881515854,
+      "tag": "0175_remove_template_gallery",
+      "breakpoints": true
     }
   ]
 }

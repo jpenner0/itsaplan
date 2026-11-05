@@ -205,60 +205,12 @@
     "deleteDialog": {
       "title": "Excluir o modelo \"{name}\"?",
       "description": "Os projetos criados a partir dele continuam iguais.",
-      "confirm": "Excluir modelo",
-      "galleryNote": "A página dele na galeria também sai do ar."
+      "confirm": "Excluir modelo"
     },
     "panel": {
       "saved": "Salvo em {date}",
       "none": "Nenhum",
       "teams": "Equipes: {teams}"
-    },
-    "publish": {
-      "action": "Publicar",
-      "published": "Publicado",
-      "account": "Conta da galeria",
-      "publishingAs": "Publicando como",
-      "authorProfile": "Perfil do autor",
-      "changeEmail": "Trocar e-mail",
-      "rules": "Regras da galeria",
-      "unlink": "Desvincular workspace",
-      "downloadable": "Qualquer pessoa pode baixar",
-      "private": "Sem issues nem pessoas",
-      "counts": "{states, plural, one {# estado} other {# estados}} · {types, plural, one {# tipo} other {# tipos}} · {fields, plural, one {# campo} other {# campos}}",
-      "by": "por <b>{name}</b>",
-      "authorHint": "Aparece em todos os modelos publicados a partir de {email}.",
-      "authorName": "Autor",
-      "authorUrl": "Link do perfil",
-      "optional": "Opcional",
-      "authorUrlInvalid": "Deve começar com https://",
-      "submit": "Publicar",
-      "update": "Atualizar página",
-      "live": "No ar",
-      "since": "desde {date}",
-      "openPage": "Abrir página",
-      "copyLink": "Copiar link",
-      "linkCopied": "Link copiado",
-      "copyFailed": "Não foi possível copiar o link",
-      "unpublish": "Despublicar",
-      "unpublishConfirm": "Tirar a página do ar?",
-      "unpublishHint": "O link dela vai parar de funcionar.",
-      "keep": "Manter",
-      "publishedToast": "Publicado",
-      "updatedToast": "Página atualizada",
-      "badge": "Público",
-      "badgeHint": "Na galeria desde {date}",
-      "link": {
-        "intro": "Confirme um e-mail uma única vez para este workspace.",
-        "email": "E-mail",
-        "emailHint": "Não aparece publicamente",
-        "agree": "Ao enviar o código, você aceita as <rules>regras da galeria</rules>.",
-        "sendCode": "Enviar código",
-        "codeSent": "Digite o código enviado para {email}",
-        "code": "Código",
-        "confirm": "Confirmar",
-        "resend": "Enviar de novo",
-        "resent": "Novo código enviado"
-      }
     }
   },
   "panel": {

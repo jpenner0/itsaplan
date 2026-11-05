@@ -57,26 +57,6 @@ export interface TemplateContents {
 
 export interface ProjectTemplateDetail extends ProjectTemplate, TemplateContents {}
 
-// A template's page in the gallery at itsaplan.dev.
-export interface TemplatePublication {
-  url: string;
-  publishedAt: string;
-}
-
-// A template as its workspace lists it, with its page in the gallery, null while it is
-// not published.
-export interface WorkspaceProjectTemplate extends ProjectTemplate {
-  publication: TemplatePublication | null;
-}
-
-// The gallery address a workspace publishes under, and the author the gallery shows on
-// every template from it. `authorName` is empty until someone names one.
-export interface TemplatePublisher {
-  email: string;
-  authorName: string;
-  authorUrl: string | null;
-}
-
 export const listTeamProjectTemplates = (teamId: number) =>
   request<ProjectTemplate[]>(`/teams/${teamId}/project-templates`);
 
@@ -84,7 +64,7 @@ export const getTeamProjectTemplate = (teamId: number, templateId: number) =>
   request<ProjectTemplateDetail>(`/teams/${teamId}/project-templates/${templateId}`);
 
 export const listWorkspaceProjectTemplates = (workspaceId: number) =>
-  request<WorkspaceProjectTemplate[]>(`/workspaces/${workspaceId}/project-templates`);
+  request<ProjectTemplate[]>(`/workspaces/${workspaceId}/project-templates`);
 
 export const getWorkspaceProjectTemplate = (workspaceId: number, templateId: number) =>
   request<ProjectTemplateDetail>(`/workspaces/${workspaceId}/project-templates/${templateId}`);
@@ -158,49 +138,6 @@ export const importProjectTemplate = (
   request<ProjectTemplate>(`/workspaces/${workspaceId}/project-templates/import`, {
     method: 'POST',
     body: JSON.stringify(input),
-  });
-
-export const getTemplatePublisher = (workspaceId: number) =>
-  request<{ publisher: TemplatePublisher | null }>(
-    `/workspaces/${workspaceId}/template-publisher`,
-  ).then((answer) => answer.publisher);
-
-export const requestPublisherCode = (workspaceId: number, email: string) =>
-  request<void>(`/workspaces/${workspaceId}/template-publisher/code`, {
-    method: 'POST',
-    body: JSON.stringify({ email }),
-  });
-
-export const linkTemplatePublisher = (
-  workspaceId: number,
-  input: { email: string; code: string },
-) =>
-  request<TemplatePublisher>(`/workspaces/${workspaceId}/template-publisher`, {
-    method: 'POST',
-    body: JSON.stringify(input),
-  });
-
-export const unlinkTemplatePublisher = (workspaceId: number) =>
-  request<void>(`/workspaces/${workspaceId}/template-publisher`, { method: 'DELETE' });
-
-export const setTemplatePublisherAuthor = (
-  workspaceId: number,
-  author: { authorName: string; authorUrl: string | null },
-) =>
-  request<TemplatePublisher>(`/workspaces/${workspaceId}/template-publisher/author`, {
-    method: 'PUT',
-    body: JSON.stringify(author),
-  });
-
-export const publishTemplate = (workspaceId: number, templateId: number) =>
-  request<TemplatePublication>(
-    `/workspaces/${workspaceId}/project-templates/${templateId}/publication`,
-    { method: 'POST' },
-  );
-
-export const unpublishTemplate = (workspaceId: number, templateId: number) =>
-  request<void>(`/workspaces/${workspaceId}/project-templates/${templateId}/publication`, {
-    method: 'DELETE',
   });
 
 export const deleteProjectTemplate = (workspaceId: number, templateId: number) =>

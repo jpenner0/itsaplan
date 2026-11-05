@@ -2,20 +2,13 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import {
   deleteProjectTemplate,
   getTeamProjectTemplate,
-  getTemplatePublisher,
   getWorkspaceProjectTemplate,
   importProjectTemplate,
-  linkTemplatePublisher,
   listTeamProjectTemplates,
   listWorkspaceProjectTemplates,
   previewImportedTemplate,
   previewProjectTemplate,
-  publishTemplate,
-  requestPublisherCode,
   saveProjectTemplate,
-  setTemplatePublisherAuthor,
-  unlinkTemplatePublisher,
-  unpublishTemplate,
   updateProjectTemplate,
   type ProjectTemplateDetail,
   type SharedProjectTemplate,
@@ -116,66 +109,6 @@ export function useUpdateProjectTemplate(workspaceId: number) {
       patch: Parameters<typeof updateProjectTemplate>[2];
     }) => updateProjectTemplate(workspaceId, templateId, patch),
   );
-}
-
-export function useTemplatePublisherQuery(workspaceId: number) {
-  return useQuery({
-    queryKey: qk.templatePublisher(workspaceId),
-    queryFn: () => getTemplatePublisher(workspaceId),
-  });
-}
-
-export function useRequestPublisherCode(workspaceId: number) {
-  return useMutation({ mutationFn: (email: string) => requestPublisherCode(workspaceId, email) });
-}
-
-// Each of these changes the publisher, the templates, or both.
-function usePublisherMutation<TInput, TResult>(
-  workspaceId: number,
-  mutationFn: (input: TInput) => Promise<TResult>,
-  meta?: { suppressErrorToast: true },
-) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn,
-    meta,
-    onSuccess: () =>
-      Promise.all([
-        qc.invalidateQueries({ queryKey: qk.projectTemplates }),
-        qc.invalidateQueries({ queryKey: qk.templatePublisher(workspaceId) }),
-      ]),
-  });
-}
-
-// A refused code shows under the code cells.
-export function useLinkTemplatePublisher(workspaceId: number) {
-  return usePublisherMutation(
-    workspaceId,
-    (input: { email: string; code: string }) => linkTemplatePublisher(workspaceId, input),
-    { suppressErrorToast: true },
-  );
-}
-
-export function useUnlinkTemplatePublisher(workspaceId: number) {
-  return usePublisherMutation(workspaceId, () => unlinkTemplatePublisher(workspaceId));
-}
-
-export function useSetPublisherAuthor(workspaceId: number) {
-  return usePublisherMutation(
-    workspaceId,
-    (author: Parameters<typeof setTemplatePublisherAuthor>[1]) =>
-      setTemplatePublisherAuthor(workspaceId, author),
-  );
-}
-
-export function usePublishTemplate(workspaceId: number) {
-  return usePublisherMutation(workspaceId, (templateId: number) =>
-    publishTemplate(workspaceId, templateId),
-  );
-}
-
-export function useUnpublishTemplate(workspaceId: number) {
-  return useTemplateMutation((templateId: number) => unpublishTemplate(workspaceId, templateId));
 }
 
 export function useDeleteProjectTemplate(workspaceId: number) {

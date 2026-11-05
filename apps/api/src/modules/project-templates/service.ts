@@ -66,26 +66,8 @@ async function readTemplates(where: SQL): Promise<TemplateRow[]> {
     .orderBy(asc(projectTemplate.name), asc(projectTemplate.id));
 }
 
-// A template of the workspace with its page in the gallery, null while it is not published.
-export interface WorkspaceProjectTemplate extends ProjectTemplate {
-  publication: { url: string; publishedAt: string } | null;
-}
-
-export async function listWorkspaceTemplates(
-  workspaceId: number,
-): Promise<WorkspaceProjectTemplate[]> {
-  const rows = await readTemplates(eq(projectTemplate.workspaceId, workspaceId));
-  const templates = await withTeams(rows);
-  return templates.map((template, index) => {
-    const { publicationUrl, publishedAt } = rows[index];
-    return {
-      ...template,
-      publication:
-        publicationUrl && publishedAt
-          ? { url: publicationUrl, publishedAt: iso(publishedAt) }
-          : null,
-    };
-  });
+export async function listWorkspaceTemplates(workspaceId: number): Promise<ProjectTemplate[]> {
+  return withTeams(await readTemplates(eq(projectTemplate.workspaceId, workspaceId)));
 }
 
 export async function listTeamTemplates(teamId: number): Promise<ProjectTemplate[]> {

@@ -1,12 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Copy, Globe, Pencil, Trash2 } from 'lucide-react';
+import { Copy, Pencil, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import type {
-  ProjectTemplate,
-  WorkspaceProjectTemplate,
-} from '@/lib/api/endpoints/project-templates';
+import type { ProjectTemplate } from '@/lib/api/endpoints/project-templates';
 import { formatDate } from '@/utils/dates';
 import RowAction from '@/components/common/RowAction';
 import {
@@ -22,8 +19,6 @@ import { useTemplateTeamsLabel } from '../../hooks/useTemplateTeamsLabel';
 import WorkspaceTemplateDeleteDialog from './WorkspaceTemplateDeleteDialog';
 import WorkspaceTemplateEditModal from './WorkspaceTemplateEditModal';
 import WorkspaceTemplatePanel from './WorkspaceTemplatePanel';
-import WorkspaceTemplatePublishDialog from './WorkspaceTemplatePublishDialog';
-import WorkspaceTemplatePublishedBadge from './WorkspaceTemplatePublishedBadge';
 
 // The templates of the workspace. A row opens what the template holds in a side panel.
 export default function WorkspaceTemplatesTable({
@@ -31,19 +26,17 @@ export default function WorkspaceTemplatesTable({
   templates,
 }: {
   workspaceId: number;
-  templates: WorkspaceProjectTemplate[];
+  templates: ProjectTemplate[];
 }) {
   const t = useTranslations('teams');
   const tCommon = useTranslations('common');
   const teamsLabel = useTemplateTeamsLabel();
   const share = useTemplateExport(workspaceId);
   const [editing, setEditing] = useState<ProjectTemplate | null>(null);
-  const [deleting, setDeleting] = useState<WorkspaceProjectTemplate | null>(null);
+  const [deleting, setDeleting] = useState<ProjectTemplate | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [publishingId, setPublishingId] = useState<number | null>(null);
   // Read from the list, so the panel closes once its template is deleted.
   const selected = templates.find((template) => template.id === selectedId) ?? null;
-  const publishing = templates.find((template) => template.id === publishingId) ?? null;
 
   return (
     <div className="overflow-x-auto">
@@ -78,14 +71,9 @@ export default function WorkspaceTemplatesTable({
               onClick={() => setSelectedId(template.id)}
             >
               <TableCell className="px-3 py-3 whitespace-normal">
-                <div className="flex min-w-0 items-center gap-2">
-                  <p className="min-w-0 text-sm font-medium wrap-anywhere" dir="auto">
-                    {template.name}
-                  </p>
-                  {template.publication && (
-                    <WorkspaceTemplatePublishedBadge publication={template.publication} />
-                  )}
-                </div>
+                <p className="min-w-0 text-sm font-medium wrap-anywhere" dir="auto">
+                  {template.name}
+                </p>
                 {template.description && (
                   <p
                     className="line-clamp-1 text-xs wrap-anywhere text-muted-foreground"
@@ -103,18 +91,6 @@ export default function WorkspaceTemplatesTable({
                 {formatDate(template.createdAt)}
               </TableCell>
               <TableCell className="px-3 py-2 text-end" onClick={(e) => e.stopPropagation()}>
-                <RowAction
-                  icon={Globe}
-                  label={t(
-                    template.publication
-                      ? 'templates.publish.published'
-                      : 'templates.publish.action',
-                  )}
-                  className={
-                    template.publication ? 'text-emerald-600 dark:text-emerald-400' : undefined
-                  }
-                  onClick={() => setPublishingId(template.id)}
-                />
                 <RowAction
                   icon={Copy}
                   label={t('templates.copyAction')}
@@ -142,7 +118,6 @@ export default function WorkspaceTemplatesTable({
           workspaceId={workspaceId}
           template={selected}
           onEdit={() => setEditing(selected)}
-          onPublish={() => setPublishingId(selected.id)}
           onCopy={() => void share.copy(selected)}
           onDownload={() => void share.download(selected)}
           onDelete={() => setDeleting(selected)}
@@ -155,14 +130,6 @@ export default function WorkspaceTemplatesTable({
           workspaceId={workspaceId}
           template={editing}
           onClose={() => setEditing(null)}
-        />
-      )}
-
-      {publishing && (
-        <WorkspaceTemplatePublishDialog
-          workspaceId={workspaceId}
-          template={publishing}
-          onClose={() => setPublishingId(null)}
         />
       )}
 
