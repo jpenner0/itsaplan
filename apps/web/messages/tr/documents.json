@@ -206,6 +206,13 @@
     "linkCopied": "Bağlantı kopyalandı",
     "copyFailed": "Bağlantı kopyalanamadı"
   },
+  "mermaid": {
+    "editCode": "Kodu düzenle",
+    "done": "Bitti",
+    "copyCode": "Kodu kopyala",
+    "codeCopied": "Kod kopyalandı",
+    "copyFailed": "Kod kopyalanamadı"
+  },
   "sync": {
     "connecting": "Belgeye bağlanılıyor…",
     "offline": "Çevrimdışı. Değişiklikler bu sekmede kalır ve yeniden bağlandığınızda eşitlenir.",

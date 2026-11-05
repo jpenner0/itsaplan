@@ -206,6 +206,13 @@
     "linkCopied": "Link copied",
     "copyFailed": "Could not copy the link"
   },
+  "mermaid": {
+    "editCode": "编辑代码",
+    "done": "完成",
+    "copyCode": "复制代码",
+    "codeCopied": "代码已复制",
+    "copyFailed": "无法复制代码"
+  },
   "sync": {
     "connecting": "Connecting to the document…",
     "offline": "Offline. Changes stay in this tab and will sync when you reconnect.",

@@ -3,7 +3,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { JSONContent } from '@tiptap/core';
-import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import Color from '@tiptap/extension-color';
 import Highlight from '@tiptap/extension-highlight';
 import Link from '@tiptap/extension-link';
@@ -31,6 +30,7 @@ import { MarkdownTable } from '@/components/common/editor/tiptap-table';
 import { pasteMarkdown } from '@/components/common/editor/pasteMarkdown';
 import { useDocumentAnchor } from '../hooks/useDocumentAnchor';
 import { DocumentBlockId } from '../extensions/documentBlockId';
+import { DocumentMermaidCodeBlock } from '../extensions/documentMermaidBlock';
 import DocumentBlockMenu from './DocumentBlockMenu';
 import DocumentSelectionActions, { type DocumentSelection } from './DocumentSelectionActions';
 import { SlashCommand } from '@/lib/tiptap-slash-command';
@@ -95,7 +95,7 @@ export function documentEditorExtensions(labels: EditorLabels, mentions?: Mentio
       // Its paragraph is added before collab starts, so the server copy never gets it.
       trailingNode: false,
     }),
-    CodeBlockLowlight.configure({ lowlight }),
+    DocumentMermaidCodeBlock.configure({ lowlight }),
     Placeholder.configure({ placeholder: labels.placeholder }),
     Link.configure({
       autolink: true,

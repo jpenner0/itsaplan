@@ -204,6 +204,13 @@
     "linkCopied": "Link copied",
     "copyFailed": "Could not copy the link"
   },
+  "mermaid": {
+    "editCode": "Edit kode",
+    "done": "Selesai",
+    "copyCode": "Salin kode",
+    "codeCopied": "Kode disalin",
+    "copyFailed": "Tidak dapat menyalin kode"
+  },
   "sync": {
     "connecting": "Connecting to the document…",
     "offline": "Offline. Changes stay in this tab and will sync when you reconnect.",
