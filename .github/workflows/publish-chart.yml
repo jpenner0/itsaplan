@@ -3,7 +3,7 @@ name: Publish chart
 # Packages charts/itsaplan and pushes it to GHCR as an OCI artifact, so the chart
 # installs without cloning the repository:
 #
-#   helm install itsaplan oci://ghcr.io/croffasia/charts/itsaplan --version 1.9.0
+#   helm install itsaplan oci://ghcr.io/jpenner0/charts/itsaplan --version 1.9.0
 #
 # Called by release.yml once a release is tagged, next to publish-images, so the
 # published chart is always the one that deploys that release's images. The manual

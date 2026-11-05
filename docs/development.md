@@ -5,7 +5,7 @@ Requirements: [Bun](https://bun.sh) 1.3+, Docker, Git.
 ## Setup
 
 ```bash
-git clone https://github.com/croffasia/itsaplan.git
+git clone https://github.com/jpenner0/itsaplan.git
 cd itsaplan
 bun install
 bun run setup   # "Develop", or "Generate env" for just the .env files

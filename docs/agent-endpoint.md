@@ -137,9 +137,9 @@ server at `<apiUrl>/mcp`.
 
 ## With the runner
 
-With `listen`, `@itsaplan/runner` is the endpoint. It receives the tasks on a port and
+With `listen`, `@jpenner0/itsaplan-runner` is the endpoint. It receives the tasks on a port and
 runs them with a coding agent CLI, the same as when it polls. See
-[Receiving tasks on a port](https://github.com/croffasia/itsaplan/blob/main/packages/runner/README.md#receiving-tasks-on-a-port).
+[Receiving tasks on a port](https://github.com/jpenner0/itsaplan/blob/main/packages/runner/README.md#receiving-tasks-on-a-port).
 
 ## Example: AWS Lambda
 

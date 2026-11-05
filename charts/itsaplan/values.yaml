@@ -34,7 +34,7 @@ api:
   replicaCount: 1
   port: 3000
   image:
-    repository: ghcr.io/croffasia/itsaplan-api
+    repository: ghcr.io/jpenner0/itsaplan-api
     tag: ""  # defaults to .Chart.AppVersion
     pullPolicy: IfNotPresent
   # Override the internal URL other services use to reach the API.
@@ -85,7 +85,7 @@ web:
   replicaCount: 1
   port: 3001
   image:
-    repository: ghcr.io/croffasia/itsaplan-web
+    repository: ghcr.io/jpenner0/itsaplan-web
     tag: ""
     pullPolicy: IfNotPresent
   env:
@@ -107,7 +107,7 @@ web:
 worker:
   replicaCount: 1
   image:
-    repository: ghcr.io/croffasia/itsaplan-worker
+    repository: ghcr.io/jpenner0/itsaplan-worker
     tag: ""
     pullPolicy: IfNotPresent
   env:
@@ -122,7 +122,7 @@ worker:
 bot:
   enabled: true
   image:
-    repository: ghcr.io/croffasia/itsaplan-bot
+    repository: ghcr.io/jpenner0/itsaplan-bot
     tag: ""
     pullPolicy: IfNotPresent
   resources: {}

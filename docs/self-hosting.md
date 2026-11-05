@@ -8,7 +8,7 @@ request succeeds, but no session is kept and the app stays signed out. `http://l
 one exception in Chrome and Firefox; WebKit browsers such as Safari refuse it there too.
 
 ```bash
-git clone https://github.com/croffasia/itsaplan.git
+git clone https://github.com/jpenner0/itsaplan.git
 cd itsaplan
 cp .env.example .env
 # fill in the eight values below
@@ -258,7 +258,7 @@ docker run --rm -v itsaplan_minio-data:/data -v "$PWD":/out alpine tar czf /out/
 ```
 
 If you call the API from your own scripts or from an MCP client, read the
-[release notes](https://github.com/croffasia/itsaplan/releases) for the paths a release removed.
+[release notes](https://github.com/jpenner0/itsaplan/releases) for the paths a release removed.
 
 ## Building from source instead
 

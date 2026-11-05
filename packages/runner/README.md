@@ -1,4 +1,4 @@
-# @itsaplan/runner
+# @jpenner0/itsaplan-runner
 
 [It's a Plan](https://itsaplan.dev) is a self-hosted, open-source issue tracker. An AI
 agent in it is a project member: it has a role, permissions, and its own issues.
@@ -27,7 +27,7 @@ agent reads the issue and writes its result through it.
 **3. Give the coding agent the address of that server.** Claude Code, Oh My Pi, Mastra
 Code, and Pi (through `pi-mcp-adapter`) read `.mcp.json` from the folder they run in. For
 the other CLIs, see
-[Coding agent setup](https://github.com/croffasia/itsaplan/blob/main/docs/runner.md).
+[Coding agent setup](https://github.com/jpenner0/itsaplan/blob/main/docs/runner.md).
 
 ```json
 {
@@ -57,7 +57,7 @@ one file.
 **5. Start it:**
 
 ```bash
-npx -y @itsaplan/runner
+npx -y @jpenner0/itsaplan-runner
 ```
 
 The project shows the agent as online in a few seconds. Delegate an issue to the agent,
@@ -80,7 +80,7 @@ flags for an unattended run, and the session resume. Every preset keeps a chat s
 | `mastracode`  | [Mastra Code](https://code.mastra.ai)                                        |
 
 Each preset needs the CLI's own MCP config.
-[Coding agent setup](https://github.com/croffasia/itsaplan/blob/main/docs/runner.md) holds
+[Coding agent setup](https://github.com/jpenner0/itsaplan/blob/main/docs/runner.md) holds
 that file, and the notes for each CLI.
 
 `--agent` on the command line has priority over the file, except over an `agents` entry
@@ -88,7 +88,7 @@ that names its own. The runner appends the arguments after `--` to the ones from
 preset:
 
 ```bash
-npx -y @itsaplan/runner --agent claude -- --model opus
+npx -y @jpenner0/itsaplan-runner --agent claude -- --model opus
 ```
 
 Write the same arguments in the file if a service manager starts the runner:
@@ -238,7 +238,7 @@ The runner reads `./itsaplan-runner.json`. For a different file, give the path a
 argument or in `ITSAPLAN_RUNNER_CONFIG`:
 
 ```bash
-npx -y @itsaplan/runner /path/to/config.json
+npx -y @jpenner0/itsaplan-runner /path/to/config.json
 ```
 
 The environment variables have priority over the file. The command-line options have
@@ -266,7 +266,7 @@ Set `agent` or `command`. With the environment you need no file at all:
 
 ```bash
 export ITSAPLAN_API_KEY=…
-npx -y @itsaplan/runner --agent claude
+npx -y @jpenner0/itsaplan-runner --agent claude
 ```
 
 ## What the coding agent receives

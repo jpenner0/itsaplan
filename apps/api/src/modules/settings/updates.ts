@@ -18,7 +18,7 @@ const FEED_TTL_MS = 30 * 60_000;
 
 // Fixed: an instance checks the project it is built from, so there is nothing to
 // configure.
-const FEED_URL = 'https://github.com/croffasia/itsaplan/releases.atom';
+const FEED_URL = 'https://github.com/jpenner0/itsaplan/releases.atom';
 
 const CHANGELOG_PATH = `${import.meta.dir}/../../../../../CHANGELOG.md`;
 

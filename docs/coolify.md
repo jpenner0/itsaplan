@@ -55,7 +55,7 @@ Use this to run a branch instead of a release. The server builds the images itse
 takes longer and needs more memory than pulling them.
 
 1. **New Resource → Public Repository**, then pick the server. Enter
-   `https://github.com/croffasia/itsaplan.git` and press **Check repository**.
+   `https://github.com/jpenner0/itsaplan.git` and press **Check repository**.
 2. Set **Build Pack** to `Docker Compose`, **Base Directory** to `/`, and **Docker Compose
    Location** to `/docker-compose.coolify.yml`, then press **Continue**.
 3. In **Configuration → Git Source**, set **Branch**, leave **Commit SHA** as `HEAD`, and press

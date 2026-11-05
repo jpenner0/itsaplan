@@ -188,7 +188,7 @@ function configFile(preset: {
   );
 }
 
-export const RUN_COMMAND = 'npx -y @itsaplan/runner';
+export const RUN_COMMAND = 'npx -y @jpenner0/itsaplan-runner';
 
 export function AgentRunnerHelpSheet() {
   const t = useTranslations('teams.agents');

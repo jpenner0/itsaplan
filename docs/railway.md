@@ -7,7 +7,7 @@ hostnames; everything else is wired by the template.
 
 The template provisions six resources: Postgres with a volume, a storage bucket for
 attachments, and the api, web, worker and bot services, each running its image from
-`ghcr.io/croffasia/itsaplan-<service>`. Nothing is built: a deploy pulls the `latest` tag,
+`ghcr.io/jpenner0/itsaplan-<service>`. Nothing is built: a deploy pulls the `latest` tag,
 which is the newest published release.
 
 ## 1. A domain of your own is required

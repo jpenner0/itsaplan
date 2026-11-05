@@ -1,5 +1,5 @@
 {
-  "name": "@itsaplan/runner",
+  "name": "@jpenner0/itsaplan-runner",
   "version": "0.8.0",
   "description": "Runs an Itsaplan external agent's queued tasks and answers its chat on your own machine",
   "keywords": [
@@ -23,13 +23,13 @@
     "omp",
     "mastracode"
   ],
-  "homepage": "https://github.com/croffasia/itsaplan/tree/main/packages/runner#readme",
+  "homepage": "https://github.com/jpenner0/itsaplan/tree/main/packages/runner#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/croffasia/itsaplan.git",
+    "url": "git+https://github.com/jpenner0/itsaplan.git",
     "directory": "packages/runner"
   },
-  "bugs": "https://github.com/croffasia/itsaplan/issues",
+  "bugs": "https://github.com/jpenner0/itsaplan/issues",
   "license": "Apache-2.0",
   "type": "module",
   "bin": {

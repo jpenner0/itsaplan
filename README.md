@@ -17,9 +17,9 @@ If It's a Plan looks useful to you, star the repo ⭐ and
 <a href="https://itsaplan.dev/pro"><img src="assets/pro-button.svg" alt="Deploy Pro version" height="40" /></a>
 
 [![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![CI](https://github.com/croffasia/itsaplan/actions/workflows/ci.yml/badge.svg)](https://github.com/croffasia/itsaplan/actions/workflows/ci.yml)
-[![Stars](https://img.shields.io/github/stars/croffasia/itsaplan?style=flat)](https://github.com/croffasia/itsaplan/stargazers)
-[![Last commit](https://img.shields.io/github/last-commit/croffasia/itsaplan)](https://github.com/croffasia/itsaplan/commits/main)
+[![CI](https://github.com/jpenner0/itsaplan/actions/workflows/ci.yml/badge.svg)](https://github.com/jpenner0/itsaplan/actions/workflows/ci.yml)
+[![Stars](https://img.shields.io/github/stars/jpenner0/itsaplan?style=flat)](https://github.com/jpenner0/itsaplan/stargazers)
+[![Last commit](https://img.shields.io/github/last-commit/jpenner0/itsaplan)](https://github.com/jpenner0/itsaplan/commits/main)
 
 <a href="https://trendshift.io/repositories/95056?utm_source=repository-badge&utm_medium=badge&utm_campaign=badge-repository-95056" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/95056" alt="#8 Repository of the Day on GitHub Trending" width="250" height="55"/></a>
 <a href="https://trendshift.io/repositories/95056?utm_source=trendshift-badge&utm_medium=badge&utm_campaign=badge-trendshift-95056" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/95056/daily?language=TypeScript" alt="#13 TypeScript Repository of the Day on Trendshift" width="250" height="55"/></a>
@@ -82,7 +82,7 @@ release.
 - Internal agents run on the instance. Configure the model, system prompt, tools, and
   reusable skills, written inline or imported from a GitHub repository
 - External agents run on your own machine, under your own account. Install
-  [`@itsaplan/runner`](packages/runner) and it gives every task to Claude Code, Codex,
+  [`@jpenner0/itsaplan-runner`](packages/runner) and it gives every task to Claude Code, Codex,
   Antigravity CLI, GitHub Copilot CLI, opencode, or any command that reads stdin
 - Or control the run queue through the API and do the work in your own implementation
 - A run starts on an @mention in a comment on an issue or a document, on an assignment, or
@@ -156,7 +156,7 @@ explains why, and what to do after the deploy.
 Requirements: Docker and [Bun](https://bun.sh).
 
 ```bash
-git clone https://github.com/croffasia/itsaplan.git
+git clone https://github.com/jpenner0/itsaplan.git
 cd itsaplan
 bun install
 bun run setup   # answer "Try it"
@@ -173,7 +173,7 @@ needed. Run it again later to restart the instance; the data stays.
 - [Deploy on Coolify](docs/coolify.md) — the same stack on a Coolify instance
 - [Deploy on Kubernetes](docs/helm.md) — Helm chart for any Kubernetes cluster
 - [Local development](docs/development.md) — running the apps on the host, and the tests
-- [Coding agent setup](docs/runner.md) — the config for each CLI that `@itsaplan/runner` runs
+- [Coding agent setup](docs/runner.md) — the config for each CLI that `@jpenner0/itsaplan-runner` runs
 - [Agent endpoint](docs/agent-endpoint.md) — the instance sends an external agent's tasks to a URL that you run, such as an AWS Lambda function
 
 ## Built with
@@ -197,17 +197,17 @@ gets merged. Be kind; we follow a [Code of Conduct](CODE_OF_CONDUCT.md).
 
 Thank you to everyone who has contributed to It's a Plan:
 
-<a href="https://github.com/croffasia/itsaplan/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=croffasia/itsaplan&columns=20" alt="Contributors" />
+<a href="https://github.com/jpenner0/itsaplan/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=jpenner0/itsaplan&columns=20" alt="Contributors" />
 </a>
 
-Not ready to contribute code? [Star the repo](https://github.com/croffasia/itsaplan) and share
+Not ready to contribute code? [Star the repo](https://github.com/jpenner0/itsaplan) and share
 it — it is the simplest way to help the project grow.
 
 ## Security
 
 Found a vulnerability? Report it privately through
-[GitHub Security Advisories](https://github.com/croffasia/itsaplan/security/advisories/new),
+[GitHub Security Advisories](https://github.com/jpenner0/itsaplan/security/advisories/new),
 not a public issue, so we can fix it first. Details in [SECURITY.md](SECURITY.md).
 
 ## License
