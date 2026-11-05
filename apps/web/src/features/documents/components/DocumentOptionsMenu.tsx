@@ -8,6 +8,7 @@ import {
   Copy,
   Download,
   Expand,
+  FolderInput,
   History,
   LockKeyhole,
   MoreHorizontal,
@@ -28,8 +29,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useTranslations } from 'next-intl';
 import DocumentExportDialog from './DocumentExportDialog';
+import DocumentMarkdownImportDialog from './DocumentMarkdownImportDialog';
 
 export default function DocumentOptionsMenu({
+  projectKey,
   document,
   title,
   content,
@@ -51,6 +54,7 @@ export default function DocumentOptionsMenu({
   onDelete,
   onOpenHistory,
 }: {
+  projectKey: string;
   document: ProjectDocument;
   title: string;
   content: () => string;
@@ -74,6 +78,7 @@ export default function DocumentOptionsMenu({
 }) {
   const t = useTranslations('documents');
   const [exportOpen, setExportOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const archived = document.archivedAt !== null;
 
   const copyMarkdown = useCallback(async () => {
@@ -159,6 +164,12 @@ export default function DocumentOptionsMenu({
                   {t('addSubpage')}
                 </DropdownMenuItem>
               )}
+              {!archived && (
+                <DropdownMenuItem onSelect={() => setImportOpen(true)}>
+                  <FolderInput />
+                  {t('importMarkdown')}
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem disabled={busy} onSelect={onDuplicate}>
                 <Copy />
                 {t('makeCopy')}
@@ -212,6 +223,14 @@ export default function DocumentOptionsMenu({
         richHtml={richHtml}
         onOpenChange={setExportOpen}
       />
+      {canCreate && (
+        <DocumentMarkdownImportDialog
+          open={importOpen}
+          projectKey={projectKey}
+          parentId={document.id}
+          onOpenChange={setImportOpen}
+        />
+      )}
     </>
   );
 }

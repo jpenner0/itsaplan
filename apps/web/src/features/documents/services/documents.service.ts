@@ -28,6 +28,7 @@ import {
   listDocumentAssets,
   uploadDocumentAsset,
   deleteDocumentAsset,
+  importMarkdownDocuments,
   restoreDocumentRevision,
   updateDocument,
   deleteDocument,
@@ -161,6 +162,18 @@ export function useCreateDocument(projectKey: string | null) {
       if (!projectKey) return;
       qc.setQueryData<ProjectDocument>(qk.document(projectKey, document.id), document);
       invalidateLists(qc, projectKey);
+    },
+  });
+}
+
+export function useImportMarkdownDocuments(projectKey: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ file, parentId }: { file: File; parentId: number | null }) =>
+      importMarkdownDocuments(projectKey!, file, parentId),
+    meta: { suppressErrorToast: true },
+    onSuccess: () => {
+      if (projectKey) invalidateLists(qc, projectKey);
     },
   });
 }

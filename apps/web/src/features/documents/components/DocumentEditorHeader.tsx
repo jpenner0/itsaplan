@@ -203,6 +203,7 @@ export default function DocumentEditorHeader({
           <PanelRight />
         </Button>
         <DocumentOptionsMenu
+          projectKey={projectKey}
           document={document}
           title={title}
           content={content}
