@@ -173,7 +173,12 @@ async function enable(ctx: Ctx) {
   return response.data!;
 }
 
-async function deliver(ctx: Ctx, event: 'issues' | 'issue_comment', payload: Row) {
+async function send(
+  ctx: Ctx,
+  event: 'issues' | 'issue_comment',
+  payload: Row,
+  deliveryId: string = crypto.randomUUID(),
+) {
   const body = JSON.stringify({ ...payload, repository: { full_name: 'acme/site' } });
   const signature = `sha256=${createHmac('sha256', ctx.secret).update(body).digest('hex')}`;
   const res = await app.handle(
@@ -183,13 +188,19 @@ async function deliver(ctx: Ctx, event: 'issues' | 'issue_comment', payload: Row
         'content-type': 'application/json',
         'x-github-event': event,
         'x-hub-signature-256': signature,
-        'x-github-delivery': crypto.randomUUID(),
+        'x-github-delivery': deliveryId,
       },
       body,
     }),
   );
+  const data = (await res.json().catch(() => null)) as { handled?: string } | null;
+  return { status: res.status, data };
+}
+
+async function deliver(ctx: Ctx, event: 'issues' | 'issue_comment', payload: Row) {
+  const res = await send(ctx, event, payload);
   expect(res.status).toBe(200);
-  return res.json();
+  return res.data!;
 }
 
 function issueEvent(ctx: Ctx, action: string, issue: Row, extra: Row = {}) {
@@ -585,6 +596,53 @@ describe('GitHub issue sync, inbound', () => {
     ]);
     const notifications = (await ctx.asOwner.notifications.get({ query: {} })).data!;
     expect(JSON.stringify(notifications)).not.toContain('mentioned');
+  });
+
+  it('processes a burst of deliveries for one repository without exhausting the pool', async () => {
+    const ctx = await setup(fake);
+    fake.put(ghIssue(1, { title: 'Task' }));
+    await enable(ctx);
+    const ids = Array.from({ length: 30 }, (_, index) => 1000 + index);
+
+    const results = await Promise.all([
+      ...ids.map((id) =>
+        send(ctx, 'issue_comment', {
+          action: 'created',
+          issue: { number: 1 },
+          comment: ghComment(id, 1),
+        }),
+      ),
+      ctx.asOwner.projects({ projectKey: 'MKT' }).get(),
+    ]);
+
+    expect(results.map((result) => result.status)).toEqual(ids.map(() => 200).concat(200));
+    const issue = await issueByTitle(ctx, 'Task');
+    const feed = await ctx.asOwner
+      .issues({ issueId: issue.id })
+      .feed.get({ query: { filter: 'comments', limit: 100 } });
+    expect(feed.data!.items.length).toBe(ids.length);
+  }, 30_000);
+
+  it('processes the redelivery of an issue delivery that failed', async () => {
+    const ctx = await setup(fake);
+    await enable(ctx);
+    const unstarted = columnOf(ctx, 'unstarted');
+    const columns = ctx.asOwner.projects({ projectKey: 'MKT' }).columns({ columnId: unstarted });
+    await columns.patch({ wipLimit: 1, wipMode: 'hard' });
+    await ctx.asOwner
+      .projects({ projectKey: 'MKT' })
+      .issues.post({ columnId: unstarted, title: 'Local' });
+    const deliveryId = crypto.randomUUID();
+    const payload = { action: 'opened', issue: ghIssue(5, { title: 'Report' }) };
+
+    const failed = await send(ctx, 'issues', payload, deliveryId);
+    expect(failed.status).not.toBe(200);
+
+    await columns.patch({ wipLimit: null });
+    const redelivered = await send(ctx, 'issues', payload, deliveryId);
+
+    expect(redelivered).toMatchObject({ status: 200, data: { handled: 'issue' } });
+    expect((await listIssues(ctx)).map((item) => item.title).sort()).toEqual(['Local', 'Report']);
   });
 
   it('catches up with missed changes from the watermark on reconcile', async () => {
