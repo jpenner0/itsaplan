@@ -17,8 +17,6 @@
       "cron": "按定时",
       "status": "工作项进入某状态时"
     },
-    "moreTypes": "Cloud 和 Pro 中的更多触发方式",
-    "moreTypesHint": "新工作项、指派、标签和评论",
     "taskOptional": "任务（可选）",
     "issueTaskPlaceholder": "在工作项描述中写下验收标准。",
     "issueTaskHint": "代理会收到该工作项及其发生的变化。可补充要对它做什么。",
@@ -502,8 +500,6 @@
     "import": "导入",
     "source": "来源",
     "sourceHint": "选择导入来源。",
-    "moreSources": "Cloud 和 Pro 中有更多",
-    "moreSourcesHint": "Cloud 和自托管 Pro 支持更多导入来源。",
     "connect": "连接 Plane",
     "connectHint": "输入自托管的 Plane 实例地址以检查连接并加载其项目。",
     "baseUrl": "Plane 地址",

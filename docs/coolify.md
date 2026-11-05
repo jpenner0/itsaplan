@@ -8,16 +8,8 @@ pasted compose file and two domains.
 
 **New Resource → Docker Compose Empty**, then pick the server to deploy on.
 
-Paste the whole of one file into **Docker Compose file** and press **Save**:
-
-| Edition             | File                                                                       |
-| ------------------- | -------------------------------------------------------------------------- |
-| Pro (recommended)   | [`docker-compose.coolify-pro.yml`](../docker-compose.coolify-pro.yml)       |
-| Community           | [`docker-compose.coolify-images.yml`](../docker-compose.coolify-images.yml) |
-
-Without a license key the Pro images run as Community does. To unlock the Pro features later,
-enter the key in god mode, under **License**. The stack stays the same, with no move to
-another compose file.
+Paste the whole of [`docker-compose.coolify-images.yml`](../docker-compose.coolify-images.yml)
+into **Docker Compose file** and press **Save**.
 
 ## 2. Set the domains
 

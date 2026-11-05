@@ -639,8 +639,6 @@
   "workspace": {
     "rail": "Воркспейси",
     "create": "Новий воркспейс",
-    "createUnavailableTitle": "Більше воркспейсів",
-    "createUnavailableHint": "Більше воркспейсів на людину доступно в Cloud і в Pro-версії для власного сервера.",
     "general": "Загальні",
     "roles": {
       "owner": "Власник",

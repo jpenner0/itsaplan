@@ -52,31 +52,5 @@
     "title": "Over time",
     "description": "Tokens and cost across the period.",
     "empty": "No usage in this period"
-  },
-  "preview": {
-    "title": "More in Cloud and Pro",
-    "description": "Spend by person and trigger, run time and tool calls. Available in Cloud and self-hosted Pro.",
-    "hide": "Hide",
-    "show": "Show",
-    "byPerson": {
-      "title": "By person",
-      "description": "Who started runs in a chat or with a mention."
-    },
-    "byTrigger": {
-      "title": "By trigger",
-      "description": "Chat, mention, schedule or issue event."
-    },
-    "bySchedule": {
-      "title": "By schedule",
-      "description": "What each schedule spent."
-    },
-    "tools": {
-      "title": "Tools",
-      "description": "Tool calls and how many failed."
-    },
-    "latency": {
-      "title": "Run time",
-      "description": "Median and 95th percentile per day."
-    }
   }
 }

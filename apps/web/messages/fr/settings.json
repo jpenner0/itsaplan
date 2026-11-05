@@ -17,8 +17,6 @@
       "cron": "Selon une planification",
       "status": "Quand un ticket entre dans un état"
     },
-    "moreTypes": "Plus de déclencheurs dans Cloud et Pro",
-    "moreTypesHint": "Nouveaux tickets, assignations, étiquettes et commentaires",
     "taskOptional": "Tâche (facultatif)",
     "issueTaskPlaceholder": "Rédige les critères d'acceptation dans la description du ticket.",
     "issueTaskHint": "L'agent reçoit le ticket et ce qui lui est arrivé. Ajoute ce qu'il doit en faire.",
@@ -502,8 +500,6 @@
     "import": "Importer",
     "source": "Source",
     "sourceHint": "Choisissez la source de l’import.",
-    "moreSources": "Plus avec Cloud et Pro",
-    "moreSourcesHint": "D'autres sources d'import sont disponibles dans Cloud et Pro auto-hébergé.",
     "connect": "Se connecter à Plane",
     "connectHint": "Indiquez une instance Plane auto-hébergée pour vérifier la connexion et charger ses projets.",
     "baseUrl": "URL de Plane",

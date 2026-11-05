@@ -639,8 +639,6 @@
   "workspace": {
     "rail": "Workspace",
     "create": "Workspace baru",
-    "createUnavailableTitle": "Lebih banyak workspace",
-    "createUnavailableHint": "Lebih banyak workspace per orang tersedia di Cloud dan Pro self-hosted.",
     "general": "Umum",
     "roles": {
       "owner": "Pemilik",

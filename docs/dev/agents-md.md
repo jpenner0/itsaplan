@@ -25,7 +25,6 @@ a wrong line. So these files contain only what an agent would get wrong without 
 | Steps for a rare procedure                                | `docs/dev/<topic>.md`                    |
 | A workflow an agent runs by name                          | `.agents/skills/`                        |
 | Why one line of code looks wrong                          | a comment on that line                   |
-| An extension point for the Pro build                      | `SEAMS.md` in the private Pro repository |
 | A fix, a feature, what changed                            | the commit message                       |
 
 The routing row goes in the Docs table of the root `AGENTS.md`, or in the area file when only that

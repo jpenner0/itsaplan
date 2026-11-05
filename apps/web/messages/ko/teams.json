@@ -639,8 +639,6 @@
   "workspace": {
     "rail": "워크스페이스",
     "create": "새 워크스페이스",
-    "createUnavailableTitle": "워크스페이스 추가",
-    "createUnavailableHint": "사용자당 여러 워크스페이스는 Cloud 및 셀프 호스팅 Pro에서 사용할 수 있습니다.",
     "general": "일반",
     "roles": {
       "owner": "소유자",

@@ -639,8 +639,6 @@
   "workspace": {
     "rail": "Espacios de trabajo",
     "create": "Nuevo espacio de trabajo",
-    "createUnavailableTitle": "Más espacios de trabajo",
-    "createUnavailableHint": "Más espacios de trabajo por persona están disponibles en Cloud y en Pro autoalojado.",
     "general": "General",
     "roles": {
       "owner": "Propietario",

@@ -639,8 +639,6 @@
   "workspace": {
     "rail": "工作区",
     "create": "新建工作区",
-    "createUnavailableTitle": "更多工作区",
-    "createUnavailableHint": "每人拥有多个工作区的功能可在 Cloud 和自托管 Pro 版中使用。",
     "general": "常规",
     "roles": {
       "owner": "所有者",

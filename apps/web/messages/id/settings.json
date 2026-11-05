@@ -17,8 +17,6 @@
       "cron": "Sesuai jadwal",
       "status": "Saat issue masuk ke status"
     },
-    "moreTypes": "Lebih banyak pemicu di Cloud dan Pro",
-    "moreTypesHint": "Issue baru, penugasan, label, dan komentar",
     "taskOptional": "Tugas (opsional)",
     "issueTaskPlaceholder": "Tulis kriteria penerimaan di deskripsi issue.",
     "issueTaskHint": "Agen menerima issue dan apa yang terjadi padanya. Tambahkan apa yang harus dilakukan.",
@@ -502,8 +500,6 @@
     "import": "Impor",
     "source": "Sumber",
     "sourceHint": "Pilih sumber impor.",
-    "moreSources": "Lebih banyak di Cloud dan Pro",
-    "moreSourcesHint": "Sumber impor lainnya tersedia di Cloud dan Pro self-hosted.",
     "connect": "Hubungkan ke Plane",
     "connectHint": "Masukkan instans Plane self-hosted untuk memeriksa koneksi dan memuat proyeknya.",
     "baseUrl": "URL Plane",

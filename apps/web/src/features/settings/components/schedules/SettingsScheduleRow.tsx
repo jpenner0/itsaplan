@@ -25,7 +25,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { PRO_URL } from '@/utils/app';
 import SettingsIconButton from '../SettingsIconButton';
 import { useSettingsCan } from '../../context/settingsPermission';
 import { formatUtc } from '../../utils/cronSchedule';
@@ -104,17 +103,13 @@ export function SettingsScheduleRow({
       <TableCell className="px-3 py-4 align-top whitespace-normal">
         <SettingsScheduleWhen schedule={schedule} columnName={columnName} />
         {!schedule.supported && (
-          <a
-            href={PRO_URL}
-            target="_blank"
-            rel="noreferrer"
+          <span
             title={t('unavailableHint')}
-            className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-amber-600 hover:underline dark:text-amber-500"
-            onClick={(e) => e.stopPropagation()}
+            className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-500"
           >
             <Lock className="size-3.5" />
             {t('unavailable')}
-          </a>
+          </span>
         )}
       </TableCell>
       <TableCell className="px-3 py-4 align-top text-sm whitespace-nowrap tabular-nums">

@@ -639,8 +639,6 @@
   "workspace": {
     "rail": "فضاهای کار",
     "create": "فضای کار جدید",
-    "createUnavailableTitle": "فضاهای کار بیشتر",
-    "createUnavailableHint": "فضاهای کار بیشتر برای هر نفر در Cloud و نسخه Pro خودمیزبان در دسترس است.",
     "general": "عمومی",
     "roles": {
       "owner": "مالک",

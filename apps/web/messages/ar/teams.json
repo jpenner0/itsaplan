@@ -639,8 +639,6 @@
   "workspace": {
     "rail": "مساحات العمل",
     "create": "مساحة عمل جديدة",
-    "createUnavailableTitle": "مساحات عمل أكتر",
-    "createUnavailableHint": "مساحات عمل أكتر لكل شخص متاحة في Cloud وفي نسخة Pro للاستضافة الذاتية.",
     "general": "عام",
     "roles": {
       "owner": "المالك",

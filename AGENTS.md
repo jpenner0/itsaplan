@@ -69,11 +69,10 @@ Then propose a commit message in chat. Never run `git commit` or `git push` unle
 - web reads `API_URL` and the legal document URLs from its process at startup. Never use
   `NEXT_PUBLIC_*` for them: `next build` inlines those, and the image then works for one instance.
 - A new environment variable goes in `.env.example`. If a service needs it, also add it to
-  `docker-compose.yml`, `docker-compose.pro.yml`, `docker-compose.coolify.yml`,
-  `docker-compose.coolify-images.yml` and `docker-compose.coolify-pro.yml`.
+  `docker-compose.yml`, `docker-compose.coolify.yml` and `docker-compose.coolify-images.yml`.
 - Add that variable to the Helm chart too: `values.yaml`, `templates/configmap.yaml` or
   `templates/secret.yaml`, and the values table in `charts/itsaplan/README.md`.
-- A deploy stack change usually needs an edit in the same five compose files and the Helm chart.
+- A deploy stack change usually needs an edit in the same three compose files and the Helm chart.
 - Never add `image:` to `docker-compose.coolify.yml`: with both `image:` and `build:` Coolify
   still builds and stops making rollback images.
 - Run exactly one `bot` replica. It uses Telegram long polling.

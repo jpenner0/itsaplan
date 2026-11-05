@@ -639,8 +639,6 @@
   "workspace": {
     "rail": "Çalışma Alanları",
     "create": "Yeni çalışma alanı",
-    "createUnavailableTitle": "Daha fazla çalışma alanı",
-    "createUnavailableHint": "Kişi başına daha fazla çalışma alanı Cloud ve Pro sürümlerinde mevcuttur.",
     "general": "Genel",
     "roles": {
       "owner": "Sahip",

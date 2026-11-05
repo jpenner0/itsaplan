@@ -52,31 +52,5 @@
     "title": "Ao longo do tempo",
     "description": "Tokens e custo no período.",
     "empty": "Nenhum consumo neste período"
-  },
-  "preview": {
-    "title": "Mais no Cloud e no Pro",
-    "description": "Gastos por pessoa e gatilho, duração das execuções e chamadas de ferramentas. Disponível no Cloud e no Pro auto-hospedado.",
-    "hide": "Ocultar",
-    "show": "Mostrar",
-    "byPerson": {
-      "title": "Por pessoa",
-      "description": "Quem iniciou execuções em um chat ou com uma menção."
-    },
-    "byTrigger": {
-      "title": "Por gatilho",
-      "description": "Chat, menção, agendamento ou evento de tarefa."
-    },
-    "bySchedule": {
-      "title": "Por agendamento",
-      "description": "Quanto cada agendamento gastou."
-    },
-    "tools": {
-      "title": "Ferramentas",
-      "description": "Chamadas de ferramentas e quantas falharam."
-    },
-    "latency": {
-      "title": "Duração",
-      "description": "Mediana e percentil 95 por dia."
-    }
   }
 }

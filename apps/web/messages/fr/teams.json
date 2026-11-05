@@ -639,8 +639,6 @@
   "workspace": {
     "rail": "Espaces de travail",
     "create": "Nouvel espace de travail",
-    "createUnavailableTitle": "Plus d'espaces de travail",
-    "createUnavailableHint": "Plusieurs espaces de travail par personne sont disponibles dans Cloud et dans Pro auto-hébergé.",
     "general": "Général",
     "roles": {
       "owner": "Propriétaire",
