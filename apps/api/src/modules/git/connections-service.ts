@@ -1,13 +1,22 @@
-import { db, gitManagedRepository, gitProviderConnection, project } from '@repo/db';
+import {
+  db,
+  gitManagedRepository,
+  gitProviderConnection,
+  issueDevelopmentLink,
+  project,
+  user,
+} from '@repo/db';
 import { decryptSecret, encryptSecret } from '@repo/crypto';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { HttpError, iso } from '#shared/lib';
+import { commentHeader } from '#modules/issue-sync/normalize';
 import {
   createProviderPullRequest,
   deleteProviderWebhook,
   createPullRequestComment,
   getProviderAccount,
   getProviderPullRequest,
+  getProviderPullRequestDiff,
   getProviderRepository,
   installProviderWebhook,
   listProviderBranches,
@@ -592,4 +601,116 @@ export async function postPullRequestLinkback(
     body,
   );
   return true;
+}
+
+export interface LinkedPullRequestDiffDto {
+  repository: string;
+  number: number;
+  url: string | null;
+  diff: string;
+  truncated: boolean;
+}
+
+export interface LinkedPullRequestCommentDto {
+  repository: string;
+  number: number;
+  url: string | null;
+}
+
+// Bounds the diff an agent reads, so a large pull request neither fills its context
+// nor the api's memory.
+export const PULL_REQUEST_DIFF_MAX_BYTES = 100_000;
+
+// The pull request of one development link of this issue, in a repository the project
+// manages, with the token of that repository's team connection. Any other pull request
+// is out of reach, whatever number is asked for.
+async function linkedPullRequest(projectId: number, issueId: number, linkId: number) {
+  const [link] = await db
+    .select({
+      provider: issueDevelopmentLink.provider,
+      repository: issueDevelopmentLink.repository,
+      number: issueDevelopmentLink.number,
+      url: issueDevelopmentLink.url,
+    })
+    .from(issueDevelopmentLink)
+    .where(
+      and(
+        eq(issueDevelopmentLink.id, linkId),
+        eq(issueDevelopmentLink.issueId, issueId),
+        eq(issueDevelopmentLink.kind, 'pull_request'),
+      ),
+    )
+    .limit(1);
+  if (!link || link.number == null) throw new HttpError(404, 'Pull request link not found');
+  if (link.provider !== 'github')
+    throw new HttpError(400, 'Reading and commenting on pull requests supports GitHub only');
+  const [row] = await db
+    .select({
+      baseUrl: gitProviderConnection.baseUrl,
+      ciphertext: gitProviderConnection.ciphertext,
+      iv: gitProviderConnection.iv,
+      authTag: gitProviderConnection.authTag,
+      externalId: gitManagedRepository.externalId,
+      fullName: gitManagedRepository.fullName,
+      webUrl: gitManagedRepository.webUrl,
+    })
+    .from(gitManagedRepository)
+    .innerJoin(
+      gitProviderConnection,
+      eq(gitManagedRepository.connectionId, gitProviderConnection.id),
+    )
+    .where(
+      and(
+        eq(gitManagedRepository.projectId, projectId),
+        eq(gitManagedRepository.fullName, link.repository),
+        eq(gitManagedRepository.status, 'connected'),
+        eq(gitProviderConnection.provider, 'github'),
+      ),
+    )
+    .limit(1);
+  if (!row) throw new HttpError(404, 'Managed repository not found');
+  return {
+    input: { provider: 'github' as const, baseUrl: row.baseUrl, token: decryptSecret(row) },
+    repository: {
+      externalId: row.externalId,
+      fullName: row.fullName,
+      webUrl: row.webUrl,
+      private: false,
+    },
+    pullRequest: { repository: link.repository, number: link.number, url: link.url },
+  };
+}
+
+export async function getLinkedPullRequestDiff(
+  projectId: number,
+  issueId: number,
+  linkId: number,
+): Promise<LinkedPullRequestDiffDto> {
+  const linked = await linkedPullRequest(projectId, issueId, linkId);
+  const result = await getProviderPullRequestDiff(
+    linked.input,
+    linked.repository,
+    linked.pullRequest.number,
+    PULL_REQUEST_DIFF_MAX_BYTES,
+  );
+  return { ...linked.pullRequest, ...result };
+}
+
+// The team's token posts the comment, so its first line names who wrote it.
+export async function commentOnLinkedPullRequest(
+  projectId: number,
+  issueId: number,
+  linkId: number,
+  authorId: string,
+  body: string,
+): Promise<LinkedPullRequestCommentDto> {
+  const linked = await linkedPullRequest(projectId, issueId, linkId);
+  const [author] = await db.select({ name: user.name }).from(user).where(eq(user.id, authorId));
+  await createPullRequestComment(
+    linked.input,
+    linked.repository,
+    linked.pullRequest.number,
+    `${commentHeader(author?.name ?? 'Unknown', null)}${body}`,
+  );
+  return linked.pullRequest;
 }
