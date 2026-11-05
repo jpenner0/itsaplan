@@ -1,5 +1,5 @@
 import { db, gitManagedRepository, gitProviderConnection, issueSyncInbox } from '@repo/db';
-import { and, asc, eq, isNotNull, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, isNotNull, isNull, lt, lte, sql } from 'drizzle-orm';
 import { HttpError } from '#shared/lib';
 import { claimGitDelivery } from '#modules/git/service';
 import type { IssueCommentEvent, IssueEvent } from '#modules/git/providers';
@@ -20,6 +20,11 @@ import { loadSyncRepository, withRepositoryLock } from './service';
 
 type InboxEvent = IssueEvent | IssueCommentEvent;
 type InboxRow = typeof issueSyncInbox.$inferSelect;
+
+// A delivery the sync gave up on is kept this long for its last_error, then deleted, so
+// a repository whose deliveries keep failing, such as after a revoked token, does not
+// grow the table without a limit.
+const GIVEN_UP_RETENTION = sql`interval '30 days'`;
 
 // Repositories with a run started by a delivery that has not read the inbox yet. A
 // delivery for one of them needs no run of its own.
@@ -86,6 +91,14 @@ export async function queueIssueSyncEvent(
 // Run by the background job: applies the deliveries that are due, among them the ones
 // whose run met a busy repository. A repository another replica is syncing is skipped.
 export async function processIssueSyncInbox(): Promise<void> {
+  await db
+    .delete(issueSyncInbox)
+    .where(
+      and(
+        isNull(issueSyncInbox.nextAttemptAt),
+        lt(issueSyncInbox.receivedAt, sql`now() - ${GIVEN_UP_RETENTION}`),
+      ),
+    );
   const rows = await db
     .selectDistinct({ id: issueSyncInbox.managedRepositoryId })
     .from(issueSyncInbox)

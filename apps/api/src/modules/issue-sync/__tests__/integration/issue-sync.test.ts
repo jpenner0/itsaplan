@@ -8,7 +8,7 @@ import {
   issueSyncLink,
   projectSetting,
 } from '@repo/db';
-import { eq, sql } from 'drizzle-orm';
+import { eq, isNull, sql } from 'drizzle-orm';
 import { app } from '../../../../app';
 import { authedApi, type Api, createProject } from '#tests/helpers/app';
 import { signUpTestUser } from '#tests/helpers/auth';
@@ -789,7 +789,7 @@ describe('GitHub issue sync, inbound', () => {
     expect(await inboxRows()).toEqual([]);
   });
 
-  it('keeps a delivery it gave up on with its error, and goes on with the next ones', async () => {
+  it('keeps a delivery it gave up on with its error for 30 days, and goes on with the next ones', async () => {
     const ctx = await setup(fake);
     await enable(ctx);
     await fillUnstarted(ctx);
@@ -806,6 +806,13 @@ describe('GitHub issue sync, inbound', () => {
     expect(await inboxRows()).toMatchObject(kept);
     await processIssueSyncInbox();
     expect(await inboxRows()).toMatchObject(kept);
+
+    await db
+      .update(issueSyncInbox)
+      .set({ receivedAt: sql`now() - interval '31 days'` })
+      .where(isNull(issueSyncInbox.nextAttemptAt));
+    await processIssueSyncInbox();
+    expect(await inboxRows()).toEqual([]);
     expect((await listIssues(ctx)).map((item) => item.title)).toEqual(['Local']);
   });
 

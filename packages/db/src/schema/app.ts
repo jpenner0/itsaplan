@@ -2157,7 +2157,8 @@ export const issueSyncOutbox = pgTable(
 // stores a delivery and answers at once; a background run applies the rows of one
 // repository under its lock, in id order per external issue, and deletes each applied
 // row. A failed row is retried after next_attempt_at; NULL means the sync gave up on
-// it, and the row stays with its last_error. `event` is the parsed provider event.
+// it, and the row stays with its last_error for 30 days. `event` is the parsed provider
+// event.
 export const issueSyncInbox = pgTable(
   'issue_sync_inbox',
   {
