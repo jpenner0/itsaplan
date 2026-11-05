@@ -43,6 +43,8 @@ import {
   DocumentRevisionResponse,
   DocumentSummaryListResponse,
   documentVersionBody,
+  DocumentImportResponse,
+  importDocumentsBody,
   documentIssueParams,
   duplicateDocumentBody,
   issueDocumentsParams,
@@ -81,6 +83,8 @@ import {
   type DocumentAssetRow,
   documentAssetPath,
 } from './service';
+import { importMarkdownZip } from './import';
+import { MAX_ZIP_BYTES } from './markdown-import';
 import {
   addDocumentInitiativeLink,
   addDocumentIssueLink,
@@ -110,6 +114,10 @@ function documentAssetDto(
     embedUrl: `/protected-media${url}`,
   };
 }
+
+const MB = 1024 * 1024;
+// The multipart body adds its boundaries and headers to the file.
+const MAX_IMPORT_REQUEST_BYTES = MAX_ZIP_BYTES + MB;
 
 const OWNER_ONLY = 'Only the page owner can do this, or a project owner on a public page.';
 const EMBED_HINT =
@@ -659,6 +667,36 @@ export const documentRoutes = new Elysia({
         description:
           'Create a public or private Markdown page, optionally nested under another page.',
         ...mcpTool('create_document'),
+      },
+    },
+  )
+  .post(
+    '/projects/:projectKey/documents/import',
+    async ({ project, user, body, set }) => {
+      const result = await importMarkdownZip({
+        project,
+        userId: requireUser(user).id,
+        parentId: body.parentId ?? null,
+        data: new Uint8Array(await body.file.arrayBuffer()),
+      });
+      set.status = 201;
+      return result;
+    },
+    {
+      permission: ['documents', 'edit'],
+      feature: 'documents',
+      // Refuses an oversized upload by its declared length before the body is read.
+      parse: ({ request }) => {
+        if (Number(request.headers.get('content-length')) > MAX_IMPORT_REQUEST_BYTES) {
+          throw new HttpError(413, `The ZIP file exceeds the ${MAX_ZIP_BYTES / MB} MB limit`);
+        }
+      },
+      body: importDocumentsBody,
+      response: { 201: DocumentImportResponse, ...commonErrors, ...errors(413, 502) },
+      detail: {
+        summary: 'Import a Markdown folder',
+        description:
+          'Create pages from a ZIP of Markdown files: each file becomes a page and each folder a parent page. Referenced local files become page assets, relative links to imported .md files point to the new pages. All pages are created in one transaction, below parentId or at the top level, and follow the privacy of the parent.',
       },
     },
   )
