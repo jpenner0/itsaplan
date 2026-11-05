@@ -1,7 +1,7 @@
 import { db, gitManagedRepository, gitProviderConnection, issueSyncLink } from '@repo/db';
 import { decryptSecret } from '@repo/crypto';
 import { and, eq, ne, sql, type SQL } from 'drizzle-orm';
-import { HttpError, iso, pgErrorCode } from '#shared/lib';
+import { HttpError, intEnv, iso, pgErrorCode } from '#shared/lib';
 import { installProviderWebhook } from '#modules/git/connections-provider';
 import {
   listProviderIssueComments,
@@ -85,24 +85,85 @@ function toDto(row: {
   };
 }
 
-// Runs fn while holding the repository's lock, so one api replica at a time syncs a
-// repository. Without `wait`, a lock held elsewhere skips fn.
+// At most this many syncs run at once in one replica. A running sync holds a pooled
+// connection for its lock and takes more for its writes, so a cap below the pool size
+// keeps the pool from filling with lock holders that wait for a connection.
+const MAX_RUNNING_SYNCS = 2;
+// A caller waiting for a slot or a repository's lock holds no connection. It retries
+// the lock after LOCK_RETRY_MS and answers 503 once ISSUE_SYNC_LOCK_WAIT_MS has passed.
+const LOCK_RETRY_MS = 200;
+
+let runningSyncs = 0;
+const slotQueue: (() => void)[] = [];
+
+function repositoryBusy(): HttpError {
+  return new HttpError(503, 'The repository is busy with another issue sync');
+}
+
+async function acquireSyncSlot(deadline: number): Promise<void> {
+  if (runningSyncs < MAX_RUNNING_SYNCS) {
+    runningSyncs += 1;
+    return;
+  }
+  // The slot is handed over by releaseSyncSlot, so the count stays the same. A waiter
+  // leaves the queue at its deadline and is never handed a slot.
+  await new Promise<void>((resolve, reject) => {
+    const waiter = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    const timer = setTimeout(
+      () => {
+        slotQueue.splice(slotQueue.indexOf(waiter), 1);
+        reject(repositoryBusy());
+      },
+      Math.max(0, deadline - Date.now()),
+    );
+    slotQueue.push(waiter);
+  });
+}
+
+function releaseSyncSlot(): void {
+  const next = slotQueue.shift();
+  if (next) next();
+  else runningSyncs -= 1;
+}
+
+// Runs fn while holding the repository's advisory lock. Returns false without running
+// fn when another sync, in this replica or another one, holds the lock.
+async function tryRepositoryLock(
+  repositoryId: number,
+  deadline: number,
+  fn: () => Promise<void>,
+): Promise<boolean> {
+  await acquireSyncSlot(deadline);
+  try {
+    return await db.transaction(async (tx) => {
+      const [row] = await tx.execute<{ locked: boolean }>(
+        sql`select pg_try_advisory_xact_lock(${SYNC_LOCK_NS}, ${repositoryId}) as locked`,
+      );
+      if (!row?.locked) return false;
+      await runAsIssueSync(fn);
+      return true;
+    });
+  } finally {
+    releaseSyncSlot();
+  }
+}
+
+// One sync of a repository at a time across replicas. Without `wait`, a held lock skips
+// fn; with it, the caller retries until its deadline.
 export async function withRepositoryLock(
   repositoryId: number,
   wait: boolean,
   fn: () => Promise<void>,
 ): Promise<void> {
-  await db.transaction(async (tx) => {
-    if (wait) {
-      await tx.execute(sql`select pg_advisory_xact_lock(${SYNC_LOCK_NS}, ${repositoryId})`);
-    } else {
-      const [row] = await tx.execute<{ locked: boolean }>(
-        sql`select pg_try_advisory_xact_lock(${SYNC_LOCK_NS}, ${repositoryId}) as locked`,
-      );
-      if (!row?.locked) return;
-    }
-    await runAsIssueSync(fn);
-  });
+  const deadline = Date.now() + intEnv('ISSUE_SYNC_LOCK_WAIT_MS', 60_000);
+  while (!(await tryRepositoryLock(repositoryId, deadline, fn))) {
+    if (!wait) return;
+    if (Date.now() >= deadline) throw repositoryBusy();
+    await Bun.sleep(LOCK_RETRY_MS);
+  }
 }
 
 const enabledRepository = (id: number) =>
