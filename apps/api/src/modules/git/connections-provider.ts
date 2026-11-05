@@ -179,10 +179,11 @@ export function providerErrorMessage(
   return `${label} request failed with status ${status}.`;
 }
 
-async function providerRequest(
+// `tolerate` lists extra statuses the caller handles itself instead of getting an error.
+export async function providerRequest(
   input: ProviderConnectionInput,
   path: string,
-  init: RequestInit & { allowMissing?: boolean } = {},
+  init: RequestInit & { allowMissing?: boolean; tolerate?: number[] } = {},
 ): Promise<Response> {
   const headers = providerHeaders(input.provider, input.token);
   if (init.body !== undefined) headers.set('content-type', 'application/json');
@@ -202,7 +203,7 @@ async function providerRequest(
     );
   }
   const missing = response.status === 404 && (init.method === 'DELETE' || init.allowMissing);
-  if (!response.ok && !missing) {
+  if (!response.ok && !missing && !init.tolerate?.includes(response.status)) {
     const body = record(
       await response
         .clone()
@@ -417,7 +418,7 @@ export async function getProviderRepository(
   return repository;
 }
 
-function githubRepoPath(fullName: string): string {
+export function githubRepoPath(fullName: string): string {
   const parts = fullName.split('/');
   if (parts.length !== 2 || parts.some((part) => !part))
     throw new HttpError(400, 'Invalid repository name');
@@ -812,7 +813,7 @@ function providerWebhookApi(
     body: (create) => ({
       ...(create ? { name: 'web' } : {}),
       active: true,
-      events: ['pull_request', 'check_run', 'create', 'delete'],
+      events: ['pull_request', 'check_run', 'create', 'delete', 'issues', 'issue_comment'],
       config: { url: payloadUrl, content_type: 'json', insecure_ssl: '0', secret },
     }),
   };
