@@ -41,7 +41,9 @@ async function receive({
 
   const event = provider.parse(payload, headers);
   if (!event) return { ok: true, handled: 'ignored' };
-  if (!found.settings.enabled) return { ok: true, handled: 'disabled' };
+  // Issue events follow the repository's own issue sync switch.
+  const issueEvent = event.kind === 'issue' || event.kind === 'issue_comment';
+  if (!found.settings.enabled && !issueEvent) return { ok: true, handled: 'disabled' };
   // A provider sends a unique id per delivery and reuses it on redelivery; an id
   // seen before means a replay, which must not repeat its side effects.
   const deliveryId = provider.deliveryId(headers);

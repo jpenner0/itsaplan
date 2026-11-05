@@ -13,9 +13,12 @@ import {
   createGitProviderConnectionBody,
   gitManagedRepositoryParams,
   gitProviderConnectionParams,
+  IssueSyncSettingsResponse,
   teamGitProviderConnectionParams,
   updateGitSettingsBody,
+  updateIssueSyncBody,
 } from './model';
+import { updateIssueSyncSettings } from '#modules/issue-sync/service';
 import { getOrCreateGitSettings, regenerateGitSecret, updateGitSettings } from './service';
 import {
   connectGitProvider,
@@ -174,6 +177,23 @@ export const gitSettingsRoutes = new Elysia({
         summary: 'Disconnect a repository and remove its managed webhook',
         description:
           'Delete the repository connection and remove the webhook that Plan installed at the provider.',
+      },
+    },
+  )
+  .patch(
+    '/projects/:projectKey/settings/git/connections/:connectionId/repositories/:repositoryId/issue-sync',
+    ({ project, params, body }) =>
+      updateIssueSyncSettings(project.id, params.connectionId, params.repositoryId, body),
+    {
+      permission: ['repositories', 'edit'],
+      params: gitManagedRepositoryParams,
+      body: updateIssueSyncBody,
+      response: { 200: IssueSyncSettingsResponse, ...commonErrors, ...errors(409, 502) },
+      detail: {
+        summary: 'Turn issue sync of a repository on or off',
+        description:
+          'Sync the issues of a GitHub repository with this project. Turning it on imports the open ' +
+          'issues; turning it off removes the links and keeps the issues on both sides.',
       },
     },
   );

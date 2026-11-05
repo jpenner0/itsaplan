@@ -21,6 +21,7 @@ import type { GitEvent, GitProviderKey, PullRequestEvent } from './providers';
 import { columnStateTypes, firstCompletedColumnId, type GitSettings } from './service';
 import { postPullRequestLinkback } from './connections-service';
 import { issueWebPath } from '#modules/teams/ref';
+import { handleIssueSyncEvent } from '#modules/issue-sync/service';
 
 // Stores normalized repository events and applies pull request automation:
 // - a pull request merged into the repository's default branch moves the issues
@@ -72,8 +73,10 @@ export async function handleGitEvent(
     return 'pipeline';
   }
 
-  // Issue events are processed by the issue sync.
-  if (event.kind === 'issue' || event.kind === 'issue_comment') return 'issue';
+  if (event.kind === 'issue' || event.kind === 'issue_comment') {
+    await handleIssueSyncEvent(project.id, event);
+    return 'issue';
+  }
 
   if (event.kind === 'branch') {
     if (event.action === 'deleted') {
