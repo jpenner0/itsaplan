@@ -1247,6 +1247,13 @@
       "when": 1793888770272,
       "tag": "0177_issue_sync_outbox",
       "breakpoints": true
+    },
+    {
+      "idx": 178,
+      "version": "7",
+      "when": 1793890971481,
+      "tag": "0178_issue_sync_outbox_repository_id",
+      "breakpoints": true
     }
   ]
 }
