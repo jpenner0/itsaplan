@@ -1,7 +1,7 @@
 # worker
 
 Standalone Bun process (own Dockerfile). `start.ts` runs three poll loops: `worker.ts` (webhook and
-notification delivery, webhook cleanup, telemetry), `agent-worker.ts` (cron schedules) and
+notification delivery, webhook cleanup), `agent-worker.ts` (cron schedules) and
 `import-worker.ts` (source imports). Webhook defaults are in `src/config.ts`; other settings are
 read with `intEnv` where they are used. The import pipeline: `docs/dev/import-worker.md`.
 

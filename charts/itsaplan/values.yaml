@@ -52,7 +52,6 @@ api:
     S3_BUCKET: ""
     S3_REGION: "us-east-1"
     S3_FORCE_PATH_STYLE: "true"
-    TELEMETRY_DISABLED: "1"
   resources: {}
     # requests:
     #   cpu: 100m
@@ -110,9 +109,6 @@ worker:
     repository: ghcr.io/jpenner0/itsaplan-worker
     tag: ""
     pullPolicy: IfNotPresent
-  env:
-    TELEMETRY_DISABLED: "1"
-    DO_NOT_TRACK: "1"
   resources: {}
   nodeSelector: {}
   tolerations: []

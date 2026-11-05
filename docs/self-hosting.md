@@ -43,7 +43,7 @@ volumes are those of `docker-compose.yml`, so an existing instance moves to Pro 
 data.
 
 `.env.example` documents every variable, including the optional ones: legal document URLs,
-passkey and cookie settings, telemetry opt-out, and worker tuning.
+passkey and cookie settings, and worker tuning.
 
 ## Where the api lives
 

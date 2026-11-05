@@ -175,11 +175,6 @@ services:
       # provider credentials stored in the database — encrypted with this key, the
       # same value the api uses.
       APP_ENCRYPTION_KEY: ${SERVICE_PASSWORD_64_ENCRYPTION}
-      # Anonymous telemetry (TELEMETRY.md). Either variable, set to anything but 0,
-      # turns it off.
-      TELEMETRY_DISABLED: ${TELEMETRY_DISABLED:-}
-      DO_NOT_TRACK: ${DO_NOT_TRACK:-}
-      TELEMETRY_DEBUG: ${TELEMETRY_DEBUG:-}
       # The same list the api reads. This process delivers webhooks to those hosts.
       SSRF_ALLOWED_HOSTS: ${SSRF_ALLOWED_HOSTS:-}
       # A downloaded Plane import attachment is stored here, the same bucket the

@@ -41,7 +41,7 @@ it exits. The first account registered becomes the instance admin.
 
 Secrets (database password, auth secret, encryption key, worker token, object store credentials)
 are generated on the first deploy and stay stable across later ones — nothing to fill in by
-hand. Optional variables from `.env.example` — legal document URLs, telemetry opt-out,
+hand. Optional variables from `.env.example` — legal document URLs and
 worker tuning — go in **Environment Variables**.
 
 ## Upgrade
