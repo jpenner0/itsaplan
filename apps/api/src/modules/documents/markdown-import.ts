@@ -15,6 +15,10 @@ export const MARKDOWN_IMPORT_MAX_DEPTH = 10;
 
 const MAX_TITLE_LENGTH = 255;
 const MAX_ICON_LENGTH = 64;
+// UTF-8 needs at most 3 bytes per UTF-16 code unit, plus 3 for a byte order mark.
+const MAX_PAGE_BYTES = MARKDOWN_IMPORT_LIMITS.pageChars * 3 + 3;
+// Deflate expands at most about 1032:1, so a larger declared size is a lie.
+const MAX_DEFLATE_RATIO = 1032;
 // A small slice bounds the output of one inflate step, so the size check stops a bomb early.
 const INFLATE_SLICE_BYTES = 4096;
 
@@ -116,14 +120,15 @@ export function parseMarkdownZip(
         references: [],
       };
     }
-    const text = decodeUtf8(inflateEntry(bytes, markdown.get(sourcePath)!, budget), sourcePath);
+    const entry = markdown.get(sourcePath)!;
+    const tooLong = new HttpError(
+      413,
+      `"${sourcePath}" has more than ${MARKDOWN_IMPORT_LIMITS.pageChars} characters.`,
+    );
+    if (entry.size > MAX_PAGE_BYTES) throw tooLong;
+    const text = decodeUtf8(inflateEntry(bytes, entry, budget), sourcePath);
+    if (text.length > MARKDOWN_IMPORT_LIMITS.pageChars) throw tooLong;
     const page = parsePage(text, name);
-    if (page.content.length > MARKDOWN_IMPORT_LIMITS.pageChars) {
-      throw new HttpError(
-        413,
-        `"${sourcePath}" has more than ${MARKDOWN_IMPORT_LIMITS.pageChars} characters.`,
-      );
-    }
     const references = new Map<string, MarkdownImportReference>();
     for (const match of scanReferences(page.content, sourcePath, isFile)) {
       const kind = markdown.has(match.path) ? 'page' : 'asset';
@@ -289,12 +294,13 @@ function inflateEntry(bytes: Uint8Array, entry: ZipEntry, budget: { used: number
     if (entry.compressedSize !== entry.size) throw damaged(entry);
     out = data.slice();
   } else {
-    out = new Uint8Array(entry.size);
+    if (entry.size > entry.compressedSize * MAX_DEFLATE_RATIO) throw damaged(entry);
+    const chunks: Uint8Array[] = [];
     let written = 0;
     let finished = false;
     const inflater = new Inflate((chunk, final) => {
       if (written + chunk.length > entry.size) throw damaged(entry);
-      out.set(chunk, written);
+      chunks.push(chunk);
       written += chunk.length;
       finished = final;
     });
@@ -310,6 +316,12 @@ function inflateEntry(bytes: Uint8Array, entry: ZipEntry, budget: { used: number
       throw damaged(entry);
     }
     if (!finished || written !== entry.size) throw damaged(entry);
+    out = new Uint8Array(written);
+    let offset = 0;
+    for (const chunk of chunks) {
+      out.set(chunk, offset);
+      offset += chunk.length;
+    }
   }
   if (Bun.hash.crc32(out) !== entry.crc) throw damaged(entry);
   return out;
@@ -454,14 +466,20 @@ function scanReferences(
  */
 function maskCode(content: string): string {
   const text = content.replace(FENCED_CODE, (block) => block.replace(/[^\n]/g, ' '));
-  // A code span runs to the next backtick run of the same length. Indexing the next run of each
-  // length keeps this linear on pages with many unmatched backticks.
+  // A code span runs to the next backtick run of the same length in the same paragraph. Indexing
+  // the next such run keeps this linear on pages with many unmatched backticks.
   const runs = [...text.matchAll(/`+/g)];
+  const blankLines = [...text.matchAll(/\n[ \t]*\n/g)].map((m) => m.index);
+  const runKeys: string[] = [];
+  for (let i = 0, paragraph = 0; i < runs.length; i += 1) {
+    while (paragraph < blankLines.length && blankLines[paragraph] < runs[i].index) paragraph += 1;
+    runKeys.push(`${paragraph}:${runs[i][0].length}`);
+  }
   const nextSameLength: number[] = [];
-  const latest = new Map<number, number>();
+  const latest = new Map<string, number>();
   for (let i = runs.length - 1; i >= 0; i -= 1) {
-    nextSameLength[i] = latest.get(runs[i][0].length) ?? -1;
-    latest.set(runs[i][0].length, i);
+    nextSameLength[i] = latest.get(runKeys[i]) ?? -1;
+    latest.set(runKeys[i], i);
   }
   let masked = '';
   let copied = 0;
