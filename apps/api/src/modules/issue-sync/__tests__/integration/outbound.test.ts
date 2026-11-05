@@ -557,6 +557,27 @@ describe('GitHub issue sync, outbound', () => {
     expect(await db.select().from(issueSyncOutbox)).toEqual([]);
   });
 
+  it('leaves a push for a repository another sync holds to the next run', async () => {
+    const ctx = await setup(fake);
+    await enable(ctx);
+    const created = await createIssue(ctx);
+    fake.state.fail = true;
+    await patchIssue(ctx, created.id, { title: 'Busy edit' });
+    fake.state.fail = false;
+    await db.update(issueSyncOutbox).set({ nextAttemptAt: sql`now()` });
+
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(8251, ${ctx.repositoryId})`);
+      await processIssueSyncOutbox();
+    });
+    const [queued] = await db.select().from(issueSyncOutbox);
+    expect(queued).toMatchObject({ kind: 'issue', attempts: 1 });
+    expect(fake.issues.get(1)!.title).toBe('Task');
+
+    await processIssueSyncOutbox();
+    expect(fake.issues.get(1)!.title).toBe('Busy edit');
+  });
+
   it('follows a renamed repository and keeps the issue linked', async () => {
     const ctx = await setup(fake);
     await enable(ctx);

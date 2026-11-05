@@ -74,15 +74,24 @@ const BATCH_SIZE = 200;
 
 const inFlight = new Set<Promise<void>>();
 
-function track(work: Promise<void>): void {
-  inFlight.add(work);
-  void work.finally(() => inFlight.delete(work));
+// Pushes in one replica run one after another, so they hold at most one of the sync
+// slots in service.ts and leave the others to webhooks and the reconcile.
+let pushQueue: Promise<void> = Promise.resolve();
+
+function enqueue(work: () => Promise<void>): Promise<void> {
+  const run = pushQueue.then(work);
+  pushQueue = run.catch(() => undefined);
+  inFlight.add(run);
+  void run.finally(() => inFlight.delete(run)).catch(() => undefined);
+  return run;
 }
 
 // Pushes the issue's queued changes in the background. A no-op for the sync's own writes.
 export function pushIssueSync(issueId: number): void {
   if (isIssueSyncWrite()) return;
-  track(processOutbox(eq(issueSyncOutbox.issueId, issueId), true));
+  void enqueue(() => processOutbox(eq(issueSyncOutbox.issueId, issueId), true)).catch(
+    (error: unknown) => console.error('[issue-sync] push failed:', error),
+  );
 }
 
 // Resolves once every push started by pushIssueSync has finished. For tests.
@@ -92,7 +101,7 @@ export async function issueSyncSettled(): Promise<void> {
 
 // Run by the background reconcile. A repository another replica is syncing is skipped.
 export async function processIssueSyncOutbox(): Promise<void> {
-  await processOutbox(undefined, false);
+  await enqueue(() => processOutbox(undefined, false));
 }
 
 // Queues a new issue to be created on the provider, when its project syncs issues and
@@ -219,17 +228,24 @@ async function pushRow(row: OutboxRow, wait: boolean): Promise<boolean> {
   }
 }
 
+// False when the repository stayed busy: its lock or every sync slot was taken until
+// the deadline. That is not a failed push, so it does not count as an attempt.
 async function underLock(
   repositoryId: number,
   wait: boolean,
   fn: (repo: SyncRepository) => Promise<void>,
 ): Promise<boolean> {
   let ran = false;
-  await withRepositoryLock(repositoryId, wait, async () => {
-    ran = true;
-    const repo = await loadSyncRepository(repositoryId);
-    if (repo) await fn(repo);
-  });
+  try {
+    await withRepositoryLock(repositoryId, wait, async () => {
+      ran = true;
+      const repo = await loadSyncRepository(repositoryId);
+      if (repo) await fn(repo);
+    });
+  } catch (error) {
+    if (!ran && error instanceof HttpError && error.status === 503) return false;
+    throw error;
+  }
   return ran;
 }
 
