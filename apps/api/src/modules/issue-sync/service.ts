@@ -67,6 +67,7 @@ function syncRepository(row: RepositoryRow): SyncRepository {
     connectionId: row.connectionId,
     fullName: row.fullName,
     webUrl: row.webUrl,
+    issuesWatermark: row.issuesWatermark,
     input: { provider: 'github', baseUrl: row.baseUrl, token: decryptSecret(row) },
   };
 }

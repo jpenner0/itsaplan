@@ -1,13 +1,14 @@
 import { createHmac } from 'node:crypto';
 import ExcelJS from 'exceljs';
 import { describe, it, expect, beforeEach, afterEach, spyOn } from 'bun:test';
-import { account, db, issueSyncLink, issueSyncOutbox } from '@repo/db';
+import { account, agentRun, db, issueSyncLink, issueSyncOutbox } from '@repo/db';
 import { eq, sql } from 'drizzle-orm';
 import { app } from '../../../../app';
 import { authedApi, type Api, createProject } from '#tests/helpers/app';
 import { addProjectMember } from '#tests/helpers/members';
 import { signUpTestUser } from '#tests/helpers/auth';
 import { resetDb } from '#tests/helpers/db';
+import { createAgent } from '#tests/helpers/agents';
 import { getProjectByRef } from '#modules/projects/service';
 import { createMappedImport } from '#modules/imports/service';
 import { processIssueSyncOutbox } from '../../outbound';
@@ -732,6 +733,32 @@ describe('GitHub issue sync, outbound', () => {
       await issueSyncSettled();
       other.stop();
     }
+  });
+
+  it('starts no triage run when the GitHub issue it created comes back as opened', async () => {
+    const ctx = await setup(fake);
+    const agent = (
+      await createAgent(ctx.asOwner, 'MKT', {
+        name: 'Triage',
+        username: 'triage',
+        kind: 'external',
+      })
+    ).data!.agent;
+    const schedule = await ctx.asOwner.projects({ projectKey: 'MKT' })['agent-schedules'].post({
+      agentId: agent.id,
+      name: 'Triage',
+      type: 'synced_issue_created',
+    });
+    expect(schedule.status).toBe(201);
+    await enable(ctx);
+    await createIssue(ctx);
+
+    await deliver(ctx, 'issues', { action: 'opened', issue: fake.issues.get(1)! });
+
+    expect(
+      (await ctx.asOwner.projects({ projectKey: 'MKT' }).issues.get({ query: {} })).data,
+    ).toHaveLength(1);
+    expect(await db.select().from(agentRun)).toEqual([]);
   });
 
   it('does not send issues created by an import to GitHub', async () => {
