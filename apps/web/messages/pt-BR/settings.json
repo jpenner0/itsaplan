@@ -440,7 +440,7 @@
     "nativeAskTeamManager": "Peça a um proprietário ou gerente da equipe para conectar uma conta de provedor.",
     "nativeConnectTitle": "Conectar {provider}",
     "nativeTokenHint": {
-      "github": "Use um token fine-grained com acesso de leitura de Metadata, escrita de Webhooks e escrita de Pull requests para os repositórios que você quer conectar.",
+      "github": "Use um token fine-grained com acesso de leitura de Metadata, escrita de Webhooks, escrita de Pull requests e leitura e escrita de Issues para os repositórios que você quer conectar. Um token clássico precisa do escopo repo (public_repo apenas para repositórios públicos) e admin:repo_hook.",
       "gitlab": "Use um personal access token com acesso à API. Apenas projetos onde você é Maintainer ou Owner são listados.",
       "gitea": "Use um access token que possa administrar hooks nos repositórios que você quer conectar.",
       "forgejo": "Use um access token que possa administrar hooks nos repositórios que você quer conectar.",

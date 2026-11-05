@@ -209,7 +209,7 @@ export default function IssueDetailContent({
 
       <IssueDevelopmentPanel
         issueId={issue.id}
-        projectKey={project.project.ref}
+        syncsIssues={issue.syncsIssues}
         identifier={issue.identifier}
         issueTitle={issue.title}
         links={issue.development ?? []}

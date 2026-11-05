@@ -440,7 +440,7 @@
     "nativeAskTeamManager": "Sağlayıcı hesabı bağlaması için bir takım sahibine veya yöneticisine danışın.",
     "nativeConnectTitle": "{provider} bağla",
     "nativeTokenHint": {
-      "github": "Bağlamak istediğiniz depolar için Metadata (read), Webhooks (write) ve Pull requests (write) izinlerine sahip ayrıntılı (fine-grained) bir belirteç kullanın.",
+      "github": "Bağlamak istediğiniz depolar için Metadata (read), Webhooks (write), Pull requests (write) ve Issues (read and write) izinlerine sahip ayrıntılı (fine-grained) bir belirteç kullanın. Klasik belirteç için repo kapsamı (yalnızca herkese açık depolar için public_repo) ve admin:repo_hook gerekir.",
       "gitlab": "API erişimine sahip bir kişisel erişim belirteci kullanın. Yalnızca Maintainer veya Owner olduğunuz projeler listelenir.",
       "gitea": "Bağlamak istediğiniz depolardaki kancaları (hooks) yönetebilen bir erişim belirteci kullanın.",
       "forgejo": "Bağlamak istediğiniz depolardaki kancaları yönetebilen bir erişim belirteci kullanın.",

@@ -13,8 +13,9 @@ export default function IssueDevelopmentAddMenu({
   onCreate,
   onPublish,
 }: {
-  onLink: () => void;
-  onCreate: () => void;
+  // Link and create need the repository permission; publish needs only the issue edit permission.
+  onLink?: () => void;
+  onCreate?: () => void;
   // Set only when the issue can be published to the synced GitHub repository.
   onPublish?: () => void;
 }) {
@@ -28,14 +29,18 @@ export default function IssueDevelopmentAddMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
-        <DropdownMenuItem onSelect={onLink}>
-          <Link2 />
-          {t('linkExisting')}
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={onCreate}>
-          <GitPullRequest />
-          {t('createPullRequest')}
-        </DropdownMenuItem>
+        {onLink && (
+          <DropdownMenuItem onSelect={onLink}>
+            <Link2 />
+            {t('linkExisting')}
+          </DropdownMenuItem>
+        )}
+        {onCreate && (
+          <DropdownMenuItem onSelect={onCreate}>
+            <GitPullRequest />
+            {t('createPullRequest')}
+          </DropdownMenuItem>
+        )}
         {onPublish && (
           <DropdownMenuItem onSelect={onPublish}>
             <Upload />

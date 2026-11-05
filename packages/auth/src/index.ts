@@ -924,7 +924,19 @@ function createAuth() {
       // The GitHub row only names the identity. Every write to GitHub uses the team's
       // token, so the user's is not kept.
       account: {
-        create: { before: async (account) => ({ data: withoutGithubTokens(account) }) },
+        create: {
+          // Checked again where the row is written: two flows started before either
+          // finished both pass the check at the start of /link-social.
+          before: async (account) => {
+            if (isGithub(account) && (await accountsOf(account.userId)).some(isGithub)) {
+              throw new APIError('CONFLICT', {
+                code: 'GITHUB_ALREADY_LINKED',
+                message: 'A GitHub account is already linked. Disconnect it first.',
+              });
+            }
+            return { data: withoutGithubTokens(account) };
+          },
+        },
         update: { before: async (account) => ({ data: withoutGithubTokens(account) }) },
       },
       user: {

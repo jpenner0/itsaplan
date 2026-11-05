@@ -182,7 +182,7 @@ export async function addProviderIssueAssignees(
   repository: string,
   number: number,
   logins: string[],
-): Promise<ProviderIssue> {
+): Promise<{ issue: ProviderIssue; unassigned: string[] }> {
   ensureGithub(input);
   const response = await providerRequest(
     input,
@@ -191,7 +191,10 @@ export async function addProviderIssueAssignees(
   );
   const issue = githubIssue(await response.json());
   if (!issue) throw invalid('issue');
-  return issue;
+  // GitHub answers 201 and silently skips a login that cannot be assigned, such as a
+  // user without access to the repository.
+  const assigned = new Set(issue.assignees.map((user) => user.login.toLowerCase()));
+  return { issue, unassigned: logins.filter((login) => !assigned.has(login.toLowerCase())) };
 }
 
 // Comments of every issue in the repository, oldest first. Pull request comments are

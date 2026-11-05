@@ -440,7 +440,7 @@
     "nativeAskTeamManager": "Попросіть власника або менеджера команди підключити обліковий запис провайдера.",
     "nativeConnectTitle": "Підключити {provider}",
     "nativeTokenHint": {
-      "github": "Використовуйте fine-grained token із правами Metadata read, Webhooks write і Pull requests write для репозиторіїв, які хочете підключити.",
+      "github": "Використовуйте fine-grained token із правами Metadata read, Webhooks write, Pull requests write і Issues read and write для репозиторіїв, які хочете підключити. Класичному токену потрібні scope repo (public_repo лише для публічних репозиторіїв) і admin:repo_hook.",
       "gitlab": "Використовуйте personal access token із доступом API. У списку будуть лише проєкти, де ви Maintainer або Owner.",
       "gitea": "Використовуйте токен доступу з правом керувати webhooks у репозиторіях, які підключаєте.",
       "forgejo": "Використовуйте токен доступу з правом керувати webhooks у репозиторіях, які підключаєте.",

@@ -440,7 +440,7 @@
     "nativeAskTeamManager": "از یک مالک یا مدیر تیم بخواهید یک حساب ارائه‌دهنده متصل کند.",
     "nativeConnectTitle": "اتصال {provider}",
     "nativeTokenHint": {
-      "github": "از یک توکن fine-grained با دسترسی Metadata read، Webhooks write و Pull requests write برای مخازنی که می‌خواهید متصل کنید استفاده کنید.",
+      "github": "از یک توکن fine-grained با دسترسی Metadata read، Webhooks write، Pull requests write و Issues read and write برای مخازنی که می‌خواهید متصل کنید استفاده کنید. توکن کلاسیک به scope با نام repo (فقط برای مخازن عمومی public_repo) و admin:repo_hook نیاز دارد.",
       "gitlab": "از یک personal access token با دسترسی API استفاده کنید. فقط پروژه‌هایی که در آن‌ها Maintainer یا Owner هستید فهرست می‌شوند.",
       "gitea": "از یک access token استفاده کنید که بتواند هوک‌ها را در مخازنی که می‌خواهید متصل کنید مدیریت کند.",
       "forgejo": "از یک access token استفاده کنید که بتواند هوک‌ها را در مخازنی که می‌خواهید متصل کنید مدیریت کند.",

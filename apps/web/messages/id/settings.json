@@ -440,7 +440,7 @@
     "nativeAskTeamManager": "Minta pemilik atau manajer tim untuk menghubungkan akun penyedia.",
     "nativeConnectTitle": "Hubungkan {provider}",
     "nativeTokenHint": {
-      "github": "Gunakan fine-grained token dengan akses Metadata read, Webhooks write, dan Pull requests write untuk repositori yang ingin Anda hubungkan.",
+      "github": "Gunakan fine-grained token dengan akses Metadata read, Webhooks write, Pull requests write, dan Issues read and write untuk repositori yang ingin Anda hubungkan. Token klasik memerlukan scope repo (public_repo hanya untuk repositori publik) dan admin:repo_hook.",
       "gitlab": "Gunakan token akses pribadi dengan akses API. Hanya proyek tempat Anda menjadi Maintainer atau Owner yang dicantumkan.",
       "gitea": "Gunakan token akses yang dapat mengelola hook di repositori yang ingin Anda hubungkan.",
       "forgejo": "Gunakan token akses yang dapat mengelola hook di repositori yang ingin Anda hubungkan.",

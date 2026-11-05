@@ -440,7 +440,7 @@
     "nativeAskTeamManager": "Ask a team owner or manager to connect a provider account.",
     "nativeConnectTitle": "Connect {provider}",
     "nativeTokenHint": {
-      "github": "Use a fine-grained token with Metadata read, Webhooks write, and Pull requests write access for the repositories you want to connect.",
+      "github": "Use a fine-grained token with Metadata read, Webhooks write, Pull requests write, and Issues read and write access for the repositories you want to connect. A classic token needs the scope repo (public_repo for public repositories only) and admin:repo_hook.",
       "gitlab": "Use a personal access token with API access. Only projects where you are a Maintainer or Owner are listed.",
       "gitea": "Use an access token that can administer hooks in the repositories you want to connect.",
       "forgejo": "Use an access token that can administer hooks in the repositories you want to connect.",

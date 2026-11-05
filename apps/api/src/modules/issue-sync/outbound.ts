@@ -142,6 +142,10 @@ export async function publishIssue(issueId: number, projectId: number): Promise<
   return { issueId, externalNumber: link.externalNumber, externalUrl: link.externalUrl };
 }
 
+export async function projectSyncsIssues(projectId: number): Promise<boolean> {
+  return (await projectSyncRepositoryId(projectId, false)) !== null;
+}
+
 async function projectSyncRepositoryId(
   projectId: number,
   newIssues: boolean,
@@ -433,9 +437,15 @@ async function updateExternalIssue(repo: SyncRepository, link: Link): Promise<vo
     external = updated.issue;
   }
   if (send.includes('assignee') && out.assigneeLogin) {
-    external = await addProviderIssueAssignees(repo.input, repo.fullName, link.externalNumber, [
+    const added = await addProviderIssueAssignees(repo.input, repo.fullName, link.externalNumber, [
       out.assigneeLogin,
     ]);
+    external = added.issue;
+    if (added.unassigned.length > 0) {
+      console.warn(
+        `[issue-sync] GitHub did not assign ${added.unassigned.join(', ')} to issue ${link.issueId}`,
+      );
+    }
   }
 
   const finalHashes = fieldHashes(await providerFields(local.projectId, external));

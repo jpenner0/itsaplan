@@ -1,10 +1,11 @@
 import { createHmac } from 'node:crypto';
 import ExcelJS from 'exceljs';
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, spyOn } from 'bun:test';
 import { account, db, issueSyncLink, issueSyncOutbox } from '@repo/db';
 import { eq, sql } from 'drizzle-orm';
 import { app } from '../../../../app';
 import { authedApi, type Api, createProject } from '#tests/helpers/app';
+import { addProjectMember } from '#tests/helpers/members';
 import { signUpTestUser } from '#tests/helpers/auth';
 import { resetDb } from '#tests/helpers/db';
 import { getProjectByRef } from '#modules/projects/service';
@@ -31,6 +32,7 @@ function fakeGithub() {
     fullName: 'acme/site',
     admin: true,
     transferred: new Set<number>(),
+    unassignable: new Set<string>(),
   };
   const prefix = '/api/v3';
   const now = () => new Date().toISOString();
@@ -133,7 +135,9 @@ function fakeGithub() {
           return Response.json(touch(row));
         }
         if (sub === '/assignees') {
-          const logins = body!.assignees as string[];
+          const logins = (body!.assignees as string[]).filter(
+            (login) => !state.unassignable.has(login),
+          );
           row.assignees = [
             ...(row.assignees as Row[]),
             ...logins.map((login) => ({ id: 3001, login })),
@@ -349,6 +353,20 @@ describe('GitHub issue sync, outbound', () => {
     expect(again.status).toBe(409);
   });
 
+  it('tells a member without the repository permission whether the project syncs', async () => {
+    const ctx = await setup(fake);
+    const created = await createIssue(ctx);
+    const member = await addProjectMember(ctx.asOwner, ctx.key);
+    const connections = await member.projects({ projectKey: ctx.key }).settings.git.get();
+    expect(connections.status).toBe(403);
+
+    expect((await member.issues({ issueId: created.id }).get()).data!.syncsIssues).toBe(false);
+    await enable(ctx);
+    expect((await member.issues({ issueId: created.id }).get()).data!.syncsIssues).toBe(true);
+    const published = await member.issues({ issueId: created.id }).publish.post();
+    expect(published.status).toBe(201);
+  });
+
   it('refuses publish to a user outside the project', async () => {
     const ctx = await setup(fake);
     await enable(ctx, { newIssuesToProvider: false });
@@ -430,6 +448,21 @@ describe('GitHub issue sync, outbound', () => {
     await linkGithubAccount(ctx.ownerId);
     await patchIssue(ctx, created.id, { assigneeUserId: ctx.ownerId });
     expect(fake.issues.get(1)!.assignees).toEqual([{ id: 3001, login: 'owner-gh' }]);
+  });
+
+  it('logs an assignee that GitHub does not assign', async () => {
+    const ctx = await setup(fake);
+    await enable(ctx);
+    const created = await createIssue(ctx);
+    await linkGithubAccount(ctx.ownerId);
+    fake.state.unassignable.add('owner-gh');
+    const warn = spyOn(console, 'warn').mockImplementation(() => {});
+
+    await patchIssue(ctx, created.id, { assigneeUserId: ctx.ownerId });
+
+    expect(fake.issues.get(1)!.assignees).toEqual([]);
+    expect(warn.mock.calls.flat().join(' ')).toContain('did not assign owner-gh');
+    warn.mockRestore();
   });
 
   it('creates, edits and deletes comments with the header', async () => {
