@@ -15,7 +15,9 @@
     "type": "运行方式",
     "types": {
       "cron": "按定时",
-      "status": "工作项进入某状态时"
+      "status": "工作项进入某状态时",
+      "synced_issue_created": "GitHub 出现新 issue 时",
+      "pull_request_opened": "有 pull request 时"
     },
     "taskOptional": "任务（可选）",
     "issueTaskPlaceholder": "在工作项描述中写下验收标准。",
@@ -82,7 +84,11 @@
     "createAgent": "新建代理",
     "empty": "暂无定时任务",
     "emptyHint": "选择代理、任务和运行频率。",
-    "deleteMessage": "定时任务 <v>{name}</v> 及其运行记录将被删除。此操作无法撤销。"
+    "deleteMessage": "定时任务 <v>{name}</v> 及其运行记录将被删除。此操作无法撤销。",
+    "typeHints": {
+      "synced_issue_created": "仅在 issue 同步开启期间，对在 GitHub 上新建的 issue 运行。首次导入时不运行，It's a Plan 自己在 GitHub 上创建的 issue 也不运行。",
+      "pull_request_opened": "当引用已同步 issue 的 pull request 被打开或从草稿转为就绪时运行。不会在每次 push 时运行。要开始新的评审，请在 issue 中提及该智能体。"
+    }
   },
   "agents": {
     "empty": "还没有代理",

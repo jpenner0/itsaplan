@@ -15,7 +15,9 @@
     "type": "Exécution",
     "types": {
       "cron": "Selon une planification",
-      "status": "Quand un ticket entre dans un état"
+      "status": "Quand un ticket entre dans un état",
+      "synced_issue_created": "Pour une nouvelle issue GitHub",
+      "pull_request_opened": "Pour une pull request"
     },
     "taskOptional": "Tâche (facultatif)",
     "issueTaskPlaceholder": "Rédige les critères d'acceptation dans la description du ticket.",
@@ -82,7 +84,11 @@
     "createAgent": "Créer un agent",
     "empty": "Aucune planification pour l'instant",
     "emptyHint": "Choisissez un agent, une tâche et la fréquence d'exécution.",
-    "deleteMessage": "La planification <v>{name}</v> et son historique d'exécutions seront supprimés. Cette action est irréversible."
+    "deleteMessage": "La planification <v>{name}</v> et son historique d'exécutions seront supprimés. Cette action est irréversible.",
+    "typeHints": {
+      "synced_issue_created": "S'exécute uniquement pour les issues nouvellement créées sur GitHub tant que la synchronisation des issues est active. Pas pour le premier import, ni pour les issues créées sur GitHub par It's a Plan.",
+      "pull_request_opened": "S'exécute quand une pull request qui référence une issue synchronisée est ouverte ou passe de brouillon à prête. Pas à chaque push. Pour lancer une nouvelle revue, mentionnez l'agent dans l'issue."
+    }
   },
   "agents": {
     "empty": "Aucun agent pour l'instant",
