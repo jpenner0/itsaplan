@@ -50,6 +50,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag }}
+          # Only gh uses a token, passed through GH_TOKEN below.
+          persist-credentials: false
 
       - uses: oven-sh/setup-bun@v2
         with:
