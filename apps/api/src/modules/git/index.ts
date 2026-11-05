@@ -188,7 +188,7 @@ export const gitSettingsRoutes = new Elysia({
       permission: ['repositories', 'edit'],
       params: gitManagedRepositoryParams,
       body: updateIssueSyncBody,
-      response: { 200: IssueSyncSettingsResponse, ...commonErrors, ...errors(409, 502) },
+      response: { 200: IssueSyncSettingsResponse, ...commonErrors, ...errors(409, 502, 503) },
       detail: {
         summary: 'Turn issue sync of a repository on or off',
         description:

@@ -5,7 +5,12 @@ import { getProjectById } from '#modules/projects/service';
 import { handleGitEvent } from './handler';
 import { detectProvider } from './providers';
 import { WebhookAckResponse, webhookBody, webhookParams } from './model';
-import { claimGitDelivery, findProjectByGitWebhookId, recordGitEvent } from './service';
+import {
+  claimGitDelivery,
+  findProjectByGitWebhookId,
+  recordGitEvent,
+  releaseGitDelivery,
+} from './service';
 
 // Inbound webhook receiver, shared by every supported repository host.
 // Unauthenticated (a delivery carries no session) and mounted on the root app:
@@ -51,15 +56,29 @@ async function receive({
     return { ok: true, handled: 'duplicate' };
   const project = await getProjectById(found.projectId);
   if (!project) throw new HttpError(404, 'Unknown webhook');
-  const handled = await handleGitEvent(project, found.settings, providerKey, providerLabel, event);
-  return { ok: true, handled };
+  try {
+    const handled = await handleGitEvent(
+      project,
+      found.settings,
+      providerKey,
+      providerLabel,
+      event,
+    );
+    return { ok: true, handled };
+  } catch (error) {
+    // An issue delivery is applied from the full state it carries, so a failed one is
+    // released for the provider's redelivery: the reconcile cannot see a deleted issue
+    // or comment.
+    if (deliveryId && issueEvent) await releaseGitDelivery(found.projectId, deliveryId);
+    throw error;
+  }
 }
 
 const options = {
   parse: 'text' as const,
   body: webhookBody,
   params: webhookParams,
-  response: { 200: WebhookAckResponse, ...errors(400, 401, 404) },
+  response: { 200: WebhookAckResponse, ...errors(400, 401, 404, 503) },
   detail: {
     summary: 'Receive a repository webhook',
     description:
