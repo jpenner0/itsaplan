@@ -19,7 +19,7 @@ import {
 } from '#shared/access';
 import { boundProjectId, isMcpRequest } from '#shared/mcp-request';
 import { getProjectById } from '#modules/projects/service';
-import { publishIssue } from '#modules/issue-sync/outbound';
+import { publishIssue, publishNewIssue } from '#modules/issue-sync/outbound';
 import { HttpError, instantParam } from '#shared/lib';
 import { accessErrors, commonErrors, errors } from '#shared/responses';
 import { deleteObject } from '@repo/storage';
@@ -328,7 +328,10 @@ export const issueRoutes = new Elysia({ name: 'issues', detail: { tags: ['Issues
     '/projects/:projectKey/issues',
     async ({ project, body, user, set }) => {
       set.status = 201;
-      return createIssue(project, body, requireUser(user).id);
+      const created = await createIssue(project, body, requireUser(user).id);
+      // Only issues created here go to the synced repository; an import does not.
+      await publishNewIssue(created.id, project.id);
+      return created;
     },
     {
       body: createIssueBody,

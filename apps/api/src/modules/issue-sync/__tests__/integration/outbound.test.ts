@@ -1,4 +1,5 @@
 import { createHmac } from 'node:crypto';
+import ExcelJS from 'exceljs';
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { account, db, issueSyncLink, issueSyncOutbox } from '@repo/db';
 import { eq, sql } from 'drizzle-orm';
@@ -6,6 +7,8 @@ import { app } from '../../../../app';
 import { authedApi, type Api, createProject } from '#tests/helpers/app';
 import { signUpTestUser } from '#tests/helpers/auth';
 import { resetDb } from '#tests/helpers/db';
+import { getProjectByRef } from '#modules/projects/service';
+import { createMappedImport } from '#modules/imports/service';
 import { issueSyncSettled, processIssueSyncOutbox } from '../../outbound';
 
 // It's a Plan → GitHub issue sync against a GitHub served on localhost. As in the inbound
@@ -20,6 +23,8 @@ function fakeGithub() {
   const calls: string[] = [];
   const state = {
     fail: false,
+    // Only writes whose "METHOD path" matches fail; null means every write when `fail`.
+    failOnly: null as RegExp | null,
     nextNumber: 1,
     nextComment: 500,
     fullName: 'acme/site',
@@ -49,7 +54,11 @@ function fakeGithub() {
       const path = requested.replace(current, '/repos/acme/site');
       const body = req.method === 'GET' ? null : ((await req.json().catch(() => null)) as Row);
       if (req.method !== 'GET') calls.push(`${req.method} ${path}`);
-      if (state.fail && req.method !== 'GET') {
+      if (
+        state.fail &&
+        req.method !== 'GET' &&
+        (!state.failOnly || state.failOnly.test(`${req.method} ${path}`))
+      ) {
         return Response.json({ message: 'Server Error' }, { status: 500 });
       }
       if (path === '/user') return Response.json({ login: 'octo' });
@@ -174,6 +183,7 @@ function fakeGithub() {
 type Fake = ReturnType<typeof fakeGithub>;
 
 interface Ctx {
+  key: string;
   asOwner: Api;
   ownerId: string;
   teamId: number;
@@ -202,6 +212,7 @@ async function setup(fake: Fake, key = 'MKT'): Promise<Ctx> {
   const settings = (await asOwner.projects({ projectKey: key }).settings.git.get()).data!;
   const view = (await asOwner.projects({ projectKey: key }).get()).data!;
   return {
+    key,
     asOwner,
     ownerId: user.userId,
     teamId,
@@ -215,7 +226,7 @@ async function setup(fake: Fake, key = 'MKT'): Promise<Ctx> {
 
 async function enable(ctx: Ctx, patch: { newIssuesToProvider?: boolean } = {}) {
   const response = await ctx.asOwner
-    .projects({ projectKey: 'MKT' })
+    .projects({ projectKey: ctx.key })
     .settings.git.connections({ connectionId: ctx.connectionId })
     .repositories({ repositoryId: ctx.repositoryId })
     ['issue-sync'].patch({ issuesSyncEnabled: true, ...patch });
@@ -227,7 +238,7 @@ const columnOf = (ctx: Ctx, stateType: string, nth = 0) =>
 
 async function createIssue(ctx: Ctx, title = 'Task', extra: Row = {}) {
   const created = await ctx.asOwner
-    .projects({ projectKey: 'MKT' })
+    .projects({ projectKey: ctx.key })
     .issues.post({ title, columnId: columnOf(ctx, 'unstarted'), ...extra });
   expect(created.status).toBe(201);
   await issueSyncSettled();
@@ -609,6 +620,95 @@ describe('GitHub issue sync, outbound', () => {
     const detail = (await ctx.asOwner.issues({ issueId: created.id }).get()).data!;
     expect(detail.columnId).toBe(columnOf(ctx, 'canceled'));
     expect(fake.issues.get(1)!.title).toBe('Task');
+  });
+
+  it('closes the GitHub issue under the new name after the repository was renamed', async () => {
+    const ctx = await setup(fake);
+    await enable(ctx);
+    const created = await createIssue(ctx);
+    fake.state.fullName = 'acme/site-renamed';
+
+    const removed = await ctx.asOwner.issues({ issueId: created.id }).delete({});
+    expect(removed.status).toBe(204);
+    await issueSyncSettled();
+
+    expect(fake.issues.get(1)).toMatchObject({ state: 'closed', state_reason: 'not_planned' });
+    expect(await db.select().from(issueSyncOutbox)).toEqual([]);
+  });
+
+  it('does not create a second GitHub issue when closing a published issue fails', async () => {
+    const ctx = await setup(fake);
+    await enable(ctx, { newIssuesToProvider: false });
+    const created = await createIssue(ctx);
+    await patchIssue(ctx, created.id, { columnId: columnOf(ctx, 'completed') });
+    fake.state.fail = true;
+    fake.state.failOnly = /^PATCH \/repos\/acme\/site\/issues\/\d+$/;
+
+    const published = await ctx.asOwner.issues({ issueId: created.id }).publish.post();
+    expect(published.status).toBe(201);
+    expect(fake.issues.get(1)).toMatchObject({ state: 'open' });
+    expect(await db.select().from(issueSyncOutbox)).toMatchObject([
+      { kind: 'issue', issueId: created.id },
+    ]);
+
+    fake.state.fail = false;
+    await db.update(issueSyncOutbox).set({ nextAttemptAt: sql`now()` });
+    await processIssueSyncOutbox();
+    expect(fake.writes(/^POST \/repos\/acme\/site\/issues$/)).toHaveLength(1);
+    expect(fake.issues.get(1)).toMatchObject({ state: 'closed', state_reason: 'completed' });
+  });
+
+  it('does not let a busy repository hold back the pushes of another one', async () => {
+    const other = fakeGithub();
+    try {
+      const ctx = await setup(fake);
+      const otherCtx = await setup(other, 'OTH');
+      await enable(ctx);
+      await enable(otherCtx);
+      const busy = await createIssue(ctx);
+      const free = await createIssue(otherCtx);
+
+      await db.transaction(async (tx) => {
+        await tx.execute(sql`select pg_advisory_xact_lock(8251, ${ctx.repositoryId})`);
+        await patchIssue(ctx, busy.id, { title: 'Waits' });
+        await patchIssue(otherCtx, free.id, { title: 'Sent' });
+        expect(other.issues.get(1)!.title).toBe('Sent');
+        expect(fake.issues.get(1)!.title).toBe('Task');
+      });
+
+      await processIssueSyncOutbox();
+      expect(fake.issues.get(1)!.title).toBe('Waits');
+    } finally {
+      await issueSyncSettled();
+      other.stop();
+    }
+  });
+
+  it('does not send issues created by an import to GitHub', async () => {
+    const ctx = await setup(fake);
+    await enable(ctx);
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Tasks');
+    sheet.addRow(['Task']);
+    sheet.addRow(['Imported']);
+    const bytes = Buffer.from(await workbook.xlsx.writeBuffer());
+    const uploaded = await ctx.asOwner.projects({ projectKey: 'MKT' })['chat-attachments'].post({
+      filename: 'tasks.xlsx',
+      contentBase64: bytes.toString('base64'),
+      contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    expect(uploaded.status).toBe(201);
+    const project = await getProjectByRef('MKT', '');
+    const draft = await createMappedImport(project!.id, uploaded.data!.id, { title: 'Task' });
+
+    const confirm = await ctx.asOwner.imports({ importId: draft.id }).confirm.post();
+    expect(confirm.status).toBe(200);
+    expect(confirm.data!.imported).toHaveLength(1);
+    await issueSyncSettled();
+    await processIssueSyncOutbox();
+
+    expect(fake.issues.size).toBe(0);
+    expect(await db.select().from(issueSyncOutbox)).toEqual([]);
   });
 
   it('keeps the local change when GitHub fails and sends it on a later run', async () => {
