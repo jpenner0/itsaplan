@@ -94,8 +94,8 @@ the change gives the user. Version bumps and release config traps: `docs/dev/rel
 ## Gotchas
 
 - A new workspace member needs `COPY <path>/package.json ./<path>/` in every Dockerfile that
-  installs deps (`apps/api`, `apps/web`, `apps/worker`, `apps/bot`, `apps/desktop`). Without it the Docker build
-  fails while local dev still works.
+  installs deps (`apps/api`, `apps/web`, `apps/worker`, `apps/bot`). Without it the Docker build fails
+  while local dev still works.
 - A better-auth config change can change its tables. Run `bun run auth:generate`, then
   `db:generate` and `db:migrate`.
 - Read the comments in `scripts/setup.ts` before you change it.
