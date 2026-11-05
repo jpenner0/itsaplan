@@ -218,6 +218,8 @@ GitHub links an identity to a signed-in account for the GitHub issue sync. It is
 method: nobody signs in or signs up with it. The result is an `account` row with
 `providerId = 'github'` and `accountId` = the numeric GitHub user id. The sync maps GitHub users
 to members through these rows and reads the login itself.
+Setup for users is in `docs/github-issue-sync.md`, the sync itself in
+`docs/dev/github-issue-sync.md`.
 
 The credentials are stored like Google's (`app_secret` key `auth.github`), and
 `socialProviders.github` returns the module-level `githubOptions` object, which
