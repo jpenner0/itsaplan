@@ -1,7 +1,9 @@
 # Markdown import into Docs
 
 `POST /projects/:projectKey/documents/import` takes a multipart `file` (a ZIP) and an optional
-`parentId`, and answers 201 with the created top-level pages and the `skipped` paths. The user
+`parentId`, and answers 201 with `documents` (the created top-level pages), `createdCount` (all
+created pages) and the `skipped` paths. A parent that is missing or not visible is 404; an
+archived or locked parent is 409. The user
 guide is [importing-markdown-into-docs.md](../importing-markdown-into-docs.md).
 
 The import runs synchronously in the api request. There is no worker job.

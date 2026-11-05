@@ -57,7 +57,7 @@ export async function importMarkdownZip(input: {
   userId: string;
   parentId: number | null;
   bytes: Uint8Array;
-}): Promise<{ pages: DocumentSummaryRow[]; skipped: string[] }> {
+}): Promise<{ documents: DocumentSummaryRow[]; createdCount: number; skipped: string[] }> {
   const { projectId, userId, parentId } = input;
   const parent = await assertImportParent(db, projectId, parentId, userId);
   const maxDepth = MARKDOWN_IMPORT_MAX_DEPTH - parent.depth;
@@ -171,7 +171,7 @@ export async function importMarkdownZip(input: {
       actorUserId: userId,
     });
   }
-  return { pages: roots, skipped: plan.skipped };
+  return { documents: roots, createdCount: pages.length, skipped: plan.skipped };
 }
 
 // The parent must be a visible, active and unlocked page of the project.
@@ -181,11 +181,12 @@ async function assertImportParent(
   parentId: number | null,
   userId: string,
 ): Promise<{ depth: number; isPrivate: boolean }> {
-  const depth = await assertValidParent(executor, projectId, null, parentId, userId);
-  if (parentId === null) return { depth, isPrivate: false };
-  const parent = (await selectDocument(executor, projectId, parentId, userId))!;
+  if (parentId === null) return { depth: 0, isPrivate: false };
+  const parent = await selectDocument(executor, projectId, parentId, userId);
+  if (!parent) throw new HttpError(404, 'Parent document not found');
   assertActive(parent);
   assertUnlocked(parent);
+  const depth = await assertValidParent(executor, projectId, null, parentId, userId);
   return { depth, isPrivate: parent.isPrivate };
 }
 

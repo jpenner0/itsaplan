@@ -214,7 +214,8 @@ export const importMarkdownBody = t.Object({
 });
 
 export const MarkdownImportResponse = t.Object({
-  pages: DocumentSummaryListResponse,
+  documents: DocumentSummaryListResponse,
+  createdCount: t.Integer({ description: 'All created pages, subpages included.' }),
   skipped: t.Array(t.String()),
 });
 

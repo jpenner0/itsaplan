@@ -103,12 +103,13 @@ describe('POST /projects/:projectKey/documents/import', () => {
       'plain/deep/leaf.md': 'Leaf',
     });
     expect(res.status).toBe(201);
-    expect(res.data!.pages.map((page) => page.title)).toEqual([
+    expect(res.data!.documents.map((page) => page.title)).toEqual([
       'guide',
       'handbook',
       'notes',
       'plain',
     ]);
+    expect(res.data!.createdCount).toBe(9);
 
     const pages = await listPages(asOwner);
     expect(pages).toHaveLength(9);
@@ -136,7 +137,7 @@ describe('POST /projects/:projectKey/documents/import', () => {
       'page.md': '---\ntitle: Launch plan\nicon: 🚀\ntags: [a, b]\n---\n# Launch plan\n\nBody',
     });
     expect(res.status).toBe(201);
-    const [summary] = res.data!.pages;
+    const [summary] = res.data!.documents;
     expect(summary).toMatchObject({
       title: 'Launch plan',
       icon: '🚀',
@@ -160,7 +161,7 @@ describe('POST /projects/:projectKey/documents/import', () => {
   it('sorts siblings naturally', async () => {
     const { asOwner } = await setupProject();
     const res = await importZip(asOwner, { '10-b.md': 'b', '2-a.md': 'a', '1-c.md': 'c' });
-    expect(res.data!.pages.map((page) => page.title)).toEqual(['1-c', '2-a', '10-b']);
+    expect(res.data!.documents.map((page) => page.title)).toEqual(['1-c', '2-a', '10-b']);
     expect((await listPages(asOwner)).map((page) => page.title)).toEqual(['1-c', '2-a', '10-b']);
   });
 
@@ -174,7 +175,7 @@ describe('POST /projects/:projectKey/documents/import', () => {
       'files/data.csv': 'x,y',
     });
     expect(res.status).toBe(201);
-    const [a, b] = res.data!.pages;
+    const [a, b] = res.data!.documents;
 
     const aAssets = (await documents(asOwner)({ documentId: a.id }).assets.get()).data!;
     expect(aAssets.map((asset) => [asset.filename, asset.contentType, asset.sizeBytes])).toEqual(
@@ -330,7 +331,7 @@ describe('POST /projects/:projectKey/documents/import', () => {
       true,
       true,
     ]);
-    expect(res.data!.pages[0]).toMatchObject({ parentId: parent.id, isPrivate: true });
+    expect(res.data!.documents[0]).toMatchObject({ parentId: parent.id, isPrivate: true });
   });
 
   it('rejects an archived, locked or invisible parent', async () => {
@@ -339,9 +340,16 @@ describe('POST /projects/:projectKey/documents/import', () => {
     await documents(asOwner)({ documentId: locked.id }).lock.post({ version: locked.version });
     expect((await importZip(asOwner, { 'a.md': 'A' }, locked.id)).status).toBe(409);
 
+    const archived = (await documents(asOwner).post({ title: 'Archived' })).data!;
+    await documents(asOwner)({ documentId: archived.id }).archive.post({
+      version: archived.version,
+    });
+    expect((await importZip(asOwner, { 'a.md': 'A' }, archived.id)).status).toBe(409);
+
     const secret = (await documents(asOwner).post({ title: 'Secret', isPrivate: true })).data!;
     const member = await addMember(asOwner);
-    expect((await importZip(member, { 'a.md': 'A' }, secret.id)).status).toBe(400);
+    expect((await importZip(member, { 'a.md': 'A' }, secret.id)).status).toBe(404);
+    expect((await importZip(asOwner, { 'a.md': 'A' }, 999_999)).status).toBe(404);
   });
 
   it('allows only the levels left under a deep parent', async () => {

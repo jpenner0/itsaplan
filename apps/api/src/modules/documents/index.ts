@@ -687,7 +687,7 @@ export const documentRoutes = new Elysia({
       detail: {
         summary: 'Import a Markdown folder',
         description:
-          'Create a page tree from a ZIP of Markdown files, at the top level or under `parentId`. Folders become parent pages, referenced files become page assets. Returns the created top-level pages and the skipped files.',
+          'Create a page tree from a ZIP of Markdown files, at the top level or under `parentId`. Folders become parent pages, referenced files become page assets. Returns the created top-level pages, the number of all created pages and the skipped files.',
       },
     },
   )
