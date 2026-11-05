@@ -5,6 +5,7 @@ import { account, db, issueSyncLink, issueSyncOutbox } from '@repo/db';
 import { eq, sql } from 'drizzle-orm';
 import { app } from '../../../../app';
 import { authedApi, type Api, createProject } from '#tests/helpers/app';
+import { addProjectMember } from '#tests/helpers/members';
 import { signUpTestUser } from '#tests/helpers/auth';
 import { resetDb } from '#tests/helpers/db';
 import { getProjectByRef } from '#modules/projects/service';
@@ -350,6 +351,20 @@ describe('GitHub issue sync, outbound', () => {
 
     const again = await ctx.asOwner.issues({ issueId: before.id }).publish.post();
     expect(again.status).toBe(409);
+  });
+
+  it('tells a member without the repository permission whether the project syncs', async () => {
+    const ctx = await setup(fake);
+    const created = await createIssue(ctx);
+    const member = await addProjectMember(ctx.asOwner, ctx.key);
+    const connections = await member.projects({ projectKey: ctx.key }).settings.git.get();
+    expect(connections.status).toBe(403);
+
+    expect((await member.issues({ issueId: created.id }).get()).data!.syncsIssues).toBe(false);
+    await enable(ctx);
+    expect((await member.issues({ issueId: created.id }).get()).data!.syncsIssues).toBe(true);
+    const published = await member.issues({ issueId: created.id }).publish.post();
+    expect(published.status).toBe(201);
   });
 
   it('refuses publish to a user outside the project', async () => {

@@ -294,7 +294,8 @@ export const createWorklogBody = t.Object({
 export const updateWorklogBody = t.Partial(createWorklogBody);
 
 // GET /issues/:issueId returns the full issue plus its custom field values, its
-// relations to other issues, the members watching it, and its checklists.
+// relations to other issues, the members watching it, and its checklists. `syncsIssues`
+// tells a member who cannot read the git settings whether "Publish to GitHub" applies.
 export const IssueWithFieldsResponse = t.Composite([
   IssueResponse,
   t.Object({
@@ -305,6 +306,7 @@ export const IssueWithFieldsResponse = t.Composite([
     subtasks: t.Array(IssueRefResponse),
     checklists: t.Array(ChecklistResponse),
     development: t.Array(DevelopmentLinkResponse),
+    syncsIssues: t.Boolean(),
   }),
 ]);
 

@@ -246,6 +246,7 @@ export interface IssueWithWatchers extends IssueRelations {
   watchers: IssueWatcher[];
   checklists: Checklist[];
   development: DevelopmentLink[];
+  syncsIssues: boolean;
 }
 
 export interface NewIssueInput {

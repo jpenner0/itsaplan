@@ -11,7 +11,7 @@ import { useTranslations } from 'next-intl';
 
 export default function IssueDevelopmentPanel({
   issueId,
-  projectKey,
+  syncsIssues,
   identifier,
   issueTitle,
   links,
@@ -19,7 +19,7 @@ export default function IssueDevelopmentPanel({
   canManage,
 }: {
   issueId: number;
-  projectKey: string;
+  syncsIssues: boolean;
   identifier: string;
   issueTitle: string;
   links: DevelopmentLink[];
@@ -30,7 +30,7 @@ export default function IssueDevelopmentPanel({
   const { open, toggle } = usePersistedOpen('issue-development-open');
   const [linkOpen, setLinkOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
-  const publish = useIssuePublish(issueId, projectKey, links, canEdit);
+  const publish = useIssuePublish(issueId, links, syncsIssues, canEdit);
   if (links.length === 0 && !canManage && !publish.available) return null;
 
   return (

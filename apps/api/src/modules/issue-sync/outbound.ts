@@ -142,6 +142,10 @@ export async function publishIssue(issueId: number, projectId: number): Promise<
   return { issueId, externalNumber: link.externalNumber, externalUrl: link.externalUrl };
 }
 
+export async function projectSyncsIssues(projectId: number): Promise<boolean> {
+  return (await projectSyncRepositoryId(projectId, false)) !== null;
+}
+
 async function projectSyncRepositoryId(
   projectId: number,
   newIssues: boolean,

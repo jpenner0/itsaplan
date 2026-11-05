@@ -19,7 +19,7 @@ import {
 } from '#shared/access';
 import { boundProjectId, isMcpRequest } from '#shared/mcp-request';
 import { getProjectById } from '#modules/projects/service';
-import { publishIssue, publishNewIssue } from '#modules/issue-sync/outbound';
+import { projectSyncsIssues, publishIssue, publishNewIssue } from '#modules/issue-sync/outbound';
 import { HttpError, instantParam } from '#shared/lib';
 import { accessErrors, commonErrors, errors } from '#shared/responses';
 import { deleteObject } from '@repo/storage';
@@ -570,7 +570,18 @@ export const issueRoutes = new Elysia({ name: 'issues', detail: { tags: ['Issues
       const subtasks = await listSubtasks(issue.id);
       const checklists = await listChecklists(issue.id);
       const development = await listIssueDevelopmentLinks(issue.id);
-      return { ...issue, fields, links, watchers, parent, subtasks, checklists, development };
+      const syncsIssues = await projectSyncsIssues(issue.projectId);
+      return {
+        ...issue,
+        fields,
+        links,
+        watchers,
+        parent,
+        subtasks,
+        checklists,
+        development,
+        syncsIssues,
+      };
     },
     {
       params: issueSequenceParams,
@@ -698,7 +709,18 @@ export const issueRoutes = new Elysia({ name: 'issues', detail: { tags: ['Issues
       const subtasks = await listSubtasks(issue.id);
       const checklists = await listChecklists(issue.id);
       const development = await listIssueDevelopmentLinks(issue.id);
-      return { ...issue, fields, links, watchers, parent, subtasks, checklists, development };
+      const syncsIssues = await projectSyncsIssues(issue.projectId);
+      return {
+        ...issue,
+        fields,
+        links,
+        watchers,
+        parent,
+        subtasks,
+        checklists,
+        development,
+        syncsIssues,
+      };
     },
     {
       params: issueParams,
