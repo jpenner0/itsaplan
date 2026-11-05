@@ -24,6 +24,9 @@ export type PipelineStatus = 'pending' | 'running' | 'success' | 'failed' | 'can
 export interface PullRequestEvent {
   kind: 'pull_request';
   action: 'opened' | 'updated' | 'merged' | 'closed';
+  // The action as the provider named it in a webhook. `action` folds several into one,
+  // such as GitHub's opened, reopened and ready_for_review into 'opened'.
+  providerAction?: string;
   number: number;
   title: string;
   body: string;
@@ -234,6 +237,7 @@ function parseGithubPullRequest(payload: unknown): PullRequestEvent | null {
   return {
     kind: 'pull_request',
     action: merged ? 'merged' : closed ? 'closed' : opened ? 'opened' : 'updated',
+    providerAction: action,
     number: pr.number,
     title: pr.title ?? '',
     body: pr.body ?? '',
@@ -472,6 +476,7 @@ const gitlab: GitProvider = {
     return {
       kind: 'pull_request',
       action: merged ? 'merged' : closed ? 'closed' : opened ? 'opened' : 'updated',
+      providerAction: mr.action,
       number: mr.iid,
       title: mr.title ?? '',
       body: mr.description ?? '',
@@ -562,6 +567,7 @@ const bitbucket: GitProvider = {
     return {
       kind: 'pull_request',
       action: merged ? 'merged' : closed ? 'closed' : opened ? 'opened' : 'updated',
+      providerAction: key,
       number: pr.id,
       title: pr.title ?? '',
       body: pr.description ?? '',

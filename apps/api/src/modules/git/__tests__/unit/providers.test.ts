@@ -256,6 +256,37 @@ describe('repository provider events', () => {
   });
 });
 
+describe('GitHub pull request actions', () => {
+  const headers = { 'x-github-event': 'pull_request' };
+  const parse = (action: string) =>
+    detectProvider(headers)!.parse(
+      {
+        action,
+        pull_request: { number: 7, title: 'Change', base: { ref: 'main' }, head: { ref: 'b' } },
+        repository: { full_name: 'acme/site' },
+      },
+      headers,
+    );
+
+  it('keeps the action GitHub sent next to the folded one', () => {
+    expect(parse('opened')).toMatchObject({ action: 'opened', providerAction: 'opened' });
+    expect(parse('reopened')).toMatchObject({ action: 'opened', providerAction: 'reopened' });
+    expect(parse('ready_for_review')).toMatchObject({
+      action: 'opened',
+      providerAction: 'ready_for_review',
+    });
+    expect(parse('synchronize')).toMatchObject({
+      action: 'updated',
+      providerAction: 'synchronize',
+    });
+    expect(parse('closed')).toMatchObject({ action: 'closed', providerAction: 'closed' });
+  });
+
+  it('ignores an action it does not handle', () => {
+    expect(parse('labeled')).toBeNull();
+  });
+});
+
 describe('GitHub issue events', () => {
   const repository = { full_name: 'acme/site' };
   const issue = {
