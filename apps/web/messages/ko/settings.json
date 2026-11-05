@@ -15,7 +15,9 @@
     "type": "실행 조건",
     "types": {
       "cron": "정해진 일정에 따라",
-      "status": "이슈가 특정 상태로 변경될 때"
+      "status": "이슈가 특정 상태로 변경될 때",
+      "synced_issue_created": "새 GitHub 이슈가 생길 때",
+      "pull_request_opened": "풀 리퀘스트가 열릴 때"
     },
     "taskOptional": "작업 (선택 사항)",
     "issueTaskPlaceholder": "승인 기준을 이슈 설명에 작성하세요.",
@@ -82,7 +84,11 @@
     "createAgent": "AI 에이전트 생성",
     "empty": "아직 일정이 없습니다",
     "emptyHint": "AI 에이전트와 작업을 선택하고 실행 주기를 설정하세요.",
-    "deleteMessage": "<v>{name}</v> 일정과 실행 기록이 삭제됩니다. 이 작업은 되돌릴 수 없습니다."
+    "deleteMessage": "<v>{name}</v> 일정과 실행 기록이 삭제됩니다. 이 작업은 되돌릴 수 없습니다.",
+    "typeHints": {
+      "synced_issue_created": "이슈 동기화가 켜져 있는 동안 GitHub에서 새로 만들어진 이슈에만 실행됩니다. 첫 가져오기나 It's a Plan이 GitHub에 직접 만든 이슈에는 실행되지 않습니다.",
+      "pull_request_opened": "동기화된 이슈를 참조하는 풀 리퀘스트가 열리거나 초안에서 준비 상태로 바뀔 때 실행됩니다. 푸시할 때마다 실행되지는 않습니다. 새 리뷰를 시작하려면 이슈에서 에이전트를 멘션하세요."
+    }
   },
   "agents": {
     "empty": "아직 AI 에이전트가 없습니다",

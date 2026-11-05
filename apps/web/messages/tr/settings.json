@@ -15,7 +15,9 @@
     "type": "Çalışma kuralı",
     "types": {
       "cron": "Bir zaman çizelgesine göre",
-      "status": "Bir iş belirli bir duruma girdiğinde"
+      "status": "Bir iş belirli bir duruma girdiğinde",
+      "synced_issue_created": "Yeni bir GitHub issue'su geldiğinde",
+      "pull_request_opened": "Bir pull request açıldığında"
     },
     "taskOptional": "Görev (isteğe bağlı)",
     "issueTaskPlaceholder": "Kabul kriterlerini işin açıklamasına yazın.",
@@ -82,7 +84,11 @@
     "createAgent": "Ajan oluştur",
     "empty": "Henüz zamanlama yok",
     "emptyHint": "Bir ajan, bir görev ve ne sıklıkla çalışacağını seçin.",
-    "deleteMessage": "<v>{name}</v> zamanlaması ve çalışma geçmişi kaldırılacaktır. Bu işlem geri alınamaz."
+    "deleteMessage": "<v>{name}</v> zamanlaması ve çalışma geçmişi kaldırılacaktır. Bu işlem geri alınamaz.",
+    "typeHints": {
+      "synced_issue_created": "Yalnızca issue senkronizasyonu açıkken GitHub'da yeni oluşturulan issue'lar için çalışır. İlk içe aktarma için ve It's a Plan'in GitHub'da kendisinin oluşturduğu issue'lar için çalışmaz.",
+      "pull_request_opened": "Senkronize edilmiş bir issue'ya başvuran bir pull request açıldığında veya taslaktan hazıra alındığında çalışır. Her push'ta değil. Yeni bir inceleme başlatmak için issue'da ajandan bahsedin."
+    }
   },
   "agents": {
     "empty": "Henüz ajan yok",

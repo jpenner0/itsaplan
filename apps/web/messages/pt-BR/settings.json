@@ -15,7 +15,9 @@
     "type": "Execução",
     "types": {
       "cron": "Por agendamento",
-      "status": "Quando uma issue entra em um estado"
+      "status": "Quando uma issue entra em um estado",
+      "synced_issue_created": "Com uma nova issue do GitHub",
+      "pull_request_opened": "Quando um pull request é aberto"
     },
     "taskOptional": "Tarefa (opcional)",
     "issueTaskPlaceholder": "Escreva os critérios de aceitação na descrição da issue.",
@@ -82,7 +84,11 @@
     "createAgent": "Criar um agente",
     "empty": "Nenhum agendamento ainda",
     "emptyHint": "Escolha um agente, uma tarefa e com que frequência ela roda.",
-    "deleteMessage": "O agendamento <v>{name}</v> e seu histórico de execuções serão removidos. Isso não pode ser desfeito."
+    "deleteMessage": "O agendamento <v>{name}</v> e seu histórico de execuções serão removidos. Isso não pode ser desfeito.",
+    "typeHints": {
+      "synced_issue_created": "Executa apenas para issues criadas no GitHub enquanto a sincronização de issues está ativa. Não na primeira importação nem para issues que o It's a Plan criou no GitHub.",
+      "pull_request_opened": "Executa quando um pull request que referencia uma issue sincronizada é aberto ou muda de rascunho para pronto. Não a cada push. Para iniciar uma nova revisão, mencione o agente na issue."
+    }
   },
   "agents": {
     "empty": "Nenhum agente ainda",

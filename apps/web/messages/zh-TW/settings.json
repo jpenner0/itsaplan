@@ -15,7 +15,9 @@
     "type": "執行方式",
     "types": {
       "cron": "依排程",
-      "status": "工作項目進入某狀態時"
+      "status": "工作項目進入某狀態時",
+      "synced_issue_created": "GitHub 出現新 issue 時",
+      "pull_request_opened": "pull request 被開啟時"
     },
     "taskOptional": "任務（可選）",
     "issueTaskPlaceholder": "在工作項目描述中寫下驗收標準。",
@@ -82,7 +84,11 @@
     "createAgent": "新建代理",
     "empty": "暫無排程",
     "emptyHint": "選擇代理、任務和執行頻率。",
-    "deleteMessage": "排程 <v>{name}</v> 及其執行記錄將被刪除。此操作無法復原。"
+    "deleteMessage": "排程 <v>{name}</v> 及其執行記錄將被刪除。此操作無法復原。",
+    "typeHints": {
+      "synced_issue_created": "僅在 issue 同步開啟期間，對在 GitHub 上新建的 issue 執行。首次匯入時不執行，It's a Plan 自己在 GitHub 上建立的 issue 也不執行。",
+      "pull_request_opened": "當引用已同步 issue 的 pull request 被開啟或從草稿轉為就緒時執行。不會在每次 push 時執行。要開始新的審查，請在 issue 中提及該代理。"
+    }
   },
   "agents": {
     "empty": "還沒有代理",
