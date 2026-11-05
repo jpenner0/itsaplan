@@ -12,6 +12,7 @@ import {
   listDevelopmentBranches,
   linkIssueDevelopment,
   createIssuePullRequest,
+  listGitProviderConnections,
 } from '@/lib/api/endpoints/git';
 import {
   type BulkIssuePatch,
@@ -23,6 +24,7 @@ import {
   type BoardIssues,
   type SubtaskDisposition,
   getIssue,
+  publishIssue,
   listIssueAgentRuns,
   getIssueAgentRunTrace,
   listIssueCycles,
@@ -68,6 +70,31 @@ export function useRemoveIssueDevelopmentLink(issueId: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (linkId: number) => removeIssueDevelopmentLink(issueId, linkId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.issue(issueId) }),
+  });
+}
+
+// Whether a GitHub repository of the project syncs its issues. Shares the settings
+// screen's connections query.
+export function useProjectSyncsIssues(projectKey: string, enabled: boolean) {
+  return useQuery({
+    queryKey: qk.gitConnections(projectKey),
+    queryFn: () => listGitProviderConnections(projectKey),
+    enabled,
+    select: (connections) =>
+      connections.some(
+        (connection) =>
+          connection.provider === 'github' &&
+          connection.repositories.some((repository) => repository.issuesSyncEnabled),
+      ),
+  });
+}
+
+export function usePublishIssue(issueId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => publishIssue(issueId),
+    meta: { suppressErrorToast: true },
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.issue(issueId) }),
   });
 }

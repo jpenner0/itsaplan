@@ -494,7 +494,13 @@
     "onOpenHint": "Ne déplace que les tickets non démarrés. Les tickets en cours et fermés ne bougent pas.",
     "onOpenNone": "Aucune action",
     "changeState": "Changer l'état…",
-    "noState": "Aucun état."
+    "noState": "Aucun état.",
+    "issueSyncTitle": "Synchronisation des tickets",
+    "issueSyncOnHint": "L'activer importe une fois tous les tickets GitHub ouverts.",
+    "issueSyncOffHint": "La désactiver supprime seulement les liens. Les tickets restent des deux côtés.",
+    "newIssuesToGithub": "Nouveaux tickets vers GitHub",
+    "newIssuesToGithubHint": "Les tickets créés dans ce projet sont aussi créés sur GitHub.",
+    "issueSyncSaved": "Paramètres de synchronisation des tickets enregistrés"
   },
   "importExport": {
     "import": "Importer",

@@ -494,7 +494,13 @@
     "onOpenHint": "Solo mueve los tickets que no se han empezado. Los tickets en curso y cerrados se quedan donde están.",
     "onOpenNone": "Ninguna acción",
     "changeState": "Cambiar el estado…",
-    "noState": "Sin estado."
+    "noState": "Sin estado.",
+    "issueSyncTitle": "Sincronización de incidencias",
+    "issueSyncOnHint": "Al activarla se importan una vez todas las incidencias abiertas de GitHub.",
+    "issueSyncOffHint": "Al desactivarla solo se eliminan los vínculos. Las incidencias se mantienen en ambos lados.",
+    "newIssuesToGithub": "Nuevas incidencias a GitHub",
+    "newIssuesToGithubHint": "Las incidencias creadas en este proyecto también se crean en GitHub.",
+    "issueSyncSaved": "Ajustes de sincronización de incidencias guardados"
   },
   "importExport": {
     "import": "Importar",

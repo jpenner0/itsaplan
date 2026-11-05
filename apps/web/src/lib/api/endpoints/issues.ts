@@ -482,3 +482,11 @@ export const getIssueAgentRunTrace = (issueId: number, runId: number, traceId?: 
   request<IssueAgentRunTrace | null>(
     `/issues/${issueId}/agent-runs/${runId}/trace${traceId == null ? '' : `?traceId=${encodeURIComponent(traceId)}`}`,
   );
+
+// Creates the GitHub issue of an issue that has none and links the two (409 when it is
+// already synced or its project does not sync).
+export const publishIssue = (issueId: number) =>
+  request<{ issueId: number; externalNumber: number; externalUrl: string }>(
+    `/issues/${issueId}/publish`,
+    { method: 'POST' },
+  );

@@ -253,7 +253,8 @@
     "edited": "diedit",
     "deleteComment": "Hapus komentar",
     "deleteCommentTitle": "Hapus komentar ini?",
-    "deleteCommentConfirmation": "Komentar dan balasannya akan dihapus secara permanen."
+    "deleteCommentConfirmation": "Komentar dan balasannya akan dihapus secara permanen.",
+    "viaGithub": "@{login} di GitHub"
   },
   "stats": {
     "title": "Statistik",
@@ -415,7 +416,9 @@
       "failed": "Gagal",
       "canceled": "Dibatalkan",
       "skipped": "Dilewati"
-    }
+    },
+    "publish": "Publikasikan ke GitHub",
+    "published": "Dipublikasikan ke GitHub"
   },
   "documents": {
     "title": "Dokumen",
@@ -564,5 +567,11 @@
     "selectRun": "Select a run to see its details",
     "runNotFound": "This run is not in your queue, or you cannot read it.",
     "backToRuns": "Back to runs"
+  },
+  "sync": {
+    "settingsConflict": "Repositori ini sudah disinkronkan dengan proyek lain.",
+    "publishConflict": "Isu ini sudah ada di GitHub, atau proyeknya tidak menyinkronkan isu.",
+    "github": "GitHub mengembalikan kesalahan. Coba lagi nanti.",
+    "busy": "Sinkronisasi sedang berjalan. Coba lagi sebentar lagi."
   }
 }

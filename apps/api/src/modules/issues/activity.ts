@@ -2,6 +2,7 @@ import {
   db,
   issue,
   issueActivity,
+  issueCommentSyncLink,
   user,
   projectColumn,
   issueType,
@@ -48,6 +49,8 @@ export interface FeedItemRow {
   createdAt: string;
   // Set once a comment is edited; null while it is in its author's original words.
   editedAt: string | null;
+  // Where a comment written on the synced provider came from; null for any other entry.
+  external: { login: string; url: string } | null;
 }
 
 // Opaque page cursor: the (created_at, id) of the last returned item. id breaks
@@ -89,7 +92,27 @@ function mapFeedItem(row: {
     payload: row.payload,
     createdAt: iso(row.createdAt),
     editedAt: row.editedAt ? iso(row.editedAt) : null,
+    external: null,
   };
+}
+
+// Fills `external` on the comments that were written on the provider.
+async function withExternalOrigin(items: FeedItemRow[]): Promise<FeedItemRow[]> {
+  const ids = items.filter((item) => item.kind === 'comment').map((item) => item.id);
+  if (ids.length === 0) return items;
+  const rows = await db
+    .select({
+      activityId: issueCommentSyncLink.activityId,
+      login: issueCommentSyncLink.externalAuthorLogin,
+      url: issueCommentSyncLink.externalUrl,
+    })
+    .from(issueCommentSyncLink)
+    .where(inArray(issueCommentSyncLink.activityId, ids));
+  const origins = new Map(rows.flatMap((r) => (r.login ? [[r.activityId, r] as const] : [])));
+  return items.map((item) => {
+    const origin = origins.get(item.id);
+    return origin ? { ...item, external: { login: origin.login!, url: origin.url } } : item;
+  });
 }
 
 export type FeedFilter = 'comments' | 'history' | 'worklog';
@@ -165,7 +188,7 @@ export async function listFeed(issueId: number, opts: FeedPageOptions = {}): Pro
   const items = page.map(mapFeedItem);
   const replies = await listReplies(items.map((item) => item.id));
   return {
-    items: [...items, ...replies],
+    items: await withExternalOrigin([...items, ...replies]),
     nextCursor: hasMore && last ? { ts: last.cursorTs, id: last.id } : null,
   };
 }
@@ -245,7 +268,7 @@ export async function listFeedRange(
       ),
     )
     .orderBy(issueActivity.createdAt, issueActivity.id);
-  return rows.map(mapFeedItem);
+  return withExternalOrigin(rows.map(mapFeedItem));
 }
 
 // One stretch of the grouped feed: the status the issue was in, and the entries of

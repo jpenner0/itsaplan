@@ -253,7 +253,8 @@
     "edited": "تم التعديل",
     "deleteComment": "حذف التعليق",
     "deleteCommentTitle": "حذف هذا التعليق؟",
-    "deleteCommentConfirmation": "سيتم حذف التعليق وجميع ردوده نهائيًا."
+    "deleteCommentConfirmation": "سيتم حذف التعليق وجميع ردوده نهائيًا.",
+    "viaGithub": "@{login} على GitHub"
   },
   "stats": {
     "title": "الإحصاءات",
@@ -415,7 +416,9 @@
       "failed": "فشل",
       "canceled": "ملغي",
       "skipped": "تم تخطيه"
-    }
+    },
+    "publish": "نشر على GitHub",
+    "published": "تم النشر على GitHub"
   },
   "documents": {
     "title": "المستندات",
@@ -564,5 +567,11 @@
     "selectRun": "Select a run to see its details",
     "runNotFound": "This run is not in your queue, or you cannot read it.",
     "backToRuns": "Back to runs"
+  },
+  "sync": {
+    "settingsConflict": "هذا المستودع متزامن بالفعل مع مشروع آخر.",
+    "publishConflict": "هذه المشكلة موجودة بالفعل على GitHub، أو أن مشروعها لا يزامن المشكلات.",
+    "github": "أعاد GitHub خطأً. حاول مرة أخرى لاحقًا.",
+    "busy": "المزامنة قيد التشغيل حاليًا. حاول مرة أخرى بعد قليل."
   }
 }

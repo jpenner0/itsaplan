@@ -253,7 +253,8 @@
     "edited": "已编辑",
     "deleteComment": "删除评论",
     "deleteCommentTitle": "删除此评论？",
-    "deleteCommentConfirmation": "该评论及其所有回复将被永久删除。"
+    "deleteCommentConfirmation": "该评论及其所有回复将被永久删除。",
+    "viaGithub": "GitHub 上的 @{login}"
   },
   "stats": {
     "title": "统计",
@@ -415,7 +416,9 @@
       "failed": "失败",
       "canceled": "已取消",
       "skipped": "已跳过"
-    }
+    },
+    "publish": "发布到 GitHub",
+    "published": "已发布到 GitHub"
   },
   "documents": {
     "title": "文档",
@@ -564,5 +567,11 @@
     "selectRun": "Select a run to see its details",
     "runNotFound": "This run is not in your queue, or you cannot read it.",
     "backToRuns": "Back to runs"
+  },
+  "sync": {
+    "settingsConflict": "此仓库已与另一个项目同步。",
+    "publishConflict": "此议题已在 GitHub 上，或其项目未开启议题同步。",
+    "github": "GitHub 返回了错误，请稍后重试。",
+    "busy": "同步正在进行，请稍后重试。"
   }
 }

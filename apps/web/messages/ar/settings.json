@@ -494,7 +494,13 @@
     "onOpenHint": "بينقل المهام اللي لسه مبدأتش بس. المهام الشغالة والمقفولة بتفضل مكانها.",
     "onOpenNone": "لا إجراء",
     "changeState": "تغيير الحالة…",
-    "noState": "لا توجد حالة."
+    "noState": "لا توجد حالة.",
+    "issueSyncTitle": "مزامنة المشكلات",
+    "issueSyncOnHint": "عند التفعيل يتم استيراد كل مشكلات GitHub المفتوحة مرة واحدة.",
+    "issueSyncOffHint": "عند الإيقاف تُزال الروابط فقط. تبقى المشكلات في الجانبين.",
+    "newIssuesToGithub": "المشكلات الجديدة إلى GitHub",
+    "newIssuesToGithubHint": "المشكلات التي تُنشأ في هذا المشروع تُنشأ أيضًا على GitHub.",
+    "issueSyncSaved": "تم حفظ إعدادات مزامنة المشكلات"
   },
   "importExport": {
     "import": "استيراد",

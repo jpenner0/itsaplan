@@ -494,7 +494,13 @@
     "onOpenHint": "Yalnızca henüz başlanmamış işleri taşır. Devam eden ve kapalı işler yerinde kalır.",
     "onOpenNone": "İşlem yapma",
     "changeState": "Durumu değiştir…",
-    "noState": "Durum yok."
+    "noState": "Durum yok.",
+    "issueSyncTitle": "Sorun senkronizasyonu",
+    "issueSyncOnHint": "Açıldığında GitHub'daki tüm açık sorunlar bir kez içe aktarılır.",
+    "issueSyncOffHint": "Kapatıldığında yalnızca bağlantılar kaldırılır. Sorunlar her iki tarafta da kalır.",
+    "newIssuesToGithub": "Yeni sorunlar GitHub'a",
+    "newIssuesToGithubHint": "Bu projede oluşturulan sorunlar GitHub'da da oluşturulur.",
+    "issueSyncSaved": "Sorun senkronizasyonu ayarları kaydedildi"
   },
   "importExport": {
     "import": "İçe Aktar",

@@ -494,7 +494,13 @@
     "onOpenHint": "Hanya memindahkan issue yang belum dimulai. Issue yang sedang berlangsung dan tertutup tidak berubah.",
     "onOpenNone": "Tidak ada tindakan",
     "changeState": "Ubah status…",
-    "noState": "Tidak ada status."
+    "noState": "Tidak ada status.",
+    "issueSyncTitle": "Sinkronisasi isu",
+    "issueSyncOnHint": "Jika diaktifkan, semua isu GitHub yang terbuka diimpor satu kali.",
+    "issueSyncOffHint": "Jika dinonaktifkan, hanya tautan yang dihapus. Isu tetap ada di kedua sisi.",
+    "newIssuesToGithub": "Isu baru ke GitHub",
+    "newIssuesToGithubHint": "Isu yang dibuat di proyek ini juga dibuat di GitHub.",
+    "issueSyncSaved": "Pengaturan sinkronisasi isu disimpan"
   },
   "importExport": {
     "import": "Impor",
