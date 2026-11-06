@@ -23,7 +23,6 @@ export default function ProjectSwitcherMenu({
   onScopeChange,
   onPickWorkspace,
   currentProjectKey,
-  recentIds,
   preferences,
   onSelectProject,
   onClose,
@@ -32,11 +31,10 @@ export default function ProjectSwitcherMenu({
   workspace?: WorkspaceSummary;
   teams: Team[];
   currentTeam?: Team;
-  scope: ProjectSwitcherScope;
+  scope: ProjectSwitcherScope | undefined;
   onScopeChange: (scope: ProjectSwitcherScope) => void;
   onPickWorkspace: (workspaceId: number) => void;
   currentProjectKey: string | null;
-  recentIds: number[];
   preferences: ReturnType<typeof useProjectSwitcherPreferences>;
   onSelectProject: (key: string) => void;
   onClose: () => void;
@@ -86,7 +84,6 @@ export default function ProjectSwitcherMenu({
         teams={teams}
         scope={scope}
         currentProjectKey={currentProjectKey}
-        recentIds={recentIds}
         sort={preferences.sort}
         onSortChange={preferences.setSort}
         onSelectProject={onSelectProject}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Project } from '@/lib/api/endpoints/projects';
 import { useSession } from '@/lib/auth-client';
@@ -10,11 +10,10 @@ import { SidebarMenu, SidebarMenuItem, useSidebar } from '@/components/ui/sideba
 import ProjectSwitcherTrigger from './ProjectSwitcherTrigger';
 import ProjectSwitcherMenu from './ProjectSwitcherMenu';
 import { useProjectSwitcherPreferences } from './hooks/useProjectSwitcherPreferences';
-import { useRecentProjects } from './hooks/useRecentProjects';
 
-// What the list beside the workspaces shows: the starred and recently opened projects,
-// the hidden ones, or the projects of one team, by its id.
-export type ProjectSwitcherScope = 'recent' | 'hidden' | number;
+// What the list beside the workspaces shows: the hidden projects, or the projects of one
+// team, by its id.
+export type ProjectSwitcherScope = 'hidden' | number;
 
 export default function ProjectSwitcher({
   projects,
@@ -32,17 +31,10 @@ export default function ProjectSwitcher({
   const queryClient = useQueryClient();
   const { data: session } = useSession();
   const preferences = useProjectSwitcherPreferences(session?.user.id);
-  const recent = useRecentProjects(session?.user.id);
   const current = projects.find((project) => project.ref === currentProjectKey);
   const [open, setOpen] = useState(false);
   const [pickedWorkspaceId, setPickedWorkspaceId] = useState<number | null>(null);
-  const [scope, setScope] = useState<ProjectSwitcherScope>('recent');
-
-  const currentId = current?.id;
-  const { record } = recent;
-  useEffect(() => {
-    if (currentId !== undefined) record(currentId);
-  }, [currentId, record]);
+  const [scope, setScope] = useState<ProjectSwitcherScope | null>(null);
 
   // A project reaches its workspace through its team, so nothing is narrowed until the
   // teams have loaded.
@@ -66,7 +58,7 @@ export default function ProjectSwitcher({
             setOpen(value);
             if (!value) return;
             setPickedWorkspaceId(null);
-            setScope('recent');
+            setScope(null);
             void queryClient.invalidateQueries({ queryKey: qk.projects });
           }}
         >
@@ -78,14 +70,13 @@ export default function ProjectSwitcher({
             workspace={workspace}
             teams={workspaceTeams}
             currentTeam={currentTeam}
-            scope={scope}
+            scope={scope ?? currentTeam?.id ?? workspaceTeams[0]?.id}
             onScopeChange={setScope}
             onPickWorkspace={(workspaceId) => {
               setPickedWorkspaceId(workspaceId);
-              setScope('recent');
+              setScope(null);
             }}
             currentProjectKey={currentProjectKey}
-            recentIds={recent.ids}
             preferences={preferences}
             onSelectProject={(key) => {
               setOpen(false);

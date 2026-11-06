@@ -6,7 +6,6 @@ import type { WorkspaceSummary } from '@/lib/api/endpoints/workspaces';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { Command, CommandInput, CommandList } from '@/components/ui/command';
 import type { ProjectSwitcherScope } from './ProjectSwitcher';
-import ProjectSwitcherRecent from './ProjectSwitcherRecent';
 import ProjectSwitcherResults from './ProjectSwitcherResults';
 import ProjectSwitcherSort from './ProjectSwitcherSort';
 
@@ -15,7 +14,6 @@ export default function ProjectSwitcherList({
   teams,
   scope,
   currentProjectKey,
-  recentIds,
   sort,
   onSortChange,
   onSelectProject,
@@ -23,9 +21,8 @@ export default function ProjectSwitcherList({
 }: {
   workspace?: WorkspaceSummary;
   teams: Team[];
-  scope: ProjectSwitcherScope;
+  scope: ProjectSwitcherScope | undefined;
   currentProjectKey: string | null;
-  recentIds: number[];
   sort: ProjectSort;
   onSortChange: (sort: ProjectSort) => void;
   onSelectProject: (key: string) => void;
@@ -51,20 +48,20 @@ export default function ProjectSwitcherList({
         {...rowProps}
       />
     );
-  } else if (scope === 'recent') {
-    content = (
-      <ProjectSwitcherRecent
-        workspaceId={workspaceId}
-        sort={sort}
-        recentIds={recentIds}
-        {...rowProps}
-      />
-    );
   } else if (scope === 'hidden') {
     content = (
       <ProjectSwitcherResults
         filters={{ workspaceId, hidden: true, sort }}
         empty={t('projectPicker.noHiddenProjects')}
+        showTeam
+        {...rowProps}
+      />
+    );
+  } else if (scope === undefined) {
+    content = (
+      <ProjectSwitcherResults
+        filters={{ workspaceId, hidden: false, sort }}
+        empty={t('noProjects')}
         showTeam
         {...rowProps}
       />
