@@ -37,8 +37,15 @@ In the team's notification providers, the **Microsoft Teams** tab has one switch
 default. While it is off, members do not see the Teams column for the team's projects, and
 queued Teams messages fail permanently. Teams needs no other credentials from the team.
 
+## Teams bot
+
+If the operator has set up the [Teams bot](teams-bot.md), **Account → Accounts** also offers
+**Microsoft Teams bot**. A member who links it gets the same notifications as direct messages from
+the bot, with no workflow to create. A linked bot is used before the webhook.
+
 ## For an operator
 
-- No environment variable is needed. The webhook URL is encrypted with `APP_ENCRYPTION_KEY`.
+- The webhook needs no environment variable. The bot needs `TEAMS_BOT_*`: see
+  [Teams bot](teams-bot.md). The webhook URL is encrypted with `APP_ENCRYPTION_KEY`.
 - The api and the worker reach `*.logic.azure.com` and `*.api.powerplatform.com` over https.
 - Requests go through `@repo/net`, so a host that resolves to a private address is refused.

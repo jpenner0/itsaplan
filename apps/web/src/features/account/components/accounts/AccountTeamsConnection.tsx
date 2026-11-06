@@ -25,6 +25,9 @@ export default function AccountTeamsConnection() {
   const [url, setUrl] = useState('');
 
   const showForm = !data?.connected || data.broken;
+  let description = t('teamsDescription');
+  if (data?.broken) description = t('teamsBroken', { error: data.lastError ?? '' });
+  else if (data?.connected) description = data.host ?? '';
 
   async function onSave() {
     await save.mutateAsync(url.trim());
@@ -41,13 +44,7 @@ export default function AccountTeamsConnection() {
           </span>
           <div className="min-w-0">
             <div className="text-sm font-medium">Microsoft Teams</div>
-            <p className="text-xs text-muted-foreground">
-              {data?.connected && !data.broken
-                ? data.host
-                : data?.broken
-                  ? t('teamsBroken', { error: data.lastError ?? '' })
-                  : t('teamsDescription')}
-            </p>
+            <p className="text-xs text-muted-foreground">{description}</p>
           </div>
         </div>
         {data?.connected && (

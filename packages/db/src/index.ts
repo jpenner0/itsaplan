@@ -27,7 +27,9 @@ export {
 } from './domains/notification-settings';
 export {
   getUsableTeamsUserIds,
+  markTeamsBotBroken,
   markTeamsWebhookBroken,
+  readTeamsBotConversation,
   readTeamsWebhookUrl,
 } from './domains/teams-webhook';
 export {

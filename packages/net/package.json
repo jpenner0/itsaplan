@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./teams-webhook": "./src/teams-webhook.ts"
+    "./teams-webhook": "./src/teams-webhook.ts",
+    "./teams-bot": "./src/teams-bot.ts"
   },
   "scripts": {
     "lint": "eslint .",

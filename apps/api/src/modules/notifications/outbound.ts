@@ -17,6 +17,7 @@ import { isAccountDeactivated } from '@repo/auth';
 import { readRedactedSettings } from '#modules/notification-settings/service';
 import { getPreferencesForUsers } from '#modules/notification-preferences/service';
 import { getTelegramChatIds, hasUsableInstanceBot } from '#modules/telegram/service';
+import { isTeamsBotConfigured } from '@repo/net/teams-bot';
 import { escapeHtml } from '#shared/lib';
 import { commentUrl, documentUrl, issueUrl, teamRef } from '#modules/teams/ref';
 import type { NotificationType, NewNotificationRow } from './service';
@@ -272,7 +273,9 @@ export async function enqueueOutbound(
       .where(inArray(user.id, userIds)),
     getPreferencesForUsers(projectId, userIds),
     telegramEnabled ? getTelegramChatIds(userIds) : Promise.resolve(new Map<string, string>()),
-    teamsEnabled ? getUsableTeamsUserIds(userIds) : Promise.resolve(new Set<string>()),
+    teamsEnabled
+      ? getUsableTeamsUserIds(userIds, isTeamsBotConfigured())
+      : Promise.resolve(new Set<string>()),
   ]);
   // A deactivated account keeps its projects, but nothing from them reaches it.
   const emailById = new Map(

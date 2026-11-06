@@ -18,6 +18,7 @@ import { planner } from './planner';
 import { mountMcp } from './mcp/mount';
 import { setMcpApp } from './mcp/app-ref';
 import { gitWebhookRoutes } from './modules/git/webhook';
+import { teamsBotMessageRoutes } from './modules/teams-bot/messages';
 import { scimRoutes } from './modules/scim';
 import { currentUserRoutes } from './modules/current-user';
 import { EmbedSitesSchema } from './modules/settings/model';
@@ -200,7 +201,7 @@ export const app = new Elysia()
           },
           {
             name: 'Microsoft Teams',
-            description: "The session user's Microsoft Teams Workflows webhook",
+            description: "The session user's Microsoft Teams webhook and bot link",
           },
           {
             name: 'Microsoft Teams',
@@ -373,6 +374,7 @@ export const app = new Elysia()
   })
   // Inbound repository webhook receiver (authenticated by its per-project secret).
   .use(gitWebhookRoutes)
+  .use(teamsBotMessageRoutes)
   // SCIM 2.0 provisioning (authenticated by the instance SCIM bearer token). Mounted
   // here rather than under the planner: the planner's session guard would answer 401
   // before the bearer check runs, and its error handler emits a body SCIM does not
