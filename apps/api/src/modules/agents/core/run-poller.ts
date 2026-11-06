@@ -18,7 +18,6 @@ import {
   scheduleRunRetry,
   type ClaimedRun,
 } from './run-queue';
-import { runMailTriage, applyTriage } from '#modules/mail-inbox/triage';
 import { STEP_LIMIT_MESSAGE, runAgent } from './runtime';
 import { runThreadId } from './runtime/thread-ids';
 
@@ -79,19 +78,16 @@ async function processRun(run: ClaimedRun): Promise<void> {
       return;
     }
     const abortSignal = AbortSignal.timeout(timeoutMs);
-    const result =
-      run.trigger === 'mail_triage'
-        ? await runMailTriage(run, abortSignal)
-        : await runAgent(run.agentId, run.projectId, framePrompt(run), {
-            callerUserId: run.agentUserId,
-            threadId: runThreadId(run),
-            issueId: run.issueId,
-            scheduleId: run.scheduleId,
-            runId: run.id,
-            trigger: run.trigger,
-            contextPreamble: runModePreamble(run) + peopleContext(run),
-            abortSignal,
-          });
+    const result = await runAgent(run.agentId, run.projectId, framePrompt(run), {
+      callerUserId: run.agentUserId,
+      threadId: runThreadId(run),
+      issueId: run.issueId,
+      scheduleId: run.scheduleId,
+      runId: run.id,
+      trigger: run.trigger,
+      contextPreamble: runModePreamble(run) + peopleContext(run),
+      abortSignal,
+    });
     if (result.aborted) {
       // Mastra resolves generate() on abort, so the partial text would read as a success.
       // Not retried: a run that hits the time limit will hit it again.
@@ -103,9 +99,6 @@ async function processRun(run: ClaimedRun): Promise<void> {
       await recordAgentRunFinished(run, 'failed');
       await markRunFailed(run.id, STEP_LIMIT_MESSAGE);
       return;
-    }
-    if (run.trigger === 'mail_triage' && run.intakeItemId != null) {
-      await applyTriage(run.intakeItemId, result.text);
     }
     await recordAgentRunFinished(run, 'success');
     await markRunSuccess(run.id, result.text, result.usage);
