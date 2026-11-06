@@ -2935,6 +2935,10 @@ export const intakeItem = pgTable(
       .default(sql`'{}'::text[]`),
     fromName: text('from_name').notNull().default(''),
     fromAddress: text('from_address').notNull(),
+    // Set by the worker: the sender is on the mailbox's allowed list and the receiving server
+    // authenticated its domain. A sender that is not allowed gets no triage run and is listed
+    // under "Sorted out".
+    senderAllowed: boolean('sender_allowed').notNull().default(true),
     subject: text('subject').notNull().default(''),
     sentAt: timestamp('sent_at', { withTimezone: true }),
     body: text('body').notNull().default(''),

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { simpleParser, type AddressObject } from 'mailparser';
 import TurndownService from 'turndown';
+import { isSenderAuthenticated } from './mail-auth';
 
 // Turns the raw source of one email into what the intake stores. No database and no
 // network, so unit tests run without either.
@@ -21,6 +22,8 @@ export interface ParsedMail {
   references: string[];
   fromName: string;
   fromAddress: string;
+  // The receiving server vouched for the From domain (see mail-auth.ts).
+  authenticated: boolean;
   subject: string;
   sentAt: Date | null;
   body: string;
@@ -68,6 +71,7 @@ export async function parseMail(source: Buffer): Promise<ParsedMail> {
     references: refs.map(normalizeMessageId),
     fromName: from.name,
     fromAddress: from.address,
+    authenticated: isSenderAuthenticated(source, from.address),
     subject: (mail.subject ?? '').trim(),
     sentAt: mail.date ?? null,
     body,

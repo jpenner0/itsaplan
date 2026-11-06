@@ -1,0 +1,1 @@
+ALTER TABLE "intake_item" ADD COLUMN "sender_allowed" boolean DEFAULT true NOT NULL;

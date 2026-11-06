@@ -1,12 +1,12 @@
 import { ImapFlow } from 'imapflow';
-import { readMailboxSecret, type mailbox, type MailboxSecret } from '@repo/db';
+import { readMailboxSecret, type teamMailbox, type MailboxSecret } from '@repo/db';
 import { microsoftAccessToken, TokenError } from '@repo/mailer';
 import { resolveHostForConnect } from '@repo/net';
 
-// The IMAP connection of one mailbox folder. It only reads: the folder is opened read-only
+// The IMAP connection of a team mailbox. It only reads: INBOX is opened read-only
 // and no message is flagged, moved or marked as read.
 
-export interface FolderSession {
+export interface MailSession {
   uidValidity: number;
   // The UID the next arriving message gets. The highest UID in use is one less.
   uidNext: number;
@@ -17,7 +17,7 @@ export interface FolderSession {
 
 export class ImapAuthError extends Error {}
 
-type MailboxRow = typeof mailbox.$inferSelect;
+export type MailboxRow = typeof teamMailbox.$inferSelect;
 
 // Microsoft refusing the app credentials (a wrong or expired client secret) is a sign-in
 // failure like a refused password; a network error or a 5xx is not.
@@ -32,7 +32,7 @@ async function microsoftToken(secret: MailboxSecret): Promise<string> {
   }
 }
 
-export async function openFolder(box: MailboxRow, folder: string): Promise<FolderSession> {
+export async function openInbox(box: MailboxRow): Promise<MailSession> {
   const secret = readMailboxSecret(box);
   // The host is checked like any supplied URL, then the connection goes to the address that
   // was checked and keeps the host name for TLS.
@@ -61,12 +61,12 @@ export async function openFolder(box: MailboxRow, folder: string): Promise<Folde
     }
     throw err;
   }
-  const lock = await client.getMailboxLock(folder, { readOnly: true });
+  const lock = await client.getMailboxLock('INBOX', { readOnly: true });
   const mailboxInfo = client.mailbox;
   if (!mailboxInfo) {
     lock.release();
     await client.logout().catch(() => undefined);
-    throw new Error('folder could not be opened');
+    throw new Error('INBOX could not be opened');
   }
   return {
     uidValidity: Number(mailboxInfo.uidValidity),

@@ -26,31 +26,44 @@ emails.
 
 ## Fetching
 
-`apps/worker/src/mail-worker.ts` runs its own loop on `poll-loop.ts`. A tick claims the folders
-that are due (`claimDueFolders`): `status = 'active'` and `next_poll_at <= now()`. The claim pushes
-`next_poll_at` forward by five minutes, so several replicas never read one folder, and a crashed
-poll is retried at the next interval.
+`apps/worker/src/mail-worker.ts` runs its own loop on `poll-loop.ts`. A tick claims the team
+mailboxes that are due (`claimDueMailboxes`): `status = 'active'` and `next_poll_at <= now()`. The
+claim pushes `next_poll_at` forward by five minutes, so several replicas never read one mailbox,
+and a crashed poll is retried at the next interval.
 
-- The folder is opened read-only. No email is moved, flagged or marked as read.
+- Only `INBOX` is read, read-only. No email is moved, flagged or marked as read.
 - `uid_validity` and `last_uid` are the watermark. The first poll, and a poll after `UIDVALIDITY`
-  changed, set `last_uid` to the highest UID in the folder (`UIDNEXT - 1`) and read nothing, so mail
+  changed, set `last_uid` to the highest UID in `INBOX` (`UIDNEXT - 1`) and read nothing, so mail
   that was there before is ignored. After each stored email the watermark moves to its UID.
 - At most 50 emails are read per poll.
 - Three sign-in failures in a row set `status = 'paused'` with `last_error`. The worker does not
-  poll a paused folder. Replacing the password or the Microsoft 365 credentials
-  (`PATCH /account/mailboxes/:id`) starts the folder again and keeps its watermark. Any other
-  error only records `last_error` and is retried at the next interval.
+  poll a paused mailbox. Any other error only records `last_error` and is retried at the next
+  interval.
+
+### Sender check
+
+`mail-auth.ts` (no database) decides `intake_item.sender_allowed`. It is true only when both hold:
+
+- The sender's address, or its domain, is in `allowed_senders`. A domain entry matches that domain
+  only, not its subdomains. An empty list lets nobody in.
+- The topmost `Authentication-Results` header shows `dmarc=pass`, or `spf=pass` (`smtp.mailfrom`)
+  or `dkim=pass` (`header.d`) for the same domain as `From`. Headers below the topmost one can be
+  written by the sender and are ignored. A missing header, a failed check, a pass for another
+  domain or more than one `From` header means not allowed.
+
+An email that is not allowed is stored but gets no triage run and is never posted as a comment on
+an issue.
 
 ## Stored email
 
 `parseMail` (`mail-parse.ts`, no database) reads the raw source. `storeMail` (`mail-store.ts`)
 inserts an `intake_item` with the sender, subject, `Message-ID`, `In-Reply-To`, `References`, date
-and body. A `Message-ID` already stored for the folder is skipped. A mail without one gets a stable
+and body. A `Message-ID` already stored for the mailbox is skipped. A mail without one gets a stable
 id derived from its source.
 
 - An HTML body is converted to Markdown (`turndown`); scripts and styles are dropped.
 - Attachments within the instance storage limits (`getStorageSettings`: size and MIME types) are
-  put in the object store under `intake/<folder id>/…`; a larger or disallowed file is only listed
+  put in the object store under `intake/<mailbox id>/…`; a larger or disallowed file is only listed
   by name and size (`s3_key` null). Inline images under 5 KB are ignored.
 
 ## Retention

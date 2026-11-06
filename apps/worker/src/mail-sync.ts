@@ -1,60 +1,55 @@
-import { db, mailbox } from '@repo/db';
+import { db, teamMailbox } from '@repo/db';
 import { eq } from 'drizzle-orm';
 import { parseMail } from './mail-parse';
-import { ImapAuthError, openFolder, type FolderSession } from './mail-imap';
-import {
-  markFailed,
-  markPolled,
-  queueTriage,
-  setWatermark,
-  storeMail,
-  type DueFolder,
-} from './mail-store';
+import { isSenderListed } from './mail-auth';
+import { ImapAuthError, openInbox, type MailboxRow, type MailSession } from './mail-imap';
+import { markFailed, markPolled, queueTriage, setWatermark, storeMail } from './mail-store';
 
 // Messages read per poll. The rest follows on the next one.
 const BATCH = 50;
 
-// Reads the new messages of one folder. The watermark is moved after each stored message, so
-// a failure half way re-reads nothing that was stored. Returns the ids of the new items.
-export async function syncFolder(folder: DueFolder, session: FolderSession): Promise<number[]> {
-  // The first poll, and a folder whose UIDVALIDITY changed, start at the highest UID: mail
+// Reads the new messages of INBOX. The watermark is moved after each stored message, so a
+// failure half way re-reads nothing that was stored. Returns the ids of the new items.
+export async function syncMailbox(box: MailboxRow, session: MailSession): Promise<number[]> {
+  // The first poll, and a mailbox whose UIDVALIDITY changed, start at the highest UID: mail
   // that was there before is ignored.
-  if (folder.uidValidity !== session.uidValidity || folder.lastUid == null) {
-    await setWatermark(folder.id, session.uidValidity, session.uidNext - 1);
+  if (box.uidValidity !== session.uidValidity || box.lastUid == null) {
+    await setWatermark(box.id, session.uidValidity, session.uidNext - 1);
     return [];
   }
   const ids: number[] = [];
-  const messages = await session.fetchAfter(folder.lastUid, BATCH);
+  const messages = await session.fetchAfter(box.lastUid, BATCH);
   for (const message of messages) {
-    const stored = await storeMail(folder.id, await parseMail(message.source));
+    const mail = await parseMail(message.source);
+    const senderAllowed =
+      mail.authenticated && isSenderListed(box.allowedSenders, mail.fromAddress);
+    const stored = await storeMail(box.id, mail, senderAllowed);
     if (stored) {
       ids.push(stored.id);
       // An answer to an accepted email is posted as a comment by the api, with no triage.
-      if (stored.replyToIssueId == null) await queueTriage(stored.id, folder.id);
+      // An email from a sender that is not allowed is only stored.
+      if (senderAllowed && stored.replyToIssueId == null) await queueTriage(stored.id, box);
     }
-    await setWatermark(folder.id, session.uidValidity, message.uid);
+    await setWatermark(box.id, session.uidValidity, message.uid);
   }
   return ids;
 }
 
-// One poll of a claimed folder: connect, read, record the outcome.
-export async function pollFolder(
-  folder: DueFolder,
-  open: typeof openFolder = openFolder,
-): Promise<void> {
+// One poll of a claimed mailbox: connect, read, record the outcome.
+export async function pollMailbox(id: number, open: typeof openInbox = openInbox): Promise<void> {
+  const [box] = await db.select().from(teamMailbox).where(eq(teamMailbox.id, id));
+  if (!box) return;
   try {
-    const [box] = await db.select().from(mailbox).where(eq(mailbox.id, folder.mailboxId));
-    if (!box) return;
-    const session = await open(box, folder.name);
+    const session = await open(box);
     try {
-      await syncFolder(folder, session);
+      await syncMailbox(box, session);
     } finally {
       await session.close();
     }
-    await markPolled(folder.id);
+    await markPolled(id);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[mail] folder ${folder.id} failed: ${message}`);
-    await markFailed(folder, message, err instanceof ImapAuthError);
+    console.error(`[mail] mailbox ${id} failed: ${message}`);
+    await markFailed(box, message, err instanceof ImapAuthError);
   }
 }
