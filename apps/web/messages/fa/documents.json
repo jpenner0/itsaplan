@@ -177,6 +177,7 @@
     "todoList": "فهرست کارها",
     "quote": "نقل‌قول",
     "codeBlock": "بلوک کد",
+    "mermaidDiagram": "نمودار (Mermaid)",
     "divider": "جداکننده",
     "table": "جدول",
     "image": "تصویر",
@@ -205,6 +206,13 @@
     "copyLink": "کپی لینک بلوک",
     "linkCopied": "لینک کپی شد",
     "copyFailed": "کپی لینک ممکن نشد"
+  },
+  "mermaid": {
+    "editCode": "ویرایش کد",
+    "done": "تمام",
+    "copyCode": "کپی کد",
+    "codeCopied": "کد کپی شد",
+    "copyFailed": "کپی کد ممکن نشد"
   },
   "sync": {
     "connecting": "در حال اتصال به سند…",
