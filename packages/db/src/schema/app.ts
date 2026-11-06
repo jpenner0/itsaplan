@@ -761,6 +761,11 @@ export const agentRun = pgTable(
       () => documentComment.id,
       { onDelete: 'set null' },
     ),
+    // The email a 'mail_triage' run sorts. Such a run has no issue; its prompt is built from
+    // the email when it runs.
+    intakeItemId: integer('intake_item_id').references((): AnyPgColumn => intakeItem.id, {
+      onDelete: 'cascade',
+    }),
     // The mention comment body at enqueue time, framed into the agent's prompt.
     prompt: text('prompt').notNull(),
     // pending -> success | failed | canceled. Like webhook_delivery, a claim keeps the row
@@ -791,8 +796,11 @@ export const agentRun = pgTable(
     ),
     check(
       'agent_run_trigger_check',
-      sql`${t.trigger} IN ('mention', 'delegation', 'field', 'schedule', 'manual', 'status', 'event')`,
+      sql`${t.trigger} IN ('mention', 'delegation', 'field', 'schedule', 'manual', 'status', 'event', 'mail_triage')`,
     ),
+    index('agent_run_intake_item_idx')
+      .on(t.intakeItemId)
+      .where(sql`${t.intakeItemId} IS NOT NULL`),
     uniqueIndex('agent_run_schedule_fire_uq').on(t.scheduleId, t.scheduledFor),
     index('agent_run_due_idx').on(t.status, t.nextAttemptAt),
     index('agent_run_schedule_idx').on(t.scheduleId),
@@ -2837,4 +2845,140 @@ export const documentComment = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('document_comment_document_idx').on(t.documentId, t.createdAt)],
+);
+
+// A user's IMAP mailbox for the email intake. Only its owner reads or edits it. The sign-in
+// is stored encrypted like team_notification_setting: `ciphertext`/`iv`/`auth_tag` hold a
+// JSON blob (a password, or the Microsoft 365 app credentials), `redacted` mirrors it with
+// every secret as a boolean for the settings UI.
+export const mailbox = pgTable(
+  'mailbox',
+  {
+    id: serial('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    label: text('label').notNull(),
+    host: text('host').notNull(),
+    port: integer('port').notNull().default(993),
+    // true: TLS from the first byte (993). false: STARTTLS.
+    secure: boolean('secure').notNull().default(true),
+    auth: text('auth').notNull().default('password'),
+    username: text('username').notNull(),
+    ciphertext: text('ciphertext').notNull(),
+    iv: text('iv').notNull(),
+    authTag: text('auth_tag').notNull(),
+    redacted: jsonb('redacted').notNull().default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('mailbox_user_idx').on(t.userId),
+    check('mailbox_auth_check', sql`${t.auth} IN ('password', 'microsoft365')`),
+  ],
+);
+
+// One folder of a mailbox that is read. The team pays for the AI and only its projects are
+// suggested; the agent is the internal agent of that team that triages the folder.
+// `uid_validity` and `last_uid` are the watermark: mail at or below `last_uid` is never read
+// again. A folder with `status = 'paused'` is skipped until the user reconnects it.
+export const mailboxFolder = pgTable(
+  'mailbox_folder',
+  {
+    id: serial('id').primaryKey(),
+    mailboxId: integer('mailbox_id')
+      .notNull()
+      .references(() => mailbox.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    teamId: integer('team_id')
+      .notNull()
+      .references(() => team.id, { onDelete: 'cascade' }),
+    agentId: integer('agent_id')
+      .notNull()
+      .references(() => aiAgent.id, { onDelete: 'cascade' }),
+    // Null until the first poll sets the watermark to the highest UID of the folder.
+    uidValidity: bigint('uid_validity', { mode: 'number' }),
+    lastUid: bigint('last_uid', { mode: 'number' }),
+    status: text('status').notNull().default('active'),
+    failures: integer('failures').notNull().default(0),
+    lastError: text('last_error'),
+    nextPollAt: timestamp('next_poll_at', { withTimezone: true }).notNull().defaultNow(),
+    lastPolledAt: timestamp('last_polled_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique().on(t.mailboxId, t.name),
+    index('mailbox_folder_due_idx').on(t.status, t.nextPollAt),
+    check('mailbox_folder_status_check', sql`${t.status} IN ('active', 'paused')`),
+  ],
+);
+
+// One fetched email. `body` and `attachments` are the raw content and are cleared when the
+// item is accepted or, 30 days after, rejected; the rest is the metadata that matches
+// replies (message_id, sender, issue) and stays.
+export interface IntakeAttachment {
+  filename: string;
+  contentType: string;
+  sizeBytes: number;
+  // Null when the file was over the storage limits: it is only listed.
+  s3Key: string | null;
+}
+
+// The draft issue the triage agent proposes. The member can change every field before
+// accepting. Labels and priority come only from values the project has.
+export interface IntakeDraft {
+  projectId: number;
+  title: string;
+  description: string;
+  labelIds: number[];
+  priority: string | null;
+  duplicateIssueId: number | null;
+}
+
+export const intakeItem = pgTable(
+  'intake_item',
+  {
+    id: serial('id').primaryKey(),
+    folderId: integer('folder_id')
+      .notNull()
+      .references(() => mailboxFolder.id, { onDelete: 'cascade' }),
+    messageId: text('message_id').notNull(),
+    inReplyTo: text('in_reply_to'),
+    references: text('references')
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    fromName: text('from_name').notNull().default(''),
+    fromAddress: text('from_address').notNull(),
+    subject: text('subject').notNull().default(''),
+    sentAt: timestamp('sent_at', { withTimezone: true }),
+    body: text('body').notNull().default(''),
+    attachments: jsonb('attachments').$type<IntakeAttachment[]>().notNull().default([]),
+    // Set by the triage run: spam covers newsletters and auto-replies. Spam and no_ticket
+    // are listed under "Sorted out".
+    classification: text('classification'),
+    draft: jsonb('draft').$type<IntakeDraft>(),
+    // new -> accepted | rejected. A new item is not yet decided. An accepted item names its
+    // issue, which is what replies are matched against.
+    status: text('status').notNull().default('new'),
+    issueId: integer('issue_id').references(() => issue.id, { onDelete: 'set null' }),
+    // Set by the worker on an email that answers an accepted one: the issue it is to be posted
+    // on. The api posts it as a comment and clears this. No foreign key: an issue deleted
+    // meanwhile is found when the reply is posted, and the email is triaged instead.
+    replyToIssueId: integer('reply_to_issue_id'),
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique().on(t.folderId, t.messageId),
+    index('intake_item_reply_idx')
+      .on(t.id)
+      .where(sql`${t.replyToIssueId} IS NOT NULL AND ${t.status} = 'new'`),
+    index('intake_item_message_idx').on(t.messageId),
+    check('intake_item_status_check', sql`${t.status} IN ('new', 'accepted', 'rejected')`),
+    check(
+      'intake_item_classification_check',
+      sql`${t.classification} IN ('bug', 'feature', 'question', 'no_ticket', 'spam')`,
+    ),
+  ],
 );

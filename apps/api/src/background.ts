@@ -5,6 +5,7 @@ import { agentInvocationConfig, dispatchInvocations } from '#modules/agents/invo
 import { pruneAgentTraces } from '#modules/agents/core/runtime/trace-retention';
 import { sweepStaleIssues } from '#modules/issues/auto-archive';
 import { sweepExpiredShares } from '#modules/share/service';
+import { processMailReplies } from '#modules/mail-inbox/replies';
 import { processIssueSyncInbox } from '#modules/issue-sync/inbox';
 import { reconcileIssueSync } from '#modules/issue-sync/service';
 import { processIssueSyncOutbox } from '#modules/issue-sync/outbound';
@@ -30,6 +31,8 @@ export function startBackgroundJobs(): void {
   // An expired link already reads as revoked everywhere, so the sweep only tidies the
   // token away; once a minute keeps the stored state close to what users see.
   startLoop('share-expiry', expireShares, () => intEnv('SHARE_EXPIRY_INTERVAL_MS', 60_000));
+  // A reply to an accepted email becomes a comment within seconds of the worker storing it.
+  startLoop('mail-replies', postMailReplies, () => 5000);
   startLoop('agent-traces', pruneTraces, () => intEnv('AGENT_TRACE_PRUNE_INTERVAL_MS', 3_600_000));
   // Webhooks bring issue changes at once. The run first applies the deliveries a busy
   // repository or an error held back; the reconcile then catches what an instance
@@ -68,6 +71,11 @@ async function sendInvocations(): Promise<void> {
   void dispatchInvocations().catch((error: unknown) =>
     console.error('[background] agent-invocations failed:', error),
   );
+}
+
+async function postMailReplies(): Promise<void> {
+  const posted = await processMailReplies();
+  if (posted > 0) console.log(`[background] posted ${posted} email replies as comments`);
 }
 
 async function pruneTraces(): Promise<void> {

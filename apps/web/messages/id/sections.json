@@ -5,7 +5,8 @@
     "accounts": "Akun",
     "security": "Keamanan",
     "api-keys": "Kunci API",
-    "invitations": "Invitations"
+    "invitations": "Invitations",
+    "mailboxes": "Mailboxes"
   },
   "godGroups": {
     "management": "Manajemen",

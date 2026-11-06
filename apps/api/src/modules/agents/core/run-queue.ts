@@ -228,6 +228,8 @@ export interface ClaimedRun {
   // A mention in a document comment: the document, the comment, and the thread it is in.
   // All null for any other run.
   documentId: number | null;
+  // The email a 'mail_triage' run sorts.
+  intakeItemId: number | null;
   sourceDocumentCommentId: string | null;
   documentTitle: string | null;
   // The text of the document the thread is about.
@@ -290,6 +292,7 @@ export async function claimDueRuns(): Promise<ClaimedRun[]> {
         r.attempts,
         r.source_activity_id AS "sourceActivityId",
         r.document_id AS "documentId",
+        r.intake_item_id AS "intakeItemId",
         r.source_document_comment_id AS "sourceDocumentCommentId",
         r.project_id AS "projectId",
         (SELECT user_id FROM ai_agent a WHERE a.id = r.agent_id) AS "agentUserId",

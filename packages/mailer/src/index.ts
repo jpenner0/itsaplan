@@ -71,7 +71,7 @@ function fromAddress(config: EmailConfig, provider: 'smtp' | 'resend'): string |
   return null;
 }
 
-class TokenError extends Error {
+export class TokenError extends Error {
   constructor(
     message: string,
     readonly retryable: boolean,
@@ -84,7 +84,7 @@ class TokenError extends Error {
 const tokenCache = new Map<string, { token: string; expiresAt: number }>();
 const TOKEN_MARGIN_MS = 60_000;
 
-async function microsoftAccessToken(oauth: MicrosoftOAuthConfig): Promise<string> {
+export async function microsoftAccessToken(oauth: MicrosoftOAuthConfig): Promise<string> {
   const key = `${oauth.tenantId}|${oauth.clientId}|${oauth.clientSecret}`;
   const cached = tokenCache.get(key);
   if (cached && cached.expiresAt - TOKEN_MARGIN_MS > Date.now()) return cached.token;

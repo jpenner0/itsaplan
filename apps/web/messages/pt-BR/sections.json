@@ -5,7 +5,8 @@
     "accounts": "Contas",
     "security": "Segurança",
     "api-keys": "Chaves de API",
-    "invitations": "Invitations"
+    "invitations": "Invitations",
+    "mailboxes": "Mailboxes"
   },
   "godGroups": {
     "management": "Gerenciamento",

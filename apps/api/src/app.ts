@@ -127,6 +127,7 @@ export const app = new Elysia()
         servers: [{ url: apiUrl, description: 'Configured public API origin' }],
         tags: [
           { name: 'Projects', description: 'Projects and the full work items view' },
+          { name: 'Mail intake', description: 'Mailboxes read by the email intake' },
           { name: 'Teams', description: 'Teams that own projects' },
           {
             name: 'Project Templates',

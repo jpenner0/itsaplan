@@ -5,6 +5,7 @@ import {
   BookOpenText,
   Inbox,
   LayoutDashboard,
+  Mail,
   RefreshCw,
   SquareKanban,
   StickyNote,
@@ -23,6 +24,7 @@ import {
 import { usePermissions } from '@/hooks/usePermissions';
 import { useProjectFeatures } from '@/hooks/useProjectFeatures';
 import { useInboxUnread } from '@/hooks/useInboxUnread';
+import { useMailInboxCount } from '@/features/mail-inbox/services/mailInbox.service';
 import { useViewsQuery } from '@/services/views.service';
 import { viewIcon } from '@/utils/viewIcons';
 import { SidebarGroup, SidebarGroupContent, SidebarMenu } from '@/components/ui/sidebar';
@@ -45,6 +47,7 @@ export default function SidebarWorkNav({
   const features = useProjectFeatures();
   const disabled = !projectKey;
   const { data: inboxUnread } = useInboxUnread(projectKey, projectId);
+  const { data: mailInbox } = useMailInboxCount();
   const { data: views } = useViewsQuery(projectKey);
   const favorites = views?.filter((v) => v.favorite) ?? [];
 
@@ -92,6 +95,16 @@ export default function SidebarWorkNav({
             disabled={disabled}
             badge={inboxUnread}
           />
+          {mailInbox?.enabled && (
+            <SidebarNavItem
+              href="/account/mail-inbox"
+              icon={Mail}
+              label={t('mailInbox')}
+              active={pathname === '/account/mail-inbox'}
+              disabled={false}
+              badge={mailInbox.open}
+            />
+          )}
           {features.dashboards && can('dashboards', 'read') && (
             <SidebarNavItem
               href={projectKey ? dashboardsPath(projectKey) : '#'}
