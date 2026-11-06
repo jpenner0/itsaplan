@@ -1,22 +1,38 @@
-import { db, userTeamsBotAccount } from '@repo/db';
-import { and, eq, gt, sql } from 'drizzle-orm';
+import { db, user, userTeamsBotAccount } from '@repo/db';
+import { isAccountDeactivated } from '@repo/auth';
+import { and, eq, gt, isNotNull, sql } from 'drizzle-orm';
 import { randomBytes } from 'node:crypto';
 import { jwtVerify } from 'jose';
 import { readTeamsBotConfig, sendBotText, type TeamsBotConfig } from '@repo/net/teams-bot';
 import { HttpError, pgErrorCode } from '#shared/lib';
 import { botFrameworkKeys } from './jwks';
+import { parseCommand } from './commands';
+import { myIssues, searchIssues, showIssue } from './read-commands';
+import { assignIssue, commentIssue, doneIssue, newIssue, statusIssue } from './write-commands';
 
 // The Microsoft Teams bot and the account links it creates. Linking mirrors Telegram:
 // the api mints a one-time code, the user sends `link <code>` to the bot in a personal
 // chat, and the bot endpoint stores the conversation the notifications are sent to.
-// The bot only links; it has no other commands.
+// A linked member also reads and changes issues with the commands in HELP, as themselves.
 
 const LINK_CODE_TTL_MINUTES = 15;
 
 const HELP =
-  'This bot delivers notifications from your project tracker.\n\n' +
-  'To connect it, open Accounts in your profile and press Connect for the Teams bot. ' +
-  'Then send the code it shows here: link <code>';
+  'Commands:\n\n' +
+  'my: your open issues\n\n' +
+  'search <text>: find issues by title\n\n' +
+  'show <id>: details of an issue, for example show MKT-42\n\n' +
+  'new @KEY <title>: create an issue, for example new @MKT Write the launch post\n\n' +
+  'done <id>: move an issue to the completed column\n\n' +
+  'status <id> <column>: move an issue to a column, for example status MKT-42 In Progress\n\n' +
+  'comment <id> <text>: add a comment\n\n' +
+  'assign <id> me|<email>: assign an issue to yourself or to a project member\n\n' +
+  'link <code>: connect this chat to your account (code from Accounts in your profile)\n\n' +
+  'help: this list';
+
+const NOT_LINKED =
+  'Connect your account first. Open Accounts in your profile, press Connect for the Teams bot, ' +
+  'and send the code it shows here: link <code>';
 
 export interface TeamsBotLink {
   displayName: string | null;
@@ -133,6 +149,51 @@ async function assertBotFrameworkRequest(
   }
 }
 
+async function linkedUserId(teamsUserId: string): Promise<string | null> {
+  const [row] = await db
+    .select({ userId: userTeamsBotAccount.userId, active: user.active })
+    .from(userTeamsBotAccount)
+    .innerJoin(user, eq(user.id, userTeamsBotAccount.userId))
+    .where(
+      and(
+        eq(userTeamsBotAccount.teamsUserId, teamsUserId),
+        isNotNull(userTeamsBotAccount.linkedAt),
+      ),
+    );
+  return row && !isAccountDeactivated(row) ? row.userId : null;
+}
+
+// Runs a command as the user the Teams account is linked to. Every read goes through the
+// service functions and their access checks; the bot has no permissions of its own.
+async function answerCommand(
+  teamsUserId: string,
+  command: ReturnType<typeof parseCommand>,
+): Promise<string> {
+  if (!command || command.keyword === 'help') return HELP;
+  const userId = await linkedUserId(teamsUserId);
+  if (!userId) return NOT_LINKED;
+  switch (command.keyword) {
+    case 'my':
+      return myIssues(userId);
+    case 'search':
+      return searchIssues(userId, command.args);
+    case 'show':
+      return showIssue(userId, command.args);
+    case 'new':
+      return newIssue(userId, command.args);
+    case 'done':
+      return doneIssue(userId, command.args);
+    case 'status':
+      return statusIssue(userId, command.args);
+    case 'comment':
+      return commentIssue(userId, command.args);
+    case 'assign':
+      return assignIssue(userId, command.args);
+    default:
+      return HELP;
+  }
+}
+
 export interface TeamsActivity {
   type: string;
   text?: string;
@@ -164,10 +225,12 @@ export async function handleTeamsActivity(
     await reply('Open a private chat with this bot to connect your account.');
     return;
   }
-  const code = activity.text
-    ?.trim()
-    .match(/^link\s+([0-9a-f]{12})$/i)?.[1]
-    ?.toLowerCase();
+  const command = parseCommand(activity.text);
+  if (command?.keyword !== 'link') {
+    await reply(await answerCommand(activity.from.id, command));
+    return;
+  }
+  const code = command.args.match(/^([0-9a-f]{12})$/i)?.[1]?.toLowerCase();
   if (!code) {
     await reply(HELP);
     return;
