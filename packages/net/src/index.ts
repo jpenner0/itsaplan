@@ -188,6 +188,15 @@ export async function assertPublicHttpUrl(raw: string, policy?: UrlPolicy): Prom
   return (await vet(raw, policy)).url;
 }
 
+// Resolves a bare hostname (an IMAP or SMTP host, no scheme) under the same rules as a
+// supplied URL and returns the address to connect to. The caller connects to that address
+// and keeps the hostname for TLS, so a name cannot change its answer between check and use.
+export async function resolveHostForConnect(host: string): Promise<string> {
+  const literal = host.includes(':') ? `[${host}]` : host;
+  const { pin } = await vet(`https://${literal}`);
+  return pin?.address ?? host;
+}
+
 // node's http client sends no User-Agent of its own, and GitHub answers 403 with an
 // HTML body to a request that carries none. The global fetch this replaced always sent
 // one, so callers never had to.

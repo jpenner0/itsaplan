@@ -5,7 +5,8 @@
     "accounts": "حساب‌ها",
     "security": "امنیت",
     "api-keys": "کلیدهای API",
-    "invitations": "Invitations"
+    "invitations": "Invitations",
+    "mailboxes": "Mailboxes"
   },
   "godGroups": {
     "management": "مدیریت",

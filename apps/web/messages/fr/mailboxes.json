@@ -1,0 +1,42 @@
+{
+  "label": "Mailboxes",
+  "title": "Mailboxes",
+  "description": "Connect a mailbox so incoming emails can become issues. Only you see it and its credentials.",
+  "connect": "Connect mailbox",
+  "empty": "No mailbox is connected.",
+  "edit": "Edit sign-in",
+  "remove": "Remove mailbox",
+  "removeConfirm": "Remove the mailbox \"{label}\" and its folders?",
+  "removeFolder": "Remove folder",
+  "paused": "Paused",
+  "reconnect": "Reconnect",
+  "folderMeta": "Team {team}, agent {agent}",
+  "folderForm": {
+    "privacy": "Everything in the chosen folder is sent to the AI provider of the agent. Choose a folder that holds only the emails meant for it, filled by hand or with a mail rule.",
+    "name": "Folder",
+    "team": "Team",
+    "agent": "Agent",
+    "add": "Add folder"
+  },
+  "dialog": {
+    "createTitle": "Connect mailbox",
+    "editTitle": "Edit mailbox",
+    "label": "Name",
+    "host": "IMAP host",
+    "port": "Port",
+    "encryption": "Encryption",
+    "tls": "TLS",
+    "starttls": "STARTTLS",
+    "auth": "Sign-in",
+    "authPassword": "Password",
+    "authMicrosoft": "Microsoft 365 (XOAUTH2)",
+    "authMicrosoftHint": "Uses an app registration with the IMAP.AccessAsApp permission and access to the mailbox.",
+    "username": "User name",
+    "password": "Password",
+    "tenantId": "Tenant ID",
+    "clientId": "Client ID",
+    "clientSecret": "Client secret",
+    "keepSecret": "Leave empty to keep the stored value",
+    "connect": "Connect"
+  }
+}

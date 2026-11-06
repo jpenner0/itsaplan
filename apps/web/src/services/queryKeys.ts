@@ -343,6 +343,15 @@ export const qk = {
   oauthClientName: (clientId: string) => ['oauthClientName', clientId] as const,
   // The signed-in user's personal API keys (API keys page).
   apiKeys: ['apiKeys'] as const,
+  // The signed-in user's mailboxes for the email intake, and the teams and agents a
+  // folder can use.
+  mailboxes: ['mailboxes'] as const,
+  mailboxOptions: ['mailboxOptions'] as const,
+  // The Mail inbox: the drafts, the open count for the sidebar and the projects a draft can
+  // be accepted into.
+  mailInbox: ['mailInbox'] as const,
+  mailInboxCount: ['mailInboxCount'] as const,
+  mailInboxProjects: ['mailInboxProjects'] as const,
   // The signed-in user's interface preferences (timezone, theme, issue open mode,
   // start page). Read app-wide, not just on the preferences page.
   accountPreferences: ['accountPreferences'] as const,
