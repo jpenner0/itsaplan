@@ -31,7 +31,7 @@ notification delivery, webhook cleanup), `agent-worker.ts` (cron schedules),
   webhook URLs, import source hosts and attachment links.
 - **Pure logic stays free of `@repo/db`.** `backoff.ts`, `reader.ts`, `*-adapter.ts` and
   `*-mapping.ts` import nothing from it, so unit tests run without a database.
-- **A mailbox's credential is decrypted in `src/mail-imap.ts` only.** The folder is opened read-only and
+- **A mailbox's credential is decrypted in `src/mail-imap.ts` only.** `INBOX` is opened read-only and
   the host goes through `resolveHostForConnect` from `@repo/net` first.
 - **An import job's credential is decrypted here, never routed through
   `packages/db/src/domains/`.** Only the worker decrypts it.

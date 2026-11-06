@@ -5,24 +5,31 @@ order of the pipeline. The intake does not talk to GitHub: whether an issue goes
 decided by the issue sync. It sends no email back to the sender and no notification about new
 emails.
 
-## Mailbox and folder
+## Team mailbox
 
-- A `mailbox` belongs to one user (`user_id`). Only that user lists, edits or deletes it
-  (`modules/mailboxes`, routes under `/account/mailboxes`). The routes are not MCP tools.
+- A `team_mailbox` belongs to one team (`team_id`, unique): a team has at most one. Only a team
+  owner or manager creates, changes or deletes it (`modules/team-mailbox`, routes under
+  `/teams/:teamId/mailbox`; web: team settings, `/<team>/settings/mailbox`). The routes carry
+  credentials and are not MCP tools.
 - The sign-in is encrypted like `team_notification_setting`: `ciphertext`, `iv`, `auth_tag`, plus a
   `redacted` jsonb the UI reads. The decrypted shape is `MailboxSecret` in
   `packages/db/src/domains/mailbox.ts`; the worker decrypts it, the api never returns it.
+  Replacing the credentials sets a paused mailbox to `active` again and keeps the watermark.
 - Two sign-in modes: `password`, and `microsoft365` (XOAUTH2 with an app registration). The token
   request is `microsoftAccessToken` from `@repo/mailer`, the same code SMTP uses. The app
   registration needs the `IMAP.AccessAsApp` permission and access to the mailbox.
-- A `mailbox_folder` is one folder that is read, with a team and an internal agent of that team.
-  The team pays for the AI. Only teams the user belongs to and their internal agents can be
-  chosen (`assertTeamAndAgent`). Only the chosen folder is read, and everything read goes to the
-  AI provider, so the user decides which emails land in it.
+- `agent_id` is an internal agent of the team (`assertAgent`). The team pays for its AI runs.
+- `allowed_senders` is a list of addresses and `@domain` entries, lowercased on save. An empty
+  list means no email is triaged.
+- Only `INBOX` is read, so there is no folder setting, and everything read goes to the AI provider
+  of the agent. A mail rule in the mail program decides which emails land there.
 - The IMAP host goes through `resolveHostForConnect` in `@repo/net` when it is saved and every
   time the worker connects. The worker connects to the address that was checked and keeps the
   host name for TLS. `SSRF_ALLOWED_HOSTS` exempts a private host the operator trusts.
-- The api does not test the connection. The worker reports the first failure on the folder.
+- The api does not test the connection. The worker reports the first failure in `last_error`.
+
+Status of this document: the Replies section describes the target of ticket #80. The code in
+`modules/mail-inbox/replies.ts` still posts replies itself (`processMailReplies`) until it lands.
 
 ## Fetching
 
@@ -57,13 +64,13 @@ an issue.
 ## Stored email
 
 `parseMail` (`mail-parse.ts`, no database) reads the raw source. `storeMail` (`mail-store.ts`)
-inserts an `intake_item` with the sender, subject, `Message-ID`, `In-Reply-To`, `References`, date
-and body. A `Message-ID` already stored for the mailbox is skipped. A mail without one gets a stable
+inserts an `intake_item` of the team mailbox (`team_mailbox_id`) with the sender, subject, `Message-ID`, `In-Reply-To`, `References`, date
+and body. A `Message-ID` already stored for the mailbox is skipped. `sender_allowed` is stored with the item. A mail without one gets a stable
 id derived from its source.
 
 - An HTML body is converted to Markdown (`turndown`); scripts and styles are dropped.
 - Attachments within the instance storage limits (`getStorageSettings`: size and MIME types) are
-  put in the object store under `intake/<mailbox id>/…`; a larger or disallowed file is only listed
+  put in the object store under `intake/<team mailbox id>/…`; a larger or disallowed file is only listed
   by name and size (`s3_key` null). Inline images under 5 KB are ignored.
 
 ## Retention
@@ -76,9 +83,8 @@ id derived from its source.
 ## Triage
 
 The worker queues the triage when it stores a new item (`queueTriage` in `mail-store.ts`): an
-`agent_run` with `trigger = 'mail_triage'` and `intake_item_id`, for the folder's agent. The run needs
-a project, so the worker takes the first active project of the folder's team the agent is a member
-of. Without one nothing is queued and the item shows "Check again". The api poller executes the run
+`agent_run` with `trigger = 'mail_triage'` and `intake_item_id`, for the mailbox's agent, so the team that owns the agent pays for it. The run needs
+a project, so the worker takes the first active project of the team the agent is a member of. Without one nothing is queued and the item shows "Check again". The api poller executes the run
 like any internal run (cost, traces, retries, concurrency limits); `run-poller.ts` sends a
 `mail_triage` run to `runMailTriage` in `modules/mail-inbox/triage.ts` instead of `runAgent`.
 
@@ -89,9 +95,9 @@ like any internal run (cost, traces, retries, concurrency limits); `run-poller.t
   only output is a JSON answer, which `applyTriage` validates.
 - **Instructions.** The agent's own instructions follow the fixed triage preamble, so a team tunes
   the rules there.
-- **Projects.** The preamble lists the projects the agent may suggest: projects of the folder's
-  team the agent is a member of and the mailbox owner may create issues in
-  (`candidateProjects`). The tools read with the rights of the agent's bot user
+- **Projects.** The preamble lists the projects the agent may suggest: projects of the
+  team the agent is a member of (`candidateProjects`). The right to create issues there is checked
+  when a member accepts, not for the agent. The tools read with the rights of the agent's bot user
   (`getProjectAccess`), so a project it cannot see is not searched.
 - **Duplicates.** `search_issues` uses the text search of the issues module (`ilike`) on the open
   issues of one project. There are no embeddings.
@@ -105,57 +111,68 @@ like any internal run (cost, traces, retries, concurrency limits); `run-poller.t
 
 ## Mail inbox
 
-`modules/mail-inbox`, routes under `/account/mail-inbox`, all scoped to the mailbox owner. The web
-page is `/account/mail-inbox`; its sidebar item appears when the user has a folder and shows the
-count of open drafts. The page polls every 30 seconds; the worker writes no revision scope.
+`modules/mail-inbox`, routes under `/account/mail-inbox`, open to every member of the team. The web page is `/account/mail-inbox`;
+its sidebar item appears when the user belongs to a team with a mailbox and shows the count of
+open drafts. The page polls every 30 seconds; the worker writes no revision scope.
 
-- Spam and `no_ticket` items are listed apart ("Sorted out") and are not counted. They can still be
-  accepted.
+- **Team-wide.** The inbox lists the drafts of the mailboxes of every team the user belongs
+  to. Every team member sees the same drafts, and a user outside the team sees none and gets
+  "missing" for an item id (`visibleItem`).
+- **Projects.** The projects a draft can be moved to are the projects of the user's teams that have
+  a mailbox and where the user may create issues (`inboxProjects`).
+- Spam and `no_ticket` items, and items whose sender is not allowed, are listed apart ("Sorted
+  out") and are not counted. They can still be accepted by hand.
+- Accept, add as comment and reject run with the rights of the acting user, not of the team agent.
 - **Accept** creates the issue as the accepting user, after checking `work_items` `create` in the
-  chosen project, which has to be a project of the folder's team. It is created in the project's
+  chosen project, which has to be a project of the mailbox's team. It is created in the project's
   first workflow column. The attachments move to the issue; a file that was only listed, or that
   the project quota refuses, is named in the description. The item keeps its sender,
   `Message-ID` and `issue_id`, and loses its body and attachments.
 - **Add as comment** posts the email as a comment of the chosen issue ("via email from …") and
-  accepts the item with that issue.
+  accepts the item with that issue. It checks `work_items` `edit` in the issue's project, which has
+  to be a project of the mailbox's team.
 - **Reject** keeps the item for 30 days.
-- **Check again** queues a new run when none is pending.
+- **Check again** queues a new run of the team agent when none is pending. It is refused for a
+  sender that is not allowed.
 - A decision is claimed with a conditional update, so a double click cannot create two issues.
 
 ## Replies
 
-An email that answers an accepted one never goes through triage.
+An email that answers an accepted one is never posted by itself (#80). A human decides.
 
-- **Matching.** When the worker stores an email, `findRepliedIssue` (`mail-store.ts`) looks for a
-  stored `Message-ID` of an accepted item in `In-Reply-To` or `References`. Accepted items include
-  earlier replies and emails added as a comment, so a long thread keeps matching. Only items of
-  the same mailbox owner match. A match sets `reply_to_issue_id` on the new item and queues no
-  triage run. Subjects are not compared.
-- **Posting.** `processMailReplies` (`modules/mail-inbox/replies.ts`) runs in its own api loop
-  every 5 seconds. It claims an item with a conditional update, so replicas never post one twice.
-  It checks that the issue exists, that the mailbox owner has `work_items` `edit` in its project
-  and that the project is writable, then inserts a normal comment as the owner. The comment is a
-  normal insert, so the revision triggers refresh the issue (`docs/dev/revision-engine.md`). The
-  comment starts with `via email from Name <address>`. `stripReply` cuts quoted lines, the quoted
-  earlier message (English and German headers, Outlook headers) and the signature. HTML was
-  converted to Markdown when the email was stored.
-- **Attachments** within the storage limits become attachments of the issue; a file that was only
-  listed is named under the comment.
-- **Closed issues** get the comment and stay closed.
-- **Fallback.** An issue that was deleted, an owner who can no longer comment, or any error while
-  posting clears `reply_to_issue_id` and queues the triage, so the email appears in the Mail inbox
-  like a new one. Nothing is retried in a loop.
-- After posting, the item is `accepted` with the issue; its body and attachments are deleted.
+- **Matching.** When the worker stores an email from an allowed sender, `findRepliedIssue`
+  (`mail-store.ts`) looks for a stored `Message-ID` of an accepted item of the same team mailbox in
+  `In-Reply-To` or `References`. Accepted items include earlier replies and emails added as a
+  comment, so a long thread keeps matching. Subjects are not compared. A match sets
+  `reply_to_issue_id` on the new item and queues no triage run.
+- **Suggestion.** The item appears in the Mail inbox with "Add as comment" pre-filled with that
+  issue. Nothing is posted until a member confirms. The comment is written by that member, starts
+  with "via email from Name <address>", and has quoted earlier messages and the signature cut off
+  (`stripReply`). Attachments within the storage limits become attachments of the issue.
+- **Fallback.** When the issue was deleted, the item is triaged like a new email.
+- #80 removes `processMailReplies`, the api loop that posts replies today.
 
 ## Security notes
 
-- The email text comes from outside senders. Triage gives the agent two read tools only (see
-  Triage). A reply is posted with no human check, and a comment can start a run of an agent that
-  has write tools, so `withoutMentions` breaks every `@handle` in the text of a reply and of an
-  email added as a comment.
-- A reply is matched by header, not by sender. Anyone who knows the `Message-ID` of an accepted
-  email and can send to the mailbox can add a comment to its issue as the mailbox owner. The
-  comment names the sender ("via email from …"). Treat the mailbox as an input that senders reach.
+- **The address is public.** Anyone can send to it, and every email that passes the sender check
+  is sent to the AI provider of the team's agent and costs the team an AI run. The allowed sender
+  list is the first limit: an empty list triages nothing.
+- **`From` can be forged.** A listed address alone does not admit an email. The worker also
+  requires a pass in the topmost `Authentication-Results` header for the domain of `From` (see
+  Sender check). This relies on the receiving mail server writing that header. A mail server that
+  does not write it makes every email "not allowed", which is safe but shows up as an empty inbox.
+  An allowed domain admits every address of it, so list a domain only when all its senders are
+  trusted.
+- **Cost.** A not allowed email costs no AI run. An allowed sender can still cause many runs; the
+  concurrency limits of the agent runs apply (`docs/dev/agents.md`).
+- **Prompt injection.** The email text is untrusted. Triage gives the agent two read tools only
+  (see Triage). Accept and add as comment run with the rights of the acting member, who sees the
+  draft before it is created. `withoutMentions` breaks every `@handle` in the text of an email
+  added as a comment, because a comment can start a run of an agent that has write tools.
+- **Replies are matched by header, not by sender.** (Replies as a suggestion is specified in #80, not
+  implemented yet; today `processMailReplies` posts the comment.) Anyone who knows the `Message-ID` of an
+  accepted email can make a reply appear as a suggestion on its issue. With #80, only a member's decision
+  turns it into a comment, and the comment names the sender.
 - The IMAP host is checked on save and on every connection. `SSRF_ALLOWED_HOSTS` exempts a host.
-- A claimed reply that the api cannot post is not retried: it is triaged instead. A crash between
-  the claim and the post leaves the item `accepted` without a comment.
+- The mailbox credential is stored encrypted, decrypted only in the worker (`mail-imap.ts`) and
+  the api's update path, and never returned.
