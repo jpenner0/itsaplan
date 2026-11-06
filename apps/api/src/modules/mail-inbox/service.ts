@@ -8,7 +8,7 @@ import {
   teamMailbox,
   type IntakeDraft,
 } from '@repo/db';
-import { and, asc, desc, eq, inArray, isNull, notInArray, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, isNull, notInArray, or, sql } from 'drizzle-orm';
 import {
   assertPermission,
   assertProjectWritable,
@@ -122,9 +122,16 @@ export async function listInbox(userId: string) {
   // The issue of a reply was deleted after the email was stored: the email is triaged like a
   // new one.
   for (const r of rows.filter((r) => !live.includes(r))) {
-    await db.update(intakeItem).set({ replyToIssueId: null }).where(eq(intakeItem.id, r.item.id));
+    // Claimed by clearing the marker, so concurrent listings queue one run.
+    const claimed = await db
+      .update(intakeItem)
+      .set({ replyToIssueId: null })
+      .where(and(eq(intakeItem.id, r.item.id), isNotNull(intakeItem.replyToIssueId)))
+      .returning({ id: intakeItem.id });
     r.item.replyToIssueId = null;
-    await queueTriageRun(r.item.id, { agentId: r.agentId, teamId: r.teamId });
+    if (claimed.length > 0) {
+      await queueTriageRun(r.item.id, { agentId: r.agentId, teamId: r.teamId });
+    }
   }
   const dtos = rows.map(({ item, teamId }) => {
     const replied = item.replyToIssueId ? dups.get(item.replyToIssueId) : undefined;

@@ -515,6 +515,18 @@ describe('replies', () => {
     expect(runs).toMatchObject([{ trigger: 'mail_triage' }]);
   });
 
+  it('queues one triage run when concurrent listings find the issue deleted', async () => {
+    const { asOwner, box, view } = await setup();
+    const issue = await acceptedIssue(box.id, asOwner, view.data!);
+    const id = await addItem(box.id, { inReplyTo: '<root@x>', replyToIssueId: issue.id });
+    await asOwner.issues({ issueId: issue.id }).delete();
+
+    await Promise.all([asOwner.account['mail-inbox'].get(), asOwner.account['mail-inbox'].get()]);
+
+    const runs = await db.select().from(agentRun).where(eq(agentRun.intakeItemId, id));
+    expect(runs).toHaveLength(1);
+  });
+
   it('suggests nothing for an email that answers no accepted one', async () => {
     const { asOwner, box } = await setup();
     await addItem(box.id, { inReplyTo: '<unknown@x>' });
