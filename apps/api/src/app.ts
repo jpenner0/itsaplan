@@ -326,7 +326,6 @@ export const app = new Elysia()
         // it off while no provider below is usable, so this is never false alone.
         emailPassword: settings.emailPassword,
         google: await hasConfiguredGoogle(),
-        // GitHub is linked from the profile, never offered on the sign-in screen.
         github: await hasConfiguredGithub(),
         oidc: await hasConfiguredOidc(),
         // Names the operator's own identity provider, so the button shows it as

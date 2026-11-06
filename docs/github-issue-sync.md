@@ -19,14 +19,14 @@ It does not use a GitHub App.
   - Classic token: scope `repo` (or `public_repo` for public repositories only) and
     `admin:repo_hook`.
 - The permission to manage repositories in the project settings.
-- Optional: a GitHub OAuth app, so members can link their GitHub account. Without it the sync
+- Optional: a GitHub OAuth app, so members can link their GitHub account and sign in with GitHub. Without it the sync
   works, but GitHub users are not matched to members (see [Linking accounts](#linking-accounts)).
 
 ## Linking accounts
 
-The sync matches GitHub users to members through a linked GitHub account. The link is for
-identity only. Nobody signs in with GitHub, and every write to GitHub uses the team's access
-token.
+The sync matches GitHub users to members through a linked GitHub account. The same OAuth app
+also lets people sign in with GitHub. The link is for identity only, and every write to GitHub
+uses the team's access token.
 
 ### Create the OAuth app (instance administrator)
 

@@ -42,7 +42,7 @@ release.
 | --------- | ------------------------------------------------------------------------------------- |
 | Product management | Kanban, table, timeline, and calendar views · cycles · custom fields · dashboards · docs · notes boards |
 | AI agents | Agents as project members · internal on any model, or external on your coding CLI · runs start on an @mention, an assignment, or a schedule |
-| Platform | REST API with OpenAPI · MCP server · webhooks · pull requests from 5 forges · passkeys and Google sign-in |
+| Platform | REST API with OpenAPI · MCP server · webhooks · pull requests from 5 forges · passkeys, Google and GitHub sign-in |
 | 13 languages | English · Ukrainian · Russian · Simplified Chinese · Traditional Chinese · Arabic · Persian · French · Portuguese (Brazil) · Indonesian · Spanish · Korean · Turkish |
 
 <details>
@@ -97,7 +97,7 @@ release.
 - Pull requests from GitHub, GitLab, Gitea, Forgejo, and Bitbucket. "Fixes KEY-42" links the
   pull request to the issue, and the issue moves when the pull request opens and merges
 - Outgoing webhooks: subscribe to events, signed payloads, and retries with a delivery log
-- Sign in with an email or a username and a password, a passkey, or Google
+- Sign in with an email or a username and a password, a passkey, Google, or GitHub
 - Notifications by email (SMTP or Resend) and Telegram, with per-member preferences
 - Instance administration: storage limits, mail transport, and instance-wide settings
 
