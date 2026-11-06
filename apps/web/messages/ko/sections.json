@@ -5,8 +5,7 @@
     "accounts": "계정",
     "security": "보안",
     "api-keys": "API 키",
-    "invitations": "Invitations",
-    "mailboxes": "Mailboxes"
+    "invitations": "Invitations"
   },
   "godGroups": {
     "management": "관리",
