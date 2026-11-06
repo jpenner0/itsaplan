@@ -48,8 +48,9 @@ The mail From address falls back to env (`EMAIL_FROM`, then `NOTIFICATIONS_EMAIL
 - `app_setting` key `auth` → `{ registration, requireEmailVerification, magicLink,
   emailPassword, trustProviderEmails, personalWorkspaces, inviteTtlDays, inviteSearch,
   allowedEmailDomains }`.
-- `app_secret` keys `auth.email`, `auth.google`, `auth.oidc` and `auth.scim` → the mail
-  provider, Google, the OIDC provider and the instance's SCIM token, set in god mode.
+- `app_secret` keys `auth.email`, `auth.google`, `auth.github`, `auth.oidc` and `auth.scim` →
+  the mail provider, Google, the GitHub OAuth app, the OIDC provider and the instance's SCIM
+  token, set in god mode.
 - `app_secret` key `workspace.<id>.scim` → a workspace's SCIM token, set by the workspace owner.
   Those routes answer 403 unless a build turns per-workspace SCIM on.
 
@@ -210,6 +211,39 @@ account only when the provider reports the address verified and the account's em
 Otherwise the callback redirects with `account_not_linked`. The `trustProviderEmails` instance
 setting drops both conditions: `resolveTrustedProviders` then names Google and the OIDC provider,
 and `requireLocalEmailVerified` reads false.
+
+## GitHub account link
+
+GitHub links an identity to a signed-in account for the GitHub issue sync. It is no sign-in
+method: nobody signs in or signs up with it. The result is an `account` row with
+`providerId = 'github'` and `accountId` = the numeric GitHub user id. The sync maps GitHub users
+to members through these rows and reads the login itself.
+Setup for users is in `docs/github-issue-sync.md`, the sync itself in
+`docs/dev/github-issue-sync.md`.
+
+The credentials are stored like Google's (`app_secret` key `auth.github`), and
+`socialProviders.github` returns the module-level `githubOptions` object, which
+`refreshGithubOptions()` reloads in `hooks.before` on `/link-social` and `/callback/github`. The
+scope is `read:user` only. Two checks keep GitHub out of sign-in:
+
+- `hooks.before` refuses `/sign-in/social` with `provider: 'github'` (403
+  `GITHUB_SIGN_IN_DISABLED`).
+- `githubLinkUserInfo` returns a profile only while the OAuth state carries the `link` that
+  `/link-social` wrote. A callback from any other flow gets no user and redirects with
+  `unable_to_get_user_info`.
+
+With `read:user` GitHub shows no private address, so the profile reports the linked account's own
+address as verified. better-auth links only a verified address equal to the account's.
+`databaseHooks.account` drops the OAuth tokens of a GitHub row: every write to GitHub uses the
+team's token.
+
+`hooks.before` keeps two more rules:
+
+- `/link-social` for GitHub is refused with 409 `GITHUB_ALREADY_LINKED` while the account has a
+  GitHub row. The sync maps a member to one GitHub user.
+- `/unlink-account` is refused with 400 `FAILED_TO_UNLINK_LAST_ACCOUNT` when it would remove the
+  last row other than GitHub. better-auth itself only keeps the last row of any kind.
+  `/unlink-account` takes the id of the `account` row.
 
 ## Registration gate
 

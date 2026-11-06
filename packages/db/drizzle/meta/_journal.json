@@ -1233,6 +1233,34 @@
       "when": 1793881515854,
       "tag": "0175_remove_template_gallery",
       "breakpoints": true
+    },
+    {
+      "idx": 176,
+      "version": "7",
+      "when": 1793885950191,
+      "tag": "0176_issue_sync",
+      "breakpoints": true
+    },
+    {
+      "idx": 177,
+      "version": "7",
+      "when": 1793888770272,
+      "tag": "0177_issue_sync_outbox",
+      "breakpoints": true
+    },
+    {
+      "idx": 178,
+      "version": "7",
+      "when": 1793890971481,
+      "tag": "0178_issue_sync_outbox_repository_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 179,
+      "version": "7",
+      "when": 1793891830699,
+      "tag": "0179_issue_sync_inbox",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,4 @@
-import { GitPullRequest, Link2, Plus } from 'lucide-react';
+import { GitPullRequest, Link2, Plus, Upload } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,9 +11,13 @@ import {
 export default function IssueDevelopmentAddMenu({
   onLink,
   onCreate,
+  onPublish,
 }: {
-  onLink: () => void;
-  onCreate: () => void;
+  // Link and create need the repository permission; publish needs only the issue edit permission.
+  onLink?: () => void;
+  onCreate?: () => void;
+  // Set only when the issue can be published to the synced GitHub repository.
+  onPublish?: () => void;
 }) {
   const t = useTranslations('issue.development');
   return (
@@ -25,14 +29,24 @@ export default function IssueDevelopmentAddMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
-        <DropdownMenuItem onSelect={onLink}>
-          <Link2 />
-          {t('linkExisting')}
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={onCreate}>
-          <GitPullRequest />
-          {t('createPullRequest')}
-        </DropdownMenuItem>
+        {onLink && (
+          <DropdownMenuItem onSelect={onLink}>
+            <Link2 />
+            {t('linkExisting')}
+          </DropdownMenuItem>
+        )}
+        {onCreate && (
+          <DropdownMenuItem onSelect={onCreate}>
+            <GitPullRequest />
+            {t('createPullRequest')}
+          </DropdownMenuItem>
+        )}
+        {onPublish && (
+          <DropdownMenuItem onSelect={onPublish}>
+            <Upload />
+            {t('publish')}
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

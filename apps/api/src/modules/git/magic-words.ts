@@ -123,3 +123,22 @@ export function parseMagicWords(text: string): ParsedMagicWords {
     skipped: [...skipped].map(toRef),
   };
 }
+
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// GitHub's own issue references to one repository, in the order they appear: `#42`,
+// `owner/repo#42` and the issue URL. A closing word such as "Fixes #42" is matched by
+// its `#42`. A reference to another repository is left out.
+export function parseGithubIssueNumbers(text: string, repo: string, repoUrl: string): number[] {
+  const pattern = new RegExp(
+    String.raw`(?<![\w/.#&-])(?:([\w.-]+/[\w.-]+))?#(\d{1,9})(?!\w)|${escapeRegExp(repoUrl.replace(/\/$/, ''))}/issues/(\d{1,9})(?!\w)`,
+    'gi',
+  );
+  const numbers = new Set<number>();
+  for (const match of text.matchAll(pattern)) {
+    const [, owner, short, fromUrl] = match;
+    if (owner && owner.toLowerCase() !== repo.toLowerCase()) continue;
+    numbers.add(Number(short ?? fromUrl));
+  }
+  return [...numbers];
+}

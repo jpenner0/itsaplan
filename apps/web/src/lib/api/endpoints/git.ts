@@ -33,6 +33,8 @@ export interface GitManagedRepository {
   webUrl: string;
   status: 'connected' | 'error';
   lastError: string | null;
+  issuesSyncEnabled: boolean;
+  newIssuesToProvider: boolean;
 }
 
 export interface AvailableGitRepositoryPage {
@@ -76,7 +78,7 @@ export interface DevelopmentLink {
   id: number;
   provider: GitProvider;
   repository: string;
-  kind: 'pull_request' | 'branch';
+  kind: 'pull_request' | 'branch' | 'issue';
   number: number | null;
   title: string;
   url: string | null;
@@ -244,3 +246,16 @@ export const createIssuePullRequest = (issueId: number, input: CreateIssuePullRe
     method: 'POST',
     body: JSON.stringify(input),
   });
+
+// Two-way issue sync of one linked repository (GitHub only). Turning it on imports the
+// open issues of the repository; 409, 502 and 503 are the failures the screen explains.
+export const updateGitIssueSync = (
+  projectKey: string,
+  connectionId: number,
+  repositoryId: number,
+  patch: { issuesSyncEnabled?: boolean; newIssuesToProvider?: boolean },
+) =>
+  request<{ repositoryId: number; issuesSyncEnabled: boolean; newIssuesToProvider: boolean }>(
+    `/projects/${projectKey}/settings/git/connections/${connectionId}/repositories/${repositoryId}/issue-sync`,
+    { method: 'PATCH', body: JSON.stringify(patch) },
+  );

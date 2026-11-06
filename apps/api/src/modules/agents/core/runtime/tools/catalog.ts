@@ -97,6 +97,21 @@ export const AGENT_ACTIONS: ToolMeta[] = [
     always: false,
   },
   {
+    key: 'get_pull_request_diff',
+    group: 'issues',
+    label: 'Read pull request diffs',
+    description: 'Read the diff of a GitHub pull request linked to an issue.',
+    always: false,
+  },
+  {
+    key: 'comment_on_pull_request',
+    group: 'issues',
+    label: 'Comment on pull requests',
+    description:
+      "Post a comment on a GitHub pull request linked to an issue, with the team's GitHub token.",
+    always: false,
+  },
+  {
     key: 'create_worklog',
     group: 'issues',
     label: 'Log time',

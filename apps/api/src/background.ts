@@ -5,12 +5,16 @@ import { agentInvocationConfig, dispatchInvocations } from '#modules/agents/invo
 import { pruneAgentTraces } from '#modules/agents/core/runtime/trace-retention';
 import { sweepStaleIssues } from '#modules/issues/auto-archive';
 import { sweepExpiredShares } from '#modules/share/service';
+import { processIssueSyncInbox } from '#modules/issue-sync/inbox';
+import { reconcileIssueSync } from '#modules/issue-sync/service';
+import { processIssueSyncOutbox } from '#modules/issue-sync/outbound';
 
 // The api's background jobs, started by index.ts rather than assembled into the app,
 // so importing the app in a test starts nothing. Several api replicas run them without
 // overlapping: the queue is claimed with FOR UPDATE SKIP LOCKED, the archive sweep only
-// touches rows it has not archived yet, and the trace sweep deletes whatever is still
-// past the window.
+// touches rows it has not archived yet, the trace sweep deletes whatever is still past
+// the window, and the issue sync skips a repository whose advisory lock another replica
+// holds.
 
 // Each job gets a loop of its own. A run is an LLM call of minutes and a first sweep
 // can carry thousands of issues, so sharing one loop would let either hold the other
@@ -27,6 +31,17 @@ export function startBackgroundJobs(): void {
   // token away; once a minute keeps the stored state close to what users see.
   startLoop('share-expiry', expireShares, () => intEnv('SHARE_EXPIRY_INTERVAL_MS', 60_000));
   startLoop('agent-traces', pruneTraces, () => intEnv('AGENT_TRACE_PRUNE_INTERVAL_MS', 3_600_000));
+  // Webhooks bring issue changes at once. The run first applies the deliveries a busy
+  // repository or an error held back; the reconcile then catches what an instance
+  // without a public URL missed. Last it sends the local changes a write could not
+  // push, such as after a provider error.
+  startLoop('issue-sync', syncIssues, () => intEnv('ISSUE_SYNC_INTERVAL_MS', 300_000));
+}
+
+async function syncIssues(): Promise<void> {
+  await processIssueSyncInbox();
+  await reconcileIssueSync();
+  await processIssueSyncOutbox();
 }
 
 async function autoArchive(): Promise<void> {

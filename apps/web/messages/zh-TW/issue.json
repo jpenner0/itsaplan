@@ -253,7 +253,8 @@
     "edited": "已編輯",
     "deleteComment": "刪除留言",
     "deleteCommentTitle": "刪除此留言？",
-    "deleteCommentConfirmation": "該留言及其所有回覆將被永久刪除。"
+    "deleteCommentConfirmation": "該留言及其所有回覆將被永久刪除。",
+    "viaGithub": "GitHub 上的 @{login}"
   },
   "stats": {
     "title": "統計",
@@ -415,7 +416,9 @@
       "failed": "失敗",
       "canceled": "已取消",
       "skipped": "已跳過"
-    }
+    },
+    "publish": "發佈到 GitHub",
+    "published": "已發佈到 GitHub"
   },
   "documents": {
     "title": "文件",
@@ -564,5 +567,11 @@
     "selectRun": "Select a run to see its details",
     "runNotFound": "This run is not in your queue, or you cannot read it.",
     "backToRuns": "Back to runs"
+  },
+  "sync": {
+    "settingsConflict": "此儲存庫已與另一個專案同步。",
+    "publishConflict": "此議題已在 GitHub 上，或其專案未開啟議題同步。",
+    "github": "GitHub 傳回錯誤，請稍後再試。",
+    "busy": "同步正在進行，請稍後再試。"
   }
 }

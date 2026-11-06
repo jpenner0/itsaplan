@@ -81,6 +81,7 @@ import { deleteThreadsWhere } from '#modules/agents/core/runtime/memory';
 import { queueStatusRuns } from '#modules/agents/schedules/issue-runs';
 import { applySubtaskAutomation } from './automation';
 import { assertWipLimit, columnAutoAssignee, wipLimitBreach } from '#modules/columns/service';
+import { pushIssueSync } from '#modules/issue-sync/outbound';
 
 // Data access for issues and their per-issue data: labels, custom field values,
 // and selected options. The human identifier (e.g. "MKT-42") is the project key
@@ -1131,8 +1132,9 @@ function assertDateOrder(startDate?: string | null, dueDate?: string | null) {
 export async function createIssue(
   project: ProjectRow,
   input: NewIssueInput,
-  actorUserId?: string | null,
+  actor?: ActivityActor,
 ): Promise<IssueRow> {
+  const actorUserId = actorId(actor);
   await assertAssignments(project.id, input);
   await assertInitiative(project.id, input.initiativeId);
   await assertCycle(project.id, input.cycleId);
@@ -1185,21 +1187,21 @@ export async function createIssue(
   // The first stretch of the status history starts when the issue does, so the
   // entries of its creation fall inside it.
   await recordStatusChange([issueId], input.columnId, createdAt);
-  await recordActivity(issueId, [{ action: 'created' }], actorUserId);
+  await recordActivity(issueId, [{ action: 'created' }], actor);
   if (input.cycleId != null) await recordCycleChange(issueId, null, input.cycleId);
-  if (input.parentId != null) await recordParentChange(issueId, null, input.parentId, actorUserId);
+  if (input.parentId != null) await recordParentChange(issueId, null, input.parentId, actor);
   // Suppress the label_changed event on creation — the initial labels are part of
   // the issue.created payload, so a separate change event would be redundant.
   if (input.labelIds?.length)
-    await setIssueLabels(project.id, issueId, input.labelIds, actorUserId, false);
+    await setIssueLabels(project.id, issueId, input.labelIds, actor, false);
   const created = (await getIssue(issueId))!;
   // The author follows what they filed; the assignee is subscribed by the
   // assignment notification below, the same as a later assignment does.
   await autoWatchIssue(project.id, issueId, [actorUserId]);
-  await emitIssueEvent('issue.created', created, actorUserId);
+  await emitIssueEvent('issue.created', created, actor);
   // An issue created already delegated to an agent enqueues a run, the same as
   // delegating one later does.
-  await enqueueDelegateRun(created, actorUserId);
+  await enqueueDelegateRun(created, actor);
   await queueStatusRuns([issueId], input.columnId, actorUserId);
   // An issue created already assigned to a member notifies them, the same as
   // assigning one later does.
@@ -1383,6 +1385,7 @@ export async function updateIssue(
         await queueStatusRuns([id], after.columnId, actorId(actor));
         await applySubtaskAutomation(after, actor);
       }
+      pushIssueSync(id);
     }
   }
   return after;
@@ -1431,6 +1434,7 @@ export async function deleteIssue(
   if (!attachments) return null;
   await deleteThreadsWhere({ issueId });
   await emitIssueEvent('issue.deleted', deleted, actorUserId);
+  pushIssueSync(issueId);
   return attachments;
 }
 
@@ -1441,7 +1445,7 @@ export async function setIssueLabels(
   projectId: number,
   issueId: number,
   labelIds: number[],
-  actorUserId?: string | null,
+  actor?: ActivityActor,
   emitEvent = true,
 ): Promise<void> {
   await assertIssueLabels(projectId, labelIds);
@@ -1478,17 +1482,18 @@ export async function setIssueLabels(
     events.push({ action: 'label_add', to: rowSide(names.get(labelId), labelId) });
   for (const labelId of removed)
     events.push({ action: 'label_remove', from: rowSide(names.get(labelId), labelId) });
-  await recordActivity(issueId, events, actorUserId);
+  await recordActivity(issueId, events, actor);
 
   if (emitEvent && (added.length > 0 || removed.length > 0)) {
     const issueRow = await getIssue(issueId);
     if (issueRow) {
       const named = (ids: number[]) => ids.map((id) => ({ id, name: names.get(id) ?? null }));
-      await emitIssueEvent('issue.label_changed', issueRow, actorUserId, {
+      await emitIssueEvent('issue.label_changed', issueRow, actor, {
         labelChange: { added: named(added), removed: named(removed) },
       });
     }
   }
+  if (added.length > 0 || removed.length > 0) pushIssueSync(issueId);
 }
 
 // --- Bulk actions ----------------------------------------------------------------

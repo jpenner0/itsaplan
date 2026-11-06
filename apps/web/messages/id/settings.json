@@ -15,7 +15,9 @@
     "type": "Berjalan",
     "types": {
       "cron": "Sesuai jadwal",
-      "status": "Saat issue masuk ke status"
+      "status": "Saat issue masuk ke status",
+      "synced_issue_created": "Saat ada isu GitHub baru",
+      "pull_request_opened": "Saat pull request dibuka"
     },
     "taskOptional": "Tugas (opsional)",
     "issueTaskPlaceholder": "Tulis kriteria penerimaan di deskripsi issue.",
@@ -82,7 +84,11 @@
     "createAgent": "Buat agen",
     "empty": "Belum ada jadwal",
     "emptyHint": "Pilih agen, tugas, dan seberapa sering tugas dijalankan.",
-    "deleteMessage": "Jadwal <v>{name}</v> dan riwayat eksekusinya akan dihapus. Tindakan ini tidak dapat dibatalkan."
+    "deleteMessage": "Jadwal <v>{name}</v> dan riwayat eksekusinya akan dihapus. Tindakan ini tidak dapat dibatalkan.",
+    "typeHints": {
+      "synced_issue_created": "Hanya berjalan untuk isu yang baru dibuat di GitHub selama sinkronisasi isu aktif. Tidak untuk impor pertama dan tidak untuk isu yang dibuat It's a Plan sendiri di GitHub.",
+      "pull_request_opened": "Berjalan saat pull request yang merujuk isu tersinkron dibuka atau diubah dari draf menjadi siap. Tidak pada setiap push. Untuk memulai tinjauan baru, sebut agen di isu tersebut."
+    }
   },
   "agents": {
     "empty": "Belum ada agen",
@@ -440,7 +446,7 @@
     "nativeAskTeamManager": "Minta pemilik atau manajer tim untuk menghubungkan akun penyedia.",
     "nativeConnectTitle": "Hubungkan {provider}",
     "nativeTokenHint": {
-      "github": "Gunakan fine-grained token dengan akses Metadata read, Webhooks write, dan Pull requests write untuk repositori yang ingin Anda hubungkan.",
+      "github": "Gunakan fine-grained token dengan akses Metadata read, Webhooks write, Pull requests write, dan Issues read and write untuk repositori yang ingin Anda hubungkan. Token klasik memerlukan scope repo (public_repo hanya untuk repositori publik) dan admin:repo_hook.",
       "gitlab": "Gunakan token akses pribadi dengan akses API. Hanya proyek tempat Anda menjadi Maintainer atau Owner yang dicantumkan.",
       "gitea": "Gunakan token akses yang dapat mengelola hook di repositori yang ingin Anda hubungkan.",
       "forgejo": "Gunakan token akses yang dapat mengelola hook di repositori yang ingin Anda hubungkan.",
@@ -494,7 +500,13 @@
     "onOpenHint": "Hanya memindahkan issue yang belum dimulai. Issue yang sedang berlangsung dan tertutup tidak berubah.",
     "onOpenNone": "Tidak ada tindakan",
     "changeState": "Ubah status…",
-    "noState": "Tidak ada status."
+    "noState": "Tidak ada status.",
+    "issueSyncTitle": "Sinkronisasi isu",
+    "issueSyncOnHint": "Jika diaktifkan, semua isu GitHub yang terbuka diimpor satu kali.",
+    "issueSyncOffHint": "Jika dinonaktifkan, hanya tautan yang dihapus. Isu tetap ada di kedua sisi.",
+    "newIssuesToGithub": "Isu baru ke GitHub",
+    "newIssuesToGithubHint": "Isu yang dibuat di proyek ini juga dibuat di GitHub.",
+    "issueSyncSaved": "Pengaturan sinkronisasi isu disimpan"
   },
   "importExport": {
     "import": "Impor",

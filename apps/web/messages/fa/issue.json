@@ -253,7 +253,8 @@
     "edited": "ویرایش‌شده",
     "deleteComment": "حذف دیدگاه",
     "deleteCommentTitle": "این دیدگاه حذف شود؟",
-    "deleteCommentConfirmation": "دیدگاه و پاسخ‌هایش برای همیشه حذف می‌شوند."
+    "deleteCommentConfirmation": "دیدگاه و پاسخ‌هایش برای همیشه حذف می‌شوند.",
+    "viaGithub": "@{login} در GitHub"
   },
   "stats": {
     "title": "آمار",
@@ -415,7 +416,9 @@
       "failed": "ناموفق",
       "canceled": "لغو شده",
       "skipped": "رد شده"
-    }
+    },
+    "publish": "انتشار در GitHub",
+    "published": "در GitHub منتشر شد"
   },
   "documents": {
     "title": "مستندات",
@@ -564,5 +567,11 @@
     "selectRun": "Select a run to see its details",
     "runNotFound": "This run is not in your queue, or you cannot read it.",
     "backToRuns": "Back to runs"
+  },
+  "sync": {
+    "settingsConflict": "این مخزن از قبل با پروژه‌ای دیگر همگام است.",
+    "publishConflict": "این مسئله از قبل در GitHub است یا پروژه آن مسائل را همگام نمی‌کند.",
+    "github": "GitHub خطا برگرداند. بعداً دوباره تلاش کنید.",
+    "busy": "همگام‌سازی در حال اجراست. کمی بعد دوباره تلاش کنید."
   }
 }

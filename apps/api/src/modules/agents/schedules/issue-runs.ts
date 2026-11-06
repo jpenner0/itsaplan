@@ -1,12 +1,19 @@
 import { db, agentRun, agentSchedule, aiAgent, issue, project, projectColumn } from '@repo/db';
 import { and, eq, inArray, ne, notInArray, sql } from 'drizzle-orm';
 import { emitRunsCanceled } from '../core/run-finished';
-import { filterScheduleIssues, isScheduleSupported, type ScheduleForExtension } from './extension';
+import { inProject } from '../core/service';
+import {
+  coreScheduleTypes,
+  filterScheduleIssues,
+  isScheduleSupported,
+  type EventScheduleType,
+  type ScheduleForExtension,
+} from './extension';
 
 // The runs schedules queue on issues: a 'status' schedule's when an issue enters its
-// column, and those of an extension's types when the extension calls queueScheduleRuns.
-// Every write that puts issues into a column calls queueStatusRuns, next to
-// recordStatusChange.
+// column, an event type's when queueEventRuns is called, and those of an extension's
+// types when the extension calls queueScheduleRuns. Every write that puts issues into a
+// column calls queueStatusRuns, next to recordStatusChange.
 
 type IssueLead = (issue: { identifier: string; title: string }) => string;
 
@@ -85,6 +92,33 @@ export async function queueStatusRuns(
   );
 }
 
+// Queues a run of every active schedule of the event type in the project on the issue.
+// `lead` opens each run's prompt: what happened, such as the issue key and the pull
+// request number. A schedule whose agent is no longer a member of the project is skipped.
+export async function queueEventRuns(input: {
+  type: EventScheduleType;
+  projectId: number;
+  issueId: number;
+  lead: string;
+}): Promise<number[]> {
+  const schedules = await db
+    .select(scheduleFields)
+    .from(agentSchedule)
+    .innerJoin(aiAgent, eq(aiAgent.id, agentSchedule.agentId))
+    .where(
+      and(
+        eq(agentSchedule.projectId, input.projectId),
+        eq(agentSchedule.type, input.type),
+        eq(agentSchedule.status, 'active'),
+        inProject(input.projectId),
+      ),
+    );
+  return insertIssueRuns(
+    schedules.map((schedule) => ({ ...schedule, lead: () => input.lead })),
+    [input.issueId],
+  );
+}
+
 // Queues a run of each of the schedules on each of the issues, for an extension that
 // starts the schedules of its own types. A schedule of a core type or a paused one is
 // skipped, as is an issue of another project than the schedule's.
@@ -102,7 +136,7 @@ export async function queueScheduleRuns(
     .where(
       and(
         inArray(agentSchedule.id, scheduleIds),
-        notInArray(agentSchedule.type, ['cron', 'status']),
+        notInArray(agentSchedule.type, [...coreScheduleTypes]),
         eq(agentSchedule.status, 'active'),
         notActor(actorUserId),
       ),
@@ -113,9 +147,9 @@ export async function queueScheduleRuns(
   );
 }
 
-async function insertIssueRuns(all: IssueSchedule[], issueIds: number[]): Promise<void> {
+async function insertIssueRuns(all: IssueSchedule[], issueIds: number[]): Promise<number[]> {
   const schedules = all.filter(isScheduleSupported);
-  if (schedules.length === 0) return;
+  if (schedules.length === 0) return [];
   const issues = await db
     .select({
       id: issue.id,
@@ -151,12 +185,13 @@ async function insertIssueRuns(all: IssueSchedule[], issueIds: number[]): Promis
     }),
   );
   const runs = perSchedule.flat();
-  if (runs.length === 0) return;
-  await db.insert(agentRun).values(runs);
+  if (runs.length === 0) return [];
+  const inserted = await db.insert(agentRun).values(runs).returning({ id: agentRun.id });
   await db
     .update(agentSchedule)
     .set({ lastRunAt: new Date() })
     .where(inArray(agentSchedule.id, [...new Set(runs.map((run) => run.scheduleId))]));
+  return inserted.map((row) => row.id);
 }
 
 function issueRunPrompt(lead: string, task: string): string {
