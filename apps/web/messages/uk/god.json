@@ -330,7 +330,7 @@
     "googleConfigured": "Адреса без акаунта отримує новий; адреса з підтвердженим акаунтом входить у нього.",
     "googleMissing": "Спершу додайте client ID і секрет.",
     "github": "GitHub",
-    "githubConfigured": "Учасники можуть прив'язати свій акаунт GitHub у профілі, щоб синхронізація задач із GitHub зіставляла користувачів GitHub з учасниками. GitHub не є способом входу.",
+    "githubConfigured": "Адреса без акаунта отримує новий; адреса з підтвердженим акаунтом входить у нього.",
     "githubMissing": "Спершу додайте Client ID і секрет OAuth-застосунку GitHub.",
     "clientId": "Client ID",
     "clientSecret": "Client secret",

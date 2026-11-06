@@ -5,11 +5,12 @@ import { useTranslations } from 'next-intl';
 import { SignInExtras } from '@/cloud';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
+import GithubIcon from '@/components/common/GithubIcon';
 import GoogleIcon from '@/components/common/GoogleIcon';
 import { useAuthConfig } from '@/services/authConfig.service';
 
 // The sign-in methods that are not the email + password form: the magic link toggle,
-// the instance's own OIDC provider, Google, and passkeys. Which of the first three
+// the instance's own OIDC provider, Google, GitHub, and passkeys. Which of the first three
 // show depends on the instance config. The invite screen has no magic link toggle, and
 // passes the invited address as `email`.
 export default function AuthLoginAlternatives({
@@ -19,6 +20,7 @@ export default function AuthLoginAlternatives({
   onToggleMethod,
   onOidc,
   onGoogle,
+  onGithub,
   onPasskey,
 }: {
   signingInWithLink?: boolean;
@@ -27,6 +29,7 @@ export default function AuthLoginAlternatives({
   onToggleMethod?: () => void;
   onOidc: () => void;
   onGoogle: () => void;
+  onGithub: () => void;
   onPasskey: () => void;
 }) {
   const t = useTranslations('auth.login');
@@ -59,6 +62,12 @@ export default function AuthLoginAlternatives({
         <Button type="button" variant="outline" onClick={onGoogle} disabled={pending}>
           <GoogleIcon className="size-4" />
           {t('withGoogle')}
+        </Button>
+      )}
+      {authConfig?.github && (
+        <Button type="button" variant="outline" onClick={onGithub} disabled={pending}>
+          <GithubIcon />
+          {t('withGithub')}
         </Button>
       )}
       <Button type="button" variant="outline" onClick={onPasskey} disabled={pending}>

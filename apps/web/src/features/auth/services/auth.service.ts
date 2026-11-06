@@ -142,6 +142,18 @@ export async function signInWithGoogle(returnTo?: string): Promise<void> {
   if (result.error) throw authError(result.error);
 }
 
+// Starts the GitHub round trip, same shape as the Google call. The extra scope lets the
+// api read the primary verified address; linking an account asks for `read:user` only.
+export async function signInWithGithub(returnTo?: string): Promise<void> {
+  const result = await signIn.social({
+    provider: 'github',
+    scopes: ['user:email'],
+    callbackURL: appUrl(returnTo ?? '/'),
+    errorCallbackURL: appUrl(returnTo ?? '/login'),
+  });
+  if (result.error) throw authError(result.error);
+}
+
 // Starts the round trip through the instance's own OIDC provider. Same shape as the
 // Google call above: it navigates away, and both callback URLs must be on the web
 // origin. The provider id is fixed — the instance has exactly one.

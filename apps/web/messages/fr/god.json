@@ -330,7 +330,7 @@
     "googleConfigured": "Une adresse sans compte en obtient un ; une adresse qui a déjà un compte confirmé s'y connecte.",
     "googleMissing": "Ajoutez d'abord l'identifiant et le secret client.",
     "github": "GitHub",
-    "githubConfigured": "Les membres peuvent lier leur compte GitHub dans leur profil, afin que la synchronisation des tickets GitHub associe les utilisateurs GitHub aux membres. GitHub n'est pas une méthode de connexion.",
+    "githubConfigured": "Une adresse sans compte en obtient un ; une adresse qui a déjà un compte confirmé s'y connecte.",
     "githubMissing": "Ajoutez d'abord l'ID client et le secret d'une application OAuth GitHub.",
     "clientId": "Identifiant client",
     "clientSecret": "Secret client",
