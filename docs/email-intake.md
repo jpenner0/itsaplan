@@ -79,3 +79,15 @@ are not deleted and you can still accept them.
 
 After you accept a draft, the original email and its attachments are deleted from It's a Plan. Only
 the sender, the `Message-ID` and the issue are kept, to match replies.
+
+## Replies
+
+When the sender answers an email that became an issue, the answer is added to that issue as a
+comment at once, without a check by the agent. The comment is written by you, the mailbox owner,
+and starts with "via email from Name <address>". Quoted earlier messages and signatures are cut
+off. Attachments within the upload limits are added to the issue. A closed issue gets the comment
+and stays closed.
+
+An answer is matched through the email headers (`In-Reply-To` and `References`), not by the
+subject. If you can no longer comment on the issue, or it was deleted, the email goes to the Mail
+inbox like a new one.

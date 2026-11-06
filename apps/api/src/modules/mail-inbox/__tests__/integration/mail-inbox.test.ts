@@ -7,6 +7,7 @@ import { createAgent, teamOf } from '#tests/helpers/agents';
 import { signUpTestUser } from '#tests/helpers/auth';
 import { resetDb } from '#tests/helpers/db';
 import { applyTriage, readTools } from '../../triage';
+import { processMailReplies } from '../../replies';
 
 // The Mail inbox is the owner's view of the emails the worker fetched. The rows the worker
 // writes are inserted directly: there is no IMAP server to call. Everything else goes through
@@ -313,5 +314,72 @@ describe('triage result', () => {
       {} as never,
     );
     expect(other).toEqual({ error: 'Project not found' });
+  });
+});
+
+describe('replies', () => {
+  beforeEach(resetDb);
+
+  async function acceptedIssue(
+    folderId: number,
+    asOwner: Api,
+    view: { columns: { id: number }[] },
+  ) {
+    const created = await asOwner.projects({ projectKey: 'MKT' }).issues.post({
+      columnId: view.columns[0]!.id,
+      title: 'Reported by mail',
+    });
+    await addItem(folderId, {
+      messageId: '<root@x>',
+      status: 'accepted',
+      issueId: created.data!.id,
+    });
+    return created.data!;
+  }
+
+  it('posts a reply as a comment of the issue, cuts the quote, and keeps the issue closed', async () => {
+    const { asOwner, folder, view } = await setup();
+    const issue = await acceptedIssue(folder.id, asOwner, view.data!);
+    const done = view.data!.columns.find((c) => c.stateType === 'completed')!;
+    await asOwner.issues({ issueId: issue.id }).patch({ columnId: done.id });
+    const id = await addItem(folder.id, {
+      inReplyTo: '<root@x>',
+      replyToIssueId: issue.id,
+      body: 'More details\n\nOn Mon, 2 Nov 2026, Support wrote:\n> old',
+    });
+    expect((await asOwner.account['mail-inbox'].count.get()).data!.open).toBe(0);
+
+    expect(await processMailReplies()).toBe(1);
+
+    const feed = JSON.stringify(
+      (await asOwner.issues({ issueId: issue.id }).feed.get({ query: {} })).data,
+    );
+    expect(feed).toContain('via email from Ann <ann@example.com>');
+    expect(feed).toContain('More details');
+    expect(feed).not.toContain('> old');
+    const [row] = await db.select().from(intakeItem).where(eq(intakeItem.id, id));
+    expect(row).toMatchObject({
+      status: 'accepted',
+      issueId: issue.id,
+      replyToIssueId: null,
+      body: '',
+    });
+    expect((await asOwner.issues({ issueId: issue.id }).get()).data!.columnId).toBe(done.id);
+    expect(await processMailReplies()).toBe(0);
+  });
+
+  it('triages the reply like a new email when the issue was deleted', async () => {
+    const { asOwner, folder, view } = await setup();
+    const issue = await acceptedIssue(folder.id, asOwner, view.data!);
+    const id = await addItem(folder.id, { inReplyTo: '<root@x>', replyToIssueId: issue.id });
+    await asOwner.issues({ issueId: issue.id }).delete();
+
+    expect(await processMailReplies()).toBe(0);
+
+    const [row] = await db.select().from(intakeItem).where(eq(intakeItem.id, id));
+    expect(row).toMatchObject({ status: 'new', replyToIssueId: null });
+    const runs = await db.select().from(agentRun).where(eq(agentRun.intakeItemId, id));
+    expect(runs).toMatchObject([{ trigger: 'mail_triage' }]);
+    expect((await asOwner.account['mail-inbox'].get()).data!.items.map((i) => i.id)).toEqual([id]);
   });
 });

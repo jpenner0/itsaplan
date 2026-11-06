@@ -5,6 +5,7 @@ import {
   db,
   getStorageSettings,
   intakeItem,
+  mailbox,
   mailboxFolder,
   project,
   projectMember,
@@ -13,7 +14,7 @@ import {
   type IntakeAttachment,
 } from '@repo/db';
 import { deleteObjects, putObject, safeAttachmentFilename } from '@repo/storage';
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import type { ParsedMail } from './mail-parse';
 
 // Database side of the mail fetch: claiming due folders, the watermark and the stored items.
@@ -122,18 +123,53 @@ async function storeAttachments(
   return out;
 }
 
-// Stores one fetched email. A message id already stored for the folder is skipped.
-// Returns the new item's id, or null for a duplicate.
-export async function storeMail(folderIdValue: number, mail: ParsedMail): Promise<number | null> {
+// The issue an email answers: the issue of an accepted email, or of an earlier reply, of the same
+// mailbox owner whose Message-ID is in In-Reply-To or References. Null when it answers none.
+async function findRepliedIssue(folderIdValue: number, mail: ParsedMail): Promise<number | null> {
+  const ids = [...(mail.inReplyTo ? [mail.inReplyTo] : []), ...mail.references];
+  if (ids.length === 0) return null;
+  const [owner] = await db
+    .select({ userId: mailbox.userId })
+    .from(mailboxFolder)
+    .innerJoin(mailbox, eq(mailbox.id, mailboxFolder.mailboxId))
+    .where(eq(mailboxFolder.id, folderIdValue));
+  if (!owner) return null;
+  const [row] = await db
+    .select({ issueId: intakeItem.issueId })
+    .from(intakeItem)
+    .innerJoin(mailboxFolder, eq(mailboxFolder.id, intakeItem.folderId))
+    .innerJoin(mailbox, eq(mailbox.id, mailboxFolder.mailboxId))
+    .where(
+      and(
+        eq(intakeItem.status, 'accepted'),
+        isNotNull(intakeItem.issueId),
+        inArray(intakeItem.messageId, ids),
+        eq(mailbox.userId, owner.userId),
+      ),
+    )
+    .orderBy(desc(intakeItem.id))
+    .limit(1);
+  return row?.issueId ?? null;
+}
+
+// Stores one fetched email. A message id already stored for the folder is skipped. Returns
+// the new item's id and, for an answer to an accepted email, the issue it is to be posted on;
+// null for a duplicate.
+export async function storeMail(
+  folderIdValue: number,
+  mail: ParsedMail,
+): Promise<{ id: number; replyToIssueId: number | null } | null> {
   const [exists] = await db
     .select({ id: intakeItem.id })
     .from(intakeItem)
     .where(and(eq(intakeItem.folderId, folderIdValue), eq(intakeItem.messageId, mail.messageId)));
   if (exists) return null;
+  const replyToIssueId = await findRepliedIssue(folderIdValue, mail);
   const attachments = await storeAttachments(folderIdValue, mail);
   const [row] = await db
     .insert(intakeItem)
     .values({
+      replyToIssueId,
       folderId: folderIdValue,
       messageId: mail.messageId,
       inReplyTo: mail.inReplyTo,
@@ -151,7 +187,7 @@ export async function storeMail(folderIdValue: number, mail: ParsedMail): Promis
     await deleteObjects(attachments.flatMap((a) => (a.s3Key ? [a.s3Key] : [])));
     return null;
   }
-  return row.id;
+  return { id: row.id, replyToIssueId };
 }
 
 // A rejected item is kept for 30 days and then deleted with its attachments.

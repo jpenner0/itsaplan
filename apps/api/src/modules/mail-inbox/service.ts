@@ -53,7 +53,9 @@ function assertOpen(item: Item): void {
 }
 
 // An open draft: not decided and not a reply that became a comment.
-const openFor = (userId: string) => and(eq(mailbox.userId, userId), eq(intakeItem.status, 'new'));
+// A new email that is not a reply waiting to be posted as a comment.
+const openFor = (userId: string) =>
+  and(eq(mailbox.userId, userId), eq(intakeItem.status, 'new'), isNull(intakeItem.replyToIssueId));
 
 export async function inboxCount(userId: string): Promise<{ open: number; enabled: boolean }> {
   const [row] = await db

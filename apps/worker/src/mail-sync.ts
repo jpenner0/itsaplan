@@ -26,10 +26,11 @@ export async function syncFolder(folder: DueFolder, session: FolderSession): Pro
   const ids: number[] = [];
   const messages = await session.fetchAfter(folder.lastUid, BATCH);
   for (const message of messages) {
-    const id = await storeMail(folder.id, await parseMail(message.source));
-    if (id != null) {
-      ids.push(id);
-      await queueTriage(id, folder.id);
+    const stored = await storeMail(folder.id, await parseMail(message.source));
+    if (stored) {
+      ids.push(stored.id);
+      // An answer to an accepted email is posted as a comment by the api, with no triage.
+      if (stored.replyToIssueId == null) await queueTriage(stored.id, folder.id);
     }
     await setWatermark(folder.id, session.uidValidity, message.uid);
   }

@@ -5,9 +5,11 @@ import {
   aiAgent,
   db,
   intakeItem,
+  issue,
   mailbox,
   mailboxFolder,
   project,
+  projectColumn,
   projectMember,
   team,
   user,
@@ -90,6 +92,7 @@ async function reload(id: number) {
 describe('syncFolder', () => {
   beforeEach(async () => {
     await db.delete(mailboxFolder);
+    await db.delete(agentRun).where(eq(agentRun.trigger, 'mail_triage'));
   });
 
   it('sets the watermark to the highest UID on the first poll and reads nothing', async () => {
@@ -121,7 +124,9 @@ describe('syncFolder', () => {
     const { folder } = await makeFolder({ uidValidity: 7, lastUid: 10 });
     const [agent] = await db.select().from(aiAgent).where(eq(aiAgent.id, folder.agentId));
     await syncFolder(due(folder), session(7, 12, [{ uid: 11, source: raw('a') }]));
-    expect(await db.select().from(agentRun)).toHaveLength(0);
+    expect(
+      await db.select().from(agentRun).where(eq(agentRun.trigger, 'mail_triage')),
+    ).toHaveLength(0);
 
     const [p] = await db
       .insert(project)
@@ -133,7 +138,9 @@ describe('syncFolder', () => {
     await syncFolder(due(await reload(folder.id)), session(7, 13, [{ uid: 12, source: raw('b') }]));
 
     const [created] = await db.select().from(intakeItem);
-    expect(await db.select().from(agentRun)).toMatchObject([
+    expect(
+      await db.select().from(agentRun).where(eq(agentRun.trigger, 'mail_triage')),
+    ).toMatchObject([
       {
         agentId: folder.agentId,
         projectId: p!.id,
@@ -156,6 +163,80 @@ describe('syncFolder', () => {
     const ids = await syncFolder(due(folder), session(8, 5, [{ uid: 3, source: raw('x') }]));
     expect(ids).toEqual([]);
     expect(await reload(folder.id)).toMatchObject({ uidValidity: 8, lastUid: 4 });
+  });
+});
+
+describe('replies', () => {
+  beforeEach(async () => {
+    await db.delete(mailboxFolder);
+    await db.delete(agentRun).where(eq(agentRun.trigger, 'mail_triage'));
+  });
+
+  async function acceptedMail(folder: typeof mailboxFolder.$inferSelect) {
+    const [p] = await db
+      .insert(project)
+      .values({ teamId: folder.teamId, key: 'REP', name: 'Replies' })
+      .returning({ id: project.id });
+    const [col] = await db
+      .insert(projectColumn)
+      .values({ projectId: p!.id, name: 'Todo', position: 0 })
+      .returning({ id: projectColumn.id });
+    const [created] = await db
+      .insert(issue)
+      .values({ projectId: p!.id, sequenceNumber: 1, columnId: col!.id, title: 'T' })
+      .returning({ id: issue.id });
+    await db.insert(intakeItem).values({
+      folderId: folder.id,
+      messageId: '<root@x>',
+      fromAddress: 'a@example.com',
+      status: 'accepted',
+      issueId: created!.id,
+    });
+    return created!.id;
+  }
+
+  const reply = (id: string, header: string) =>
+    Buffer.from(`From: a@example.com\r\nMessage-ID: <${id}@x>\r\n${header}\r\n\r\nmore`);
+
+  it('marks an answer to an accepted email, matched by In-Reply-To or References, and queues no triage', async () => {
+    const { folder } = await makeFolder({ uidValidity: 7, lastUid: 10 });
+    const issueId = await acceptedMail(folder);
+
+    await syncFolder(
+      due(folder),
+      session(7, 13, [
+        { uid: 11, source: reply('r1', 'In-Reply-To: <root@x>') },
+        { uid: 12, source: reply('r2', 'References: <other@x> <r1@x> <root@x>') },
+      ]),
+    );
+
+    const items = await db.select().from(intakeItem).orderBy(intakeItem.id);
+    expect(items.slice(1).map((i) => i.replyToIssueId)).toEqual([issueId, issueId]);
+    expect(
+      await db.select().from(agentRun).where(eq(agentRun.trigger, 'mail_triage')),
+    ).toHaveLength(0);
+  });
+
+  it('does not match an answer to another mailbox owner or an undecided email', async () => {
+    const { folder } = await makeFolder({ uidValidity: 7, lastUid: 10 });
+    const other = await makeFolder({ uidValidity: 7, lastUid: 10 });
+    await acceptedMail(other.folder);
+    await db.insert(intakeItem).values({
+      folderId: folder.id,
+      messageId: '<pending@x>',
+      fromAddress: 'a@example.com',
+    });
+
+    await syncFolder(
+      due(folder),
+      session(7, 13, [
+        { uid: 11, source: reply('r1', 'In-Reply-To: <root@x>') },
+        { uid: 12, source: reply('r2', 'In-Reply-To: <pending@x>') },
+      ]),
+    );
+
+    const mine = await db.select().from(intakeItem).where(eq(intakeItem.folderId, folder.id));
+    expect(mine.every((i) => i.replyToIssueId === null)).toBe(true);
   });
 });
 

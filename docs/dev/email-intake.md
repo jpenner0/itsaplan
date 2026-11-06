@@ -108,3 +108,28 @@ count of open drafts. The page polls every 30 seconds; the worker writes no revi
 - **Reject** keeps the item for 30 days.
 - **Check again** queues a new run when none is pending.
 - A decision is claimed with a conditional update, so a double click cannot create two issues.
+
+## Replies
+
+An email that answers an accepted one never goes through triage.
+
+- **Matching.** When the worker stores an email, `findRepliedIssue` (`mail-store.ts`) looks for a
+  stored `Message-ID` of an accepted item in `In-Reply-To` or `References`. Accepted items include
+  earlier replies and emails added as a comment, so a long thread keeps matching. Only items of
+  the same mailbox owner match. A match sets `reply_to_issue_id` on the new item and queues no
+  triage run. Subjects are not compared.
+- **Posting.** `processMailReplies` (`modules/mail-inbox/replies.ts`) runs in its own api loop
+  every 5 seconds. It claims an item with a conditional update, so replicas never post one twice.
+  It checks that the issue exists, that the mailbox owner has `work_items` `edit` in its project
+  and that the project is writable, then inserts a normal comment as the owner. The comment is a
+  normal insert, so the revision triggers refresh the issue (`docs/dev/revision-engine.md`). The
+  comment starts with `via email from Name <address>`. `stripReply` cuts quoted lines, the quoted
+  earlier message (English and German headers, Outlook headers) and the signature. HTML was
+  converted to Markdown when the email was stored.
+- **Attachments** within the storage limits become attachments of the issue; a file that was only
+  listed is named under the comment.
+- **Closed issues** get the comment and stay closed.
+- **Fallback.** An issue that was deleted, an owner who can no longer comment, or any error while
+  posting clears `reply_to_issue_id` and queues the triage, so the email appears in the Mail inbox
+  like a new one. Nothing is retried in a loop.
+- After posting, the item is `accepted` with the issue; its body and attachments are deleted.
