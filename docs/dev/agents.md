@@ -179,6 +179,28 @@ Both are for GitHub only.
 - The agent needs both keys in `ai_agent.tools`, and its role in the project must allow the
   permissions above.
 
+## Implementing a synced issue
+
+A delegation run (`trigger = 'delegation'`) of an issue that has an `issue_sync_link` to a connected
+repository carries `repository: { url, baseBranch, branch }` in the claim, for the claim route and for
+an invocation endpoint alike. Any other run has `repository: null`. The code is
+`modules/agents/runner/repository.ts`.
+
+- `url` is the repository's `web_url` plus `.git`. `baseBranch` is the repository's default branch,
+  read from the provider at claim time. A provider that fails or has no default branch gives
+  `repository: null`, and the run goes on without a clone.
+- `branch` is `<project key>-<number>-<title slug>` in lowercase, the slug cut at 40 characters. It
+  is derived again when the result arrives, so it needs no column.
+- The runner sends `branch` in `POST /agent-runs/:runId/result` after it pushed. `finishRun` then
+  checks that the run is the agent's and pending, requires `branch` to equal the derived branch, and
+  opens the pull request with `createAndLinkPullRequest` and the body `Closes #<external number>`.
+  The link is stored like a manually created one, so the pull request handling of the issue sync
+  applies. A refused branch or a provider error turns the result into `failed`, with the reason as the
+  run's error.
+- A branch with an open pull request link for this issue gets no second pull request.
+- The token stays on the server. The runner clones and pushes with the git credentials of its machine.
+  The runner is `packages/runner/src/repository.ts` and `run.ts`.
+
 ## Reading runs
 
 `GET /issues/:issueId/agent-runs` reads an issue's runs with cursor pagination. It requires

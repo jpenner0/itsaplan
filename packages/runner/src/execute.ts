@@ -16,6 +16,8 @@ export interface Task {
   env: Record<string, string>;
   // The coding agent session to resume, for a preset that keeps them.
   sessionId?: string | null;
+  // The working directory, where the configured one does not apply.
+  cwd?: string;
 }
 
 export interface Outcome {
@@ -91,7 +93,7 @@ export async function execute(
   const preset = presetOf(config);
   const [bin, args] = spawnArgs(config, preset, task);
   const child = spawn(bin, args, {
-    cwd: config.cwd,
+    cwd: task.cwd ?? config.cwd,
     env: childEnv(config, task),
     detached: true,
   });

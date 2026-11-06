@@ -23,6 +23,7 @@ import {
   runModePreamble,
   type RunForPrompt,
 } from '../core/prompt/framing';
+import { openRunPullRequest, runRepository, type RunRepository } from './repository';
 
 // The queue an external agent's runner drains. The runner is a process the operator
 // starts on their own machine; it authenticates with the agent's API key, claims one
@@ -99,11 +100,14 @@ export interface RunnerRun {
   // The issue's human-readable key ("MKT-42"), so the runner can name the work in its
   // log. Null for a run with no issue, or a deleted one.
   issueIdentifier: string | null;
+  // Set for the delegation of an issue that is synced with a repository: the runner
+  // implements the issue in a clone of it and reports the branch it pushed.
+  repository: RunRepository | null;
 }
 
 // The claim's raw row, before framing. The extra people columns exist only to build
 // the prompts and are not handed to the runner.
-type ClaimedRow = Omit<RunnerRun, 'systemPrompt' | 'traceEvents'> & {
+type ClaimedRow = Omit<RunnerRun, 'systemPrompt' | 'traceEvents' | 'repository'> & {
   // The project the run works in, which is what its system prompt names.
   projectId: number;
   projectKey: string;
@@ -252,6 +256,7 @@ export async function takeNextRun(agent: RunnerAgent): Promise<RunnerRun | null>
     attempts: row.attempts,
     issueId: row.issueId,
     issueIdentifier: row.issueIdentifier,
+    repository: await runRepository(row.id),
   };
   if (!(await markRunExecuting(row.id, row.attempts))) return null;
   return result;
@@ -313,16 +318,38 @@ export async function finishRun(
     output?: string | null;
     error?: string | null;
     usage?: ContextUsage | null;
+    branch?: string | null;
   },
 ): Promise<boolean> {
   await touchRunner(agent.id);
+  let { status, error } = result;
+  if (status === 'success' && result.branch) {
+    const [current] = await db
+      .select({ id: agentRun.id })
+      .from(agentRun)
+      .where(
+        and(
+          eq(agentRun.id, runId),
+          eq(agentRun.agentId, agent.id),
+          eq(agentRun.status, 'pending'),
+          result.attempt == null ? undefined : eq(agentRun.attempts, result.attempt),
+        ),
+      )
+      .limit(1);
+    if (!current) return false;
+    const failure = await openRunPullRequest(runId, result.branch);
+    if (failure) {
+      status = 'failed';
+      error = failure;
+    }
+  }
   const rows = await db
     .update(agentRun)
     .set({
-      status: result.status,
+      status,
       executionStartedAt: null,
       output: result.output?.slice(0, 10_000) ?? null,
-      lastError: result.status === 'failed' ? (result.error?.slice(0, 500) ?? 'Run failed') : null,
+      lastError: status === 'failed' ? (error?.slice(0, 500) ?? 'Run failed') : null,
       inputTokens: result.usage?.inputTokens ?? null,
       outputTokens: result.usage?.outputTokens ?? null,
       finishedAt: new Date(),
@@ -338,7 +365,7 @@ export async function finishRun(
     .returning({ id: agentRun.id, issueId: agentRun.issueId });
   const row = rows[0];
   if (!row) return false;
-  await recordAgentRunFinished({ ...row, agentUserId: agent.userId }, result.status);
+  await recordAgentRunFinished({ ...row, agentUserId: agent.userId }, status);
   await emitRunsFinished([row.id]);
   return true;
 }

@@ -13,6 +13,13 @@ export const RunnerRunResponse = t.Object({
   traceEvents: t.Boolean(),
   issueId: t.Nullable(t.Number()),
   issueIdentifier: t.Nullable(t.String()),
+  repository: t.Nullable(
+    t.Object({
+      url: t.String({ description: 'The clone URL of the linked repository.' }),
+      baseBranch: t.String(),
+      branch: t.String({ description: 'The branch to push the work to.' }),
+    }),
+  ),
 });
 
 // The claim result. The run is wrapped so an empty queue is an explicit null rather
@@ -33,6 +40,13 @@ export const resultBody = t.Object({
   output: t.Optional(t.Nullable(t.String({ description: 'What the run produced, for history.' }))),
   error: t.Optional(t.Nullable(t.String({ description: 'Why the run failed.' }))),
   usage: contextUsageBody,
+  branch: t.Optional(
+    t.String({
+      maxLength: 255,
+      description:
+        'The branch the runner pushed for a run that came with a repository. The api opens the pull request from it.',
+    }),
+  ),
 });
 
 export const runEventsBody = t.Object({

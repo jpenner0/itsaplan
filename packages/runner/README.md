@@ -281,6 +281,14 @@ preset gives it to its CLI in the way that CLI accepts it: on stdin for `claude`
 The agent reads all other data through the MCP server at `$ITSAPLAN_URL/mcp`. The agent
 sends `$ITSAPLAN_API_KEY` as a bearer token, and acts as its own user with its role.
 
+### A synced issue
+
+When a delegated issue is synced with a GitHub repository, the runner clones the repository into
+a temporary directory and runs the coding agent there, on the branch `<issue key>-<title slug>`.
+It commits what the agent left, pushes the branch and reports it, and the instance opens the pull
+request. Git runs as you, so the clone and the push use your SSH key or `gh auth`. See
+[Implementing a synced issue](https://github.com/jpenner0/itsaplan/blob/main/docs/runner.md#implementing-a-synced-issue).
+
 ### The environment
 
 Every run holds these variables:
