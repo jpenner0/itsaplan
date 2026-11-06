@@ -47,12 +47,13 @@ export async function myIssues(userId: string): Promise<string> {
 export async function searchIssues(userId: string, text: string): Promise<string> {
   if (!text) return 'Usage: search <text>';
   const ids = await readableProjectIds(userId, [['work_items', 'read']]);
-  const hits = await searchIssuesInProjects(ids, text, {
-    limit: LIST_LIMIT,
-    perProjectLimit: LIST_LIMIT,
-  });
-  const open = hits.filter((h) => !h.archived);
-  return open.length ? await formatHits(open) : 'No issues found.';
+  const hits = await searchIssuesInProjects(
+    ids,
+    text,
+    { limit: LIST_LIMIT, perProjectLimit: LIST_LIMIT },
+    { includeArchived: false },
+  );
+  return hits.length ? await formatHits(hits) : 'No issues found.';
 }
 
 export async function showIssue(userId: string, args: string): Promise<string> {

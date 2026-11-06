@@ -310,6 +310,12 @@ describe('teams bot commands', () => {
     expect(reply).not.toContain('Unrelated');
     expect(reply).not.toContain('Launch retired');
     expect(reply).toContain(a.identifier);
+    for (let i = 0; i < 11; i++) {
+      const old = await addIssue(api, 'OPS', `Launch old ${i}`);
+      await api.issues({ issueId: old.id }).archive.post();
+    }
+    expect(await ask('search launch')).toContain('Launch banner');
+    expect(await ask('search old')).toBe('No issues found.');
     expect(await ask('search zzz-nothing')).toBe('No issues found.');
     expect(await ask('search')).toBe('Usage: search <text>');
   });

@@ -596,11 +596,13 @@ function toCrossProjectHit({
 
 // Text search across the given projects, archived issues included, at most
 // perProjectLimit hits from each project. "KEY-42" matches issue 42 of every listed
-// project whose key is KEY, since a key is unique only within its team.
+// project whose key is KEY, since a key is unique only within its team. includeArchived
+// false drops archived issues before the caps apply.
 export async function searchIssuesInProjects(
   projectIds: number[],
   query: string,
   { limit, perProjectLimit }: { limit: number; perProjectLimit: number },
+  opts: { includeArchived?: boolean } = { includeArchived: true },
 ): Promise<CrossProjectIssueHit[]> {
   const raw = query.trim();
   if (!projectIds.length || !raw) return [];
@@ -625,7 +627,13 @@ export async function searchIssuesInProjects(
     })
     .from(issue)
     .innerJoin(projectTable, eq(projectTable.id, issue.projectId))
-    .where(and(inArray(issue.projectId, projectIds), textMatch(raw, numberMatch)))
+    .where(
+      and(
+        inArray(issue.projectId, projectIds),
+        textMatch(raw, numberMatch),
+        opts.includeArchived ? undefined : isNull(issue.archivedAt),
+      ),
+    )
     .as('ranked');
   const rows = await db
     .select(crossProjectHitColumns)
