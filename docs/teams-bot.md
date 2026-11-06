@@ -2,7 +2,7 @@
 
 The Teams bot sends a member's notifications as direct messages in Microsoft Teams. It needs no
 workflow per member, unlike the [Workflows webhook](teams-notifications.md). The bot only links
-accounts, delivers notifications and answers the read commands below.
+accounts, delivers notifications and answers the commands below.
 
 The bot is off until the instance has an Azure Bot registration. Without one, the Accounts page
 does not offer it and members can still use the webhook.
@@ -28,13 +28,22 @@ does not offer it and members can still use the webhook.
 Commands are fixed keywords in a personal chat; free text is not interpreted. The bot acts as the
 linked member and sees only what that member sees: projects that are not archived and whose work
 items the member may read. A missing permission and a missing issue get the same reply,
-`Not found.` Replies are plain text with a link to the issue in the web app.
+`Not found.` The write commands need the work-item permission of the project (create for `new`, edit
+for the others) and run through the same service functions as the web app, so the activity log and
+live updates are the same. A command that fails replies with one short message and changes nothing.
+Replies are plain text with a link to the issue in the web app.
 
 | Command         | Reply                                                                         |
 | --------------- | ----------------------------------------------------------------------------- |
 | `my`            | your open issues (not completed or canceled), latest change first, at most 10 |
 | `search <text>` | issues matching the text across your projects, at most 10, archived left out  |
 | `show <id>`     | title, status, assignee, a shortened description and the link                 |
+| `new @KEY <title>` | creates an issue in the project's first column, replies with id and link |
+| `done <id>`     | moves the issue to the first column of the type `completed`                   |
+| `status <id> <column>` | moves the issue to the column with that name (case-insensitive); an unknown name lists the columns |
+| `comment <id> <text>` | adds a comment as you                                                   |
+| `assign <id> me` | assigns the issue to you                                                     |
+| `assign <id> <email>` | assigns the issue to a member of the issue's project                    |
 | `link <code>`   | connects the chat to your account, see above                                  |
 | `help`          | lists the commands                                                            |
 
