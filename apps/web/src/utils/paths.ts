@@ -165,6 +165,7 @@ export type TeamSection =
   | 'agent-skills'
   | 'agent-tools'
   | 'analytics'
+  | 'mailbox'
   | 'notifications';
 
 // A team's settings, under the team's ref (Team.ref): /acme/settings.

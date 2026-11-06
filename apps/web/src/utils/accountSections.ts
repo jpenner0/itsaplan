@@ -2,7 +2,6 @@ import {
   KeyRound,
   Link2,
   Mail,
-  Inbox,
   ShieldCheck,
   SlidersHorizontal,
   UserRound,
@@ -21,7 +20,6 @@ export const ACCOUNT_SECTIONS: AccountSection[] = [
   { slug: 'accounts', icon: Link2 },
   { slug: 'invitations', icon: Mail },
   { slug: 'security', icon: ShieldCheck },
-  { slug: 'mailboxes', icon: Inbox },
   { slug: 'api-keys', icon: KeyRound },
 ];
 

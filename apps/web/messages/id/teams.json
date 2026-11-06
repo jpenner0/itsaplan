@@ -62,6 +62,10 @@
     },
     "queue": {
       "title": "Eksekusi agen"
+    },
+    "mailbox": {
+      "title": "Mailbox",
+      "description": "The mailbox whose emails the team's agent triages into issue drafts."
     }
   },
   "info": {
@@ -799,5 +803,41 @@
     "queue": {
       "title": "Eksekusi agen"
     }
+  },
+  "mailbox": {
+    "managerOnly": "Only the team owner and managers can manage the mailbox.",
+    "title": "Mailbox",
+    "privacy": "Emails in the INBOX from allowed senders are sent to the AI provider of the chosen agent. Credentials are stored encrypted.",
+    "active": "Active",
+    "paused": "Paused",
+    "lastPolled": "Last read {time}",
+    "neverPolled": "Not read yet",
+    "auth": "Sign-in",
+    "authPassword": "Password",
+    "authMicrosoft": "Microsoft 365 (XOAUTH2)",
+    "authMicrosoftHint": "Uses an app registration with the IMAP.AccessAsApp permission and access to the mailbox.",
+    "host": "IMAP host",
+    "port": "Port",
+    "encryption": "Encryption",
+    "tls": "TLS",
+    "starttls": "STARTTLS",
+    "username": "User name",
+    "password": "Password",
+    "tenantId": "Tenant ID",
+    "clientId": "Client ID",
+    "clientSecret": "Client secret",
+    "keepSecret": "Leave empty to keep the stored value. Entering a new one restarts a paused mailbox.",
+    "triage": "Triage",
+    "agent": "Agent",
+    "agentPlaceholder": "Choose an internal agent",
+    "allowedSenders": "Allowed senders",
+    "allowedSendersPlaceholder": "alice@example.com\n@example.com",
+    "allowedSendersHint": "One address or @domain per line. An empty list means no email is triaged.",
+    "setUp": "Set up mailbox",
+    "saved": "Mailbox saved",
+    "delete": "Remove mailbox",
+    "deleteTitle": "Remove the mailbox?",
+    "deleteConfirm": "The team stops reading its mailbox. Drafts already created stay.",
+    "deleted": "Mailbox removed"
   }
 }

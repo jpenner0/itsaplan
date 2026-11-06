@@ -5,8 +5,7 @@
     "accounts": "關聯帳號",
     "security": "安全",
     "api-keys": "API 金鑰",
-    "invitations": "Invitations",
-    "mailboxes": "Mailboxes"
+    "invitations": "Invitations"
   },
   "godGroups": {
     "management": "管理",

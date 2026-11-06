@@ -343,10 +343,8 @@ export const qk = {
   oauthClientName: (clientId: string) => ['oauthClientName', clientId] as const,
   // The signed-in user's personal API keys (API keys page).
   apiKeys: ['apiKeys'] as const,
-  // The signed-in user's mailboxes for the email intake, and the teams and agents a
-  // folder can use.
-  mailboxes: ['mailboxes'] as const,
-  mailboxOptions: ['mailboxOptions'] as const,
+  // The team's mailbox for the email intake; a 404 means it has none.
+  teamMailbox: (teamId: number) => ['teamMailbox', teamId] as const,
   // The Mail inbox: the drafts, the open count for the sidebar and the projects a draft can
   // be accepted into.
   mailInbox: ['mailInbox'] as const,

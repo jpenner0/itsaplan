@@ -5,8 +5,7 @@
     "accounts": "Аккаунты",
     "security": "Безопасность",
     "api-keys": "API-ключи",
-    "invitations": "Приглашения",
-    "mailboxes": "Mailboxes"
+    "invitations": "Приглашения"
   },
   "godGroups": {
     "management": "Управление",

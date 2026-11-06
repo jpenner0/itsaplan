@@ -12,6 +12,7 @@ import {
   FolderKanban,
   GitBranch,
   Info,
+  Inbox,
   PanelLeftClose,
   PanelLeftOpen,
   Plug,
@@ -112,6 +113,7 @@ export default function TeamSectionNav({
   // The notification providers are the owner's: nobody else reads or writes them.
   const bottom = [
     ...(runsTeam ? [section('git', 'Git', GitBranch)] : []),
+    ...(runsTeam ? [section('mailbox', t('mailbox.title'), Inbox)] : []),
     section('mcp', t('mcp.title'), Radio),
     ...(team.role === 'owner' ? [section('notifications', t('notifications.title'), Bell)] : []),
   ];
