@@ -1,9 +1,9 @@
 import { startPollLoop, type WorkerHandle } from './poll-loop';
-import { pollFolder } from './mail-sync';
-import { claimDueFolders, deleteExpiredRejected } from './mail-store';
+import { pollMailbox } from './mail-sync';
+import { claimDueMailboxes, deleteExpiredRejected } from './mail-store';
 
-// Polls the mailbox folders of the email intake. A folder is due every five minutes; the loop
-// ticks more often so a folder added or reconnected is read soon.
+// Polls the team mailboxes of the email intake. A mailbox is due every five minutes; the loop
+// ticks more often so a mailbox added or reconnected is read soon.
 const TICK_MS = 30_000;
 
 export function startMailWorker(): WorkerHandle {
@@ -11,7 +11,7 @@ export function startMailWorker(): WorkerHandle {
 }
 
 async function tick(): Promise<void> {
-  const folders = await claimDueFolders();
-  await Promise.all(folders.map((f) => pollFolder(f)));
+  const ids = await claimDueMailboxes();
+  await Promise.all(ids.map((id) => pollMailbox(id)));
   await deleteExpiredRejected();
 }

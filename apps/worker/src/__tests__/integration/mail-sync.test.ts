@@ -6,68 +6,52 @@ import {
   db,
   intakeItem,
   issue,
-  mailbox,
-  mailboxFolder,
   project,
   projectColumn,
   projectMember,
   team,
+  teamMailbox,
   user,
   workspace,
 } from '@repo/db';
 import { encryptSecret } from '@repo/crypto';
 import { eq } from 'drizzle-orm';
-import { ImapAuthError, type FolderSession } from '../../mail-imap';
-import { pollFolder, syncFolder } from '../../mail-sync';
-import { claimDueFolders, deleteExpiredRejected, type DueFolder } from '../../mail-store';
+import { ImapAuthError, type MailSession } from '../../mail-imap';
+import { pollMailbox, syncMailbox } from '../../mail-sync';
+import { claimDueMailboxes, deleteExpiredRejected } from '../../mail-store';
 
-async function makeFolder(over: Partial<typeof mailboxFolder.$inferInsert> = {}) {
+async function makeBox(over: Partial<typeof teamMailbox.$inferInsert> = {}) {
   const [ws] = await db.insert(workspace).values({ name: 'Mail' }).returning({ id: workspace.id });
   const [t] = await db
     .insert(team)
     .values({ workspaceId: ws!.id, name: 'Mail' })
     .returning({ id: team.id });
-  const ownerId = randomUUID();
   const botId = randomUUID();
-  await db.insert(user).values([
-    { id: ownerId, name: 'Owner', email: `${ownerId}@example.test` },
-    { id: botId, name: 'Bot', email: `${botId}@example.test` },
-  ]);
+  await db.insert(user).values({ id: botId, name: 'Bot', email: `${botId}@example.test` });
   const [agent] = await db
     .insert(aiAgent)
     .values({ teamId: t!.id, userId: botId, username: 'triage', kind: 'internal' })
     .returning({ id: aiAgent.id });
   const [box] = await db
-    .insert(mailbox)
+    .insert(teamMailbox)
     .values({
-      userId: ownerId,
-      label: 'Support',
+      teamId: t!.id,
+      agentId: agent!.id,
       host: 'imap.example.com',
       username: 'support@example.com',
+      allowedSenders: ['example.com'],
       ...encryptSecret(JSON.stringify({ password: 'pw' })),
+      ...over,
     })
     .returning();
-  const [folder] = await db
-    .insert(mailboxFolder)
-    .values({ mailboxId: box!.id, name: 'INBOX', teamId: t!.id, agentId: agent!.id, ...over })
-    .returning();
-  return { folder: folder!, box: box! };
+  return box!;
 }
 
-function due(f: typeof mailboxFolder.$inferSelect): DueFolder {
-  return {
-    id: f.id,
-    name: f.name,
-    uidValidity: f.uidValidity,
-    lastUid: f.lastUid,
-    failures: f.failures,
-    mailboxId: f.mailboxId,
-  };
-}
+const PASS = 'Authentication-Results: mx.example.net; dmarc=pass header.from=example.com';
 
-function raw(id: string, subject = 'Hi'): Buffer {
+function raw(id: string, auth = PASS, from = 'a@example.com'): Buffer {
   return Buffer.from(
-    `From: a@example.com\r\nSubject: ${subject}\r\nMessage-ID: <${id}@x>\r\n\r\nbody ${id}`,
+    `${auth}\r\nFrom: ${from}\r\nSubject: Hi\r\nMessage-ID: <${id}@x>\r\n\r\nbody ${id}`,
   );
 }
 
@@ -75,7 +59,7 @@ function session(
   uidValidity: number,
   uidNext: number,
   messages: { uid: number; source: Buffer }[] = [],
-): FolderSession {
+): MailSession {
   return {
     uidValidity,
     uidNext,
@@ -85,28 +69,41 @@ function session(
 }
 
 async function reload(id: number) {
-  const [row] = await db.select().from(mailboxFolder).where(eq(mailboxFolder.id, id));
+  const [row] = await db.select().from(teamMailbox).where(eq(teamMailbox.id, id));
   return row!;
 }
 
-describe('syncFolder', () => {
-  beforeEach(async () => {
-    await db.delete(mailboxFolder);
-    await db.delete(agentRun).where(eq(agentRun.trigger, 'mail_triage'));
-  });
+async function triageRuns() {
+  return db.select().from(agentRun).where(eq(agentRun.trigger, 'mail_triage'));
+}
 
+async function addProject(box: typeof teamMailbox.$inferSelect, key: string) {
+  const [agent] = await db.select().from(aiAgent).where(eq(aiAgent.id, box.agentId));
+  const [p] = await db
+    .insert(project)
+    .values({ teamId: box.teamId, key, name: key })
+    .returning({ id: project.id });
+  await db.insert(projectMember).values({ projectId: p!.id, userId: agent!.userId });
+  return p!.id;
+}
+
+beforeEach(async () => {
+  await db.delete(teamMailbox);
+});
+
+describe('syncMailbox', () => {
   it('sets the watermark to the highest UID on the first poll and reads nothing', async () => {
-    const { folder } = await makeFolder();
-    const ids = await syncFolder(due(folder), session(7, 11, [{ uid: 10, source: raw('old') }]));
+    const box = await makeBox();
+    const ids = await syncMailbox(box, session(7, 11, [{ uid: 10, source: raw('old') }]));
     expect(ids).toEqual([]);
-    expect(await reload(folder.id)).toMatchObject({ uidValidity: 7, lastUid: 10 });
+    expect(await reload(box.id)).toMatchObject({ uidValidity: 7, lastUid: 10 });
     expect(await db.select().from(intakeItem)).toHaveLength(0);
   });
 
   it('stores only mail above the watermark and moves it', async () => {
-    const { folder } = await makeFolder({ uidValidity: 7, lastUid: 10 });
-    const ids = await syncFolder(
-      due(folder),
+    const box = await makeBox({ uidValidity: 7, lastUid: 10 });
+    const ids = await syncMailbox(
+      box,
       session(7, 14, [
         { uid: 10, source: raw('old') },
         { uid: 11, source: raw('a') },
@@ -117,65 +114,101 @@ describe('syncFolder', () => {
     const items = await db.select().from(intakeItem).orderBy(intakeItem.id);
     expect(items.map((i) => i.messageId)).toEqual(['<a@x>', '<b@x>']);
     expect(items[0]).toMatchObject({ fromAddress: 'a@example.com', status: 'new' });
-    expect((await reload(folder.id)).lastUid).toBe(13);
+    expect((await reload(box.id)).lastUid).toBe(13);
   });
 
-  it('queues a triage run of the folder agent in a project it works in', async () => {
-    const { folder } = await makeFolder({ uidValidity: 7, lastUid: 10 });
-    const [agent] = await db.select().from(aiAgent).where(eq(aiAgent.id, folder.agentId));
-    await syncFolder(due(folder), session(7, 12, [{ uid: 11, source: raw('a') }]));
-    expect(
-      await db.select().from(agentRun).where(eq(agentRun.trigger, 'mail_triage')),
-    ).toHaveLength(0);
-
-    const [p] = await db
-      .insert(project)
-      .values({ teamId: folder.teamId, key: 'MAIL', name: 'Mail' })
-      .returning({ id: project.id });
-    await db.insert(projectMember).values({ projectId: p!.id, userId: agent!.userId });
-    const [item] = await db.select().from(intakeItem);
-    await db.delete(intakeItem).where(eq(intakeItem.id, item!.id));
-    await syncFolder(due(await reload(folder.id)), session(7, 13, [{ uid: 12, source: raw('b') }]));
-
-    const [created] = await db.select().from(intakeItem);
-    expect(
-      await db.select().from(agentRun).where(eq(agentRun.trigger, 'mail_triage')),
-    ).toMatchObject([
-      {
-        agentId: folder.agentId,
-        projectId: p!.id,
-        trigger: 'mail_triage',
-        intakeItemId: created!.id,
-        status: 'pending',
-      },
-    ]);
+  it('reads at most 50 messages per poll', async () => {
+    const box = await makeBox({ uidValidity: 7, lastUid: 0 });
+    const messages = Array.from({ length: 60 }, (_, i) => ({
+      uid: i + 1,
+      source: raw(`m${i}`),
+    }));
+    await syncMailbox(box, session(7, 61, messages));
+    expect(await db.select().from(intakeItem)).toHaveLength(50);
+    expect((await reload(box.id)).lastUid).toBe(50);
   });
 
   it('does not store a message id twice', async () => {
-    const { folder } = await makeFolder({ uidValidity: 7, lastUid: 10 });
-    await syncFolder(due(folder), session(7, 13, [{ uid: 11, source: raw('a') }]));
-    await syncFolder(due(await reload(folder.id)), session(7, 13, [{ uid: 12, source: raw('a') }]));
+    const box = await makeBox({ uidValidity: 7, lastUid: 10 });
+    await syncMailbox(box, session(7, 13, [{ uid: 11, source: raw('a') }]));
+    await syncMailbox(await reload(box.id), session(7, 13, [{ uid: 12, source: raw('a') }]));
     expect(await db.select().from(intakeItem)).toHaveLength(1);
   });
 
   it('resets the watermark when UIDVALIDITY changes', async () => {
-    const { folder } = await makeFolder({ uidValidity: 7, lastUid: 10 });
-    const ids = await syncFolder(due(folder), session(8, 5, [{ uid: 3, source: raw('x') }]));
+    const box = await makeBox({ uidValidity: 7, lastUid: 10 });
+    const ids = await syncMailbox(box, session(8, 5, [{ uid: 3, source: raw('x') }]));
     expect(ids).toEqual([]);
-    expect(await reload(folder.id)).toMatchObject({ uidValidity: 8, lastUid: 4 });
+    expect(await reload(box.id)).toMatchObject({ uidValidity: 8, lastUid: 4 });
+  });
+});
+
+describe('sender check', () => {
+  async function run(box: typeof teamMailbox.$inferSelect, source: Buffer) {
+    await syncMailbox(box, session(7, 12, [{ uid: 11, source }]));
+    const [item] = await db.select().from(intakeItem);
+    return { item: item!, runs: await triageRuns() };
+  }
+
+  it('queues triage for a listed and authenticated sender', async () => {
+    const box = await makeBox({ uidValidity: 7, lastUid: 10 });
+    await addProject(box, 'MAIL');
+    const { item, runs } = await run(box, raw('a'));
+    expect(item.senderAllowed).toBe(true);
+    expect(runs).toMatchObject([{ agentId: box.agentId, intakeItemId: item.id }]);
+  });
+
+  it('stores a listed but unauthenticated sender without triage', async () => {
+    const box = await makeBox({ uidValidity: 7, lastUid: 10 });
+    await addProject(box, 'MAIL');
+    const { item, runs } = await run(box, raw('a', 'Authentication-Results: mx; dmarc=fail'));
+    expect(item.senderAllowed).toBe(false);
+    expect(runs).toHaveLength(0);
+  });
+
+  it('stores an email with no Authentication-Results header without triage', async () => {
+    const box = await makeBox({ uidValidity: 7, lastUid: 10 });
+    await addProject(box, 'MAIL');
+    const { item, runs } = await run(box, raw('a', 'X-Other: 1'));
+    expect(item.senderAllowed).toBe(false);
+    expect(runs).toHaveLength(0);
+  });
+
+  it('stores an authenticated sender that is not listed without triage', async () => {
+    const box = await makeBox({ uidValidity: 7, lastUid: 10, allowedSenders: ['other.org'] });
+    await addProject(box, 'MAIL');
+    const { item, runs } = await run(box, raw('a'));
+    expect(item.senderAllowed).toBe(false);
+    expect(runs).toHaveLength(0);
+  });
+
+  it('lets nobody in when the list is empty', async () => {
+    const box = await makeBox({ uidValidity: 7, lastUid: 10, allowedSenders: [] });
+    await addProject(box, 'MAIL');
+    const { item, runs } = await run(box, raw('a'));
+    expect(item.senderAllowed).toBe(false);
+    expect(runs).toHaveLength(0);
+  });
+
+  it('rejects a forged From: the result vouches for another domain', async () => {
+    const box = await makeBox({ uidValidity: 7, lastUid: 10, allowedSenders: ['boss@corp.com'] });
+    await addProject(box, 'MAIL');
+    const forged = raw(
+      'a',
+      'Authentication-Results: mx; dmarc=pass header.from=evil.test; spf=pass smtp.mailfrom=evil.test',
+      'boss@corp.com',
+    );
+    const { item, runs } = await run(box, forged);
+    expect(item.senderAllowed).toBe(false);
+    expect(runs).toHaveLength(0);
   });
 });
 
 describe('replies', () => {
-  beforeEach(async () => {
-    await db.delete(mailboxFolder);
-    await db.delete(agentRun).where(eq(agentRun.trigger, 'mail_triage'));
-  });
-
-  async function acceptedMail(folder: typeof mailboxFolder.$inferSelect) {
+  async function acceptedMail(box: typeof teamMailbox.$inferSelect) {
     const [p] = await db
       .insert(project)
-      .values({ teamId: folder.teamId, key: 'REP', name: 'Replies' })
+      .values({ teamId: box.teamId, key: 'REP', name: 'Replies' })
       .returning({ id: project.id });
     const [col] = await db
       .insert(projectColumn)
@@ -186,7 +219,7 @@ describe('replies', () => {
       .values({ projectId: p!.id, sequenceNumber: 1, columnId: col!.id, title: 'T' })
       .returning({ id: issue.id });
     await db.insert(intakeItem).values({
-      folderId: folder.id,
+      teamMailboxId: box.id,
       messageId: '<root@x>',
       fromAddress: 'a@example.com',
       status: 'accepted',
@@ -195,15 +228,16 @@ describe('replies', () => {
     return created!.id;
   }
 
-  const reply = (id: string, header: string) =>
-    Buffer.from(`From: a@example.com\r\nMessage-ID: <${id}@x>\r\n${header}\r\n\r\nmore`);
+  const reply = (id: string, header: string, auth = PASS) =>
+    Buffer.from(`${auth}\r\nFrom: a@example.com\r\nMessage-ID: <${id}@x>\r\n${header}\r\n\r\nmore`);
 
   it('marks an answer to an accepted email, matched by In-Reply-To or References, and queues no triage', async () => {
-    const { folder } = await makeFolder({ uidValidity: 7, lastUid: 10 });
-    const issueId = await acceptedMail(folder);
+    const box = await makeBox({ uidValidity: 7, lastUid: 10 });
+    await addProject(box, 'MAIL');
+    const issueId = await acceptedMail(box);
 
-    await syncFolder(
-      due(folder),
+    await syncMailbox(
+      box,
       session(7, 13, [
         { uid: 11, source: reply('r1', 'In-Reply-To: <root@x>') },
         { uid: 12, source: reply('r2', 'References: <other@x> <r1@x> <root@x>') },
@@ -212,46 +246,51 @@ describe('replies', () => {
 
     const items = await db.select().from(intakeItem).orderBy(intakeItem.id);
     expect(items.slice(1).map((i) => i.replyToIssueId)).toEqual([issueId, issueId]);
-    expect(
-      await db.select().from(agentRun).where(eq(agentRun.trigger, 'mail_triage')),
-    ).toHaveLength(0);
+    expect(await triageRuns()).toHaveLength(0);
   });
 
-  it('does not match an answer to another mailbox owner or an undecided email', async () => {
-    const { folder } = await makeFolder({ uidValidity: 7, lastUid: 10 });
-    const other = await makeFolder({ uidValidity: 7, lastUid: 10 });
-    await acceptedMail(other.folder);
+  it('does not post an answer from an unauthenticated sender as a comment', async () => {
+    const box = await makeBox({ uidValidity: 7, lastUid: 10 });
+    await acceptedMail(box);
+    await syncMailbox(
+      box,
+      session(7, 12, [{ uid: 11, source: reply('r1', 'In-Reply-To: <root@x>', 'X-Other: 1') }]),
+    );
+    const [, item] = await db.select().from(intakeItem).orderBy(intakeItem.id);
+    expect(item).toMatchObject({ replyToIssueId: null, senderAllowed: false });
+  });
+
+  it('does not match an answer to another mailbox or an undecided email', async () => {
+    const box = await makeBox({ uidValidity: 7, lastUid: 10 });
+    const other = await makeBox({ uidValidity: 7, lastUid: 10 });
+    await acceptedMail(other);
     await db.insert(intakeItem).values({
-      folderId: folder.id,
+      teamMailboxId: box.id,
       messageId: '<pending@x>',
       fromAddress: 'a@example.com',
     });
 
-    await syncFolder(
-      due(folder),
+    await syncMailbox(
+      box,
       session(7, 13, [
         { uid: 11, source: reply('r1', 'In-Reply-To: <root@x>') },
         { uid: 12, source: reply('r2', 'In-Reply-To: <pending@x>') },
       ]),
     );
 
-    const mine = await db.select().from(intakeItem).where(eq(intakeItem.folderId, folder.id));
+    const mine = await db.select().from(intakeItem).where(eq(intakeItem.teamMailboxId, box.id));
     expect(mine.every((i) => i.replyToIssueId === null)).toBe(true);
   });
 });
 
-describe('pollFolder', () => {
-  beforeEach(async () => {
-    await db.delete(mailboxFolder);
-  });
-
-  it('pauses the folder after three sign-in failures in a row', async () => {
-    const { folder } = await makeFolder();
+describe('pollMailbox', () => {
+  it('pauses the mailbox after three sign-in failures in a row', async () => {
+    const box = await makeBox();
     const fail = async () => {
       throw new ImapAuthError('Invalid credentials');
     };
-    for (let i = 0; i < 3; i++) await pollFolder(due(await reload(folder.id)), fail);
-    expect(await reload(folder.id)).toMatchObject({
+    for (let i = 0; i < 3; i++) await pollMailbox(box.id, fail);
+    expect(await reload(box.id)).toMatchObject({
       status: 'paused',
       failures: 3,
       lastError: 'Invalid credentials',
@@ -259,55 +298,39 @@ describe('pollFolder', () => {
   });
 
   it('does not count another error toward pausing and clears errors on success', async () => {
-    const { folder } = await makeFolder();
-    await pollFolder(due(folder), async () => {
+    const box = await makeBox();
+    await pollMailbox(box.id, async () => {
       throw new Error('timeout');
     });
-    expect(await reload(folder.id)).toMatchObject({
+    expect(await reload(box.id)).toMatchObject({
       status: 'active',
       failures: 0,
       lastError: 'timeout',
     });
-    await pollFolder(due(await reload(folder.id)), async () => session(1, 1));
-    expect((await reload(folder.id)).lastError).toBeNull();
+    await pollMailbox(box.id, async () => session(1, 1));
+    expect((await reload(box.id)).lastError).toBeNull();
   });
 });
 
-describe('claimDueFolders', () => {
-  beforeEach(async () => {
-    await db.delete(mailboxFolder);
-  });
-
-  it('claims a due active folder once and skips a paused one', async () => {
-    const a = await makeFolder();
-    await makeFolder({ status: 'paused' });
-    expect((await claimDueFolders()).map((f) => f.id)).toEqual([a.folder.id]);
-    expect(await claimDueFolders()).toEqual([]);
+describe('claimDueMailboxes', () => {
+  it('claims a due active mailbox once and skips a paused one', async () => {
+    const a = await makeBox();
+    await makeBox({ status: 'paused' });
+    expect(await claimDueMailboxes()).toEqual([a.id]);
+    expect(await claimDueMailboxes()).toEqual([]);
   });
 });
 
 describe('deleteExpiredRejected', () => {
   it('deletes rejected items after 30 days and keeps newer and undecided ones', async () => {
-    await db.delete(mailboxFolder);
-    const { folder } = await makeFolder();
+    const box = await makeBox();
     const old = new Date(Date.now() - 31 * 86_400_000);
     const recent = new Date(Date.now() - 5 * 86_400_000);
+    const base = { teamMailboxId: box.id, fromAddress: 'a@b.c' };
     await db.insert(intakeItem).values([
-      {
-        folderId: folder.id,
-        messageId: '<1>',
-        fromAddress: 'a@b.c',
-        status: 'rejected',
-        decidedAt: old,
-      },
-      {
-        folderId: folder.id,
-        messageId: '<2>',
-        fromAddress: 'a@b.c',
-        status: 'rejected',
-        decidedAt: recent,
-      },
-      { folderId: folder.id, messageId: '<3>', fromAddress: 'a@b.c', status: 'new' },
+      { ...base, messageId: '<1>', status: 'rejected', decidedAt: old },
+      { ...base, messageId: '<2>', status: 'rejected', decidedAt: recent },
+      { ...base, messageId: '<3>', status: 'new' },
     ]);
     expect(await deleteExpiredRejected()).toBe(1);
     const left = await db
