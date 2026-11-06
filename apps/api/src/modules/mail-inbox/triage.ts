@@ -6,15 +6,14 @@ import {
   db,
   intakeItem,
   label,
-  mailbox,
-  mailboxFolder,
   project,
   projectColumn,
   projectMember,
+  teamMailbox,
   type IntakeDraft,
 } from '@repo/db';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
-import { checkPermission, getProjectAccess } from '#shared/access';
+import { getProjectAccess } from '#shared/access';
 import { HttpError } from '#shared/lib';
 import { getIssueBySequence, searchIssuesInProjects } from '#modules/issues/service';
 import { runTriageAgent } from '#modules/agents/core/runtime/triage';
@@ -22,7 +21,7 @@ import type { ClaimedRun } from '#modules/agents/core/run-queue';
 
 // The mail triage run. The agent reads one email and proposes a draft issue. The email comes
 // from an outside sender, so the agent gets two read tools and nothing else, and its only
-// output is the draft below. A member confirms it in the Mail inbox.
+// output is the draft below. A team member confirms it in the Mail inbox.
 
 export const CLASSIFICATIONS = ['bug', 'feature', 'question', 'no_ticket', 'spam'] as const;
 export const PRIORITIES = ['urgent', 'high', 'medium', 'low'] as const;
@@ -41,12 +40,11 @@ interface CandidateProject {
   labels: { id: number; name: string }[];
 }
 
-// The projects the agent may suggest: projects of the folder's team the agent works in and
-// the mailbox owner may create issues in.
+// The projects the agent may suggest: projects of the team the agent is a member of. The right
+// of the member who accepts is checked at accept time.
 export async function candidateProjects(
   teamId: number,
   agentUserId: string,
-  ownerUserId: string,
 ): Promise<CandidateProject[]> {
   const rows = await db
     .select({
@@ -65,23 +63,18 @@ export async function candidateProjects(
       ),
     )
     .orderBy(project.id);
-  const allowed: typeof rows = [];
-  for (const row of rows) {
-    if (await checkPermission(row.id, { id: ownerUserId }, 'work_items', 'create'))
-      allowed.push(row);
-  }
-  if (allowed.length === 0) return [];
+  if (rows.length === 0) return [];
   const labels = await db
     .select({ id: label.id, name: label.name, projectId: label.projectId })
     .from(label)
     .where(
       inArray(
         label.projectId,
-        allowed.map((p) => p.id),
+        rows.map((p) => p.id),
       ),
     )
     .orderBy(label.name);
-  return allowed.map((p) => ({
+  return rows.map((p) => ({
     ...p,
     labels: labels.filter((l) => l.projectId === p.id).map(({ id, name }) => ({ id, name })),
   }));
@@ -206,7 +199,6 @@ export function readTools(projects: CandidateProject[], agentUserId: string) {
 interface TriageContext {
   item: typeof intakeItem.$inferSelect;
   teamId: number;
-  ownerUserId: string;
   agentUserId: string;
 }
 
@@ -214,14 +206,12 @@ async function loadContext(itemId: number): Promise<TriageContext> {
   const [row] = await db
     .select({
       item: intakeItem,
-      teamId: mailboxFolder.teamId,
-      ownerUserId: mailbox.userId,
+      teamId: teamMailbox.teamId,
       agentUserId: aiAgent.userId,
     })
     .from(intakeItem)
-    .innerJoin(mailboxFolder, eq(mailboxFolder.id, intakeItem.folderId))
-    .innerJoin(mailbox, eq(mailbox.id, mailboxFolder.mailboxId))
-    .innerJoin(aiAgent, eq(aiAgent.id, mailboxFolder.agentId))
+    .innerJoin(teamMailbox, eq(teamMailbox.id, intakeItem.teamMailboxId))
+    .innerJoin(aiAgent, eq(aiAgent.id, teamMailbox.agentId))
     .where(eq(intakeItem.id, itemId));
   if (!row) throw new HttpError(404, 'Email not found');
   return row;
@@ -234,7 +224,7 @@ export async function runMailTriage(
 ) {
   if (run.intakeItemId == null) throw new HttpError(400, 'Run has no email');
   const ctx = await loadContext(run.intakeItemId);
-  const projects = await candidateProjects(ctx.teamId, ctx.agentUserId, ctx.ownerUserId);
+  const projects = await candidateProjects(ctx.teamId, ctx.agentUserId);
   return runTriageAgent({
     agentId: run.agentId,
     projectId: run.projectId,
@@ -277,7 +267,7 @@ function quoteOf(item: typeof intakeItem.$inferSelect): string {
 export async function applyTriage(itemId: number, text: string): Promise<void> {
   const answer = answerSchema.parse(extractJson(text));
   const ctx = await loadContext(itemId);
-  const projects = await candidateProjects(ctx.teamId, ctx.agentUserId, ctx.ownerUserId);
+  const projects = await candidateProjects(ctx.teamId, ctx.agentUserId);
   const chosen = projects.find((p) => p.key.toLowerCase() === answer.projectKey?.toLowerCase());
   let draft: IntakeDraft | null = null;
   if (chosen) {
@@ -313,21 +303,20 @@ export async function applyTriage(itemId: number, text: string): Promise<void> {
     .where(and(eq(intakeItem.id, itemId), eq(intakeItem.status, 'new')));
 }
 
-// Queues a triage run of the folder's agent for an email, in the first project the agent may
+// Queues a triage run of the team agent for an email, in the first project the agent may
 // suggest. Returns false when there is none.
 export async function queueTriageRun(
   itemId: number,
-  folder: { agentId: number; teamId: number },
-  ownerUserId: string,
+  box: { agentId: number; teamId: number },
 ): Promise<boolean> {
   const [agent] = await db
     .select({ userId: aiAgent.userId })
     .from(aiAgent)
-    .where(eq(aiAgent.id, folder.agentId));
-  const projects = agent ? await candidateProjects(folder.teamId, agent.userId, ownerUserId) : [];
+    .where(eq(aiAgent.id, box.agentId));
+  const projects = agent ? await candidateProjects(box.teamId, agent.userId) : [];
   if (projects.length === 0) return false;
   await db.insert(agentRun).values({
-    agentId: folder.agentId,
+    agentId: box.agentId,
     projectId: projects[0]!.id,
     trigger: 'mail_triage',
     intakeItemId: itemId,

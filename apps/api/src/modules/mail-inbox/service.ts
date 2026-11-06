@@ -3,48 +3,53 @@ import {
   db,
   intakeItem,
   label,
-  mailbox,
-  mailboxFolder,
   project,
   projectColumn,
+  teamMailbox,
   type IntakeDraft,
 } from '@repo/db';
 import { and, asc, desc, eq, inArray, isNull, notInArray, or, sql } from 'drizzle-orm';
-import { assertPermission, assertProjectWritable, checkPermission } from '#shared/access';
+import {
+  assertPermission,
+  assertProjectWritable,
+  checkPermission,
+  getTeamAccess,
+} from '#shared/access';
 import { HttpError } from '#shared/lib';
 import { createComment } from '#modules/issues/activity';
 import { createIssue, getIssue, getIssues, updateIssue } from '#modules/issues/service';
 import { getProjectById } from '#modules/projects/service';
+import { listTeams } from '#modules/teams/service';
 import { moveAttachments } from './attachments';
 import { withoutMentions } from './replies';
 import { queueTriageRun } from './triage';
 
-// The Mail inbox: the drafts of the emails fetched from the user's own mailboxes. Every query
-// is scoped to the mailbox owner, so another user's email reads as missing.
+// The Mail inbox: the drafts of the emails fetched by the mailboxes of the teams the user
+// belongs to. Every member of the team sees them and may decide them; for anyone else an
+// email reads as missing.
 
 type Item = typeof intakeItem.$inferSelect;
 const SORTED_OUT = ['spam', 'no_ticket'];
 
-interface OwnedItem {
+interface VisibleItem {
   item: Item;
   teamId: number;
-  folderName: string;
   agentId: number;
 }
 
-async function ownedItem(userId: string, itemId: number): Promise<OwnedItem> {
+async function memberTeamIds(userId: string): Promise<number[]> {
+  return (await listTeams(userId)).map((t) => t.id);
+}
+
+async function visibleItem(userId: string, itemId: number): Promise<VisibleItem> {
   const [row] = await db
-    .select({
-      item: intakeItem,
-      teamId: mailboxFolder.teamId,
-      folderName: mailboxFolder.name,
-      agentId: mailboxFolder.agentId,
-    })
+    .select({ item: intakeItem, teamId: teamMailbox.teamId, agentId: teamMailbox.agentId })
     .from(intakeItem)
-    .innerJoin(mailboxFolder, eq(mailboxFolder.id, intakeItem.folderId))
-    .innerJoin(mailbox, eq(mailbox.id, mailboxFolder.mailboxId))
-    .where(and(eq(intakeItem.id, itemId), eq(mailbox.userId, userId)));
-  if (!row) throw new HttpError(404, 'Email not found');
+    .innerJoin(teamMailbox, eq(teamMailbox.id, intakeItem.teamMailboxId))
+    .where(eq(intakeItem.id, itemId));
+  if (!row || !(await getTeamAccess(row.teamId, userId))) {
+    throw new HttpError(404, 'Email not found');
+  }
   return row;
 }
 
@@ -52,43 +57,44 @@ function assertOpen(item: Item): void {
   if (item.status !== 'new') throw new HttpError(409, 'This email was already decided');
 }
 
-// An open draft: not decided and not a reply that became a comment.
 // A new email that is not a reply waiting to be posted as a comment.
-const openFor = (userId: string) =>
-  and(eq(mailbox.userId, userId), eq(intakeItem.status, 'new'), isNull(intakeItem.replyToIssueId));
+const openIn = (teamIds: number[]) =>
+  and(
+    inArray(teamMailbox.teamId, teamIds),
+    eq(intakeItem.status, 'new'),
+    isNull(intakeItem.replyToIssueId),
+  );
+
+// Not sorted out: the sender is allowed and the agent did not call it spam or no ticket.
+const isTriaged = and(
+  eq(intakeItem.senderAllowed, true),
+  or(isNull(intakeItem.classification), notInArray(intakeItem.classification, SORTED_OUT)),
+);
 
 export async function inboxCount(userId: string): Promise<{ open: number; enabled: boolean }> {
+  const teamIds = await memberTeamIds(userId);
+  if (teamIds.length === 0) return { open: 0, enabled: false };
   const [row] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(intakeItem)
-    .innerJoin(mailboxFolder, eq(mailboxFolder.id, intakeItem.folderId))
-    .innerJoin(mailbox, eq(mailbox.id, mailboxFolder.mailboxId))
-    .where(
-      and(
-        openFor(userId),
-        or(isNull(intakeItem.classification), notInArray(intakeItem.classification, SORTED_OUT)),
-      ),
-    );
-  const [folder] = await db
-    .select({ id: mailboxFolder.id })
-    .from(mailboxFolder)
-    .innerJoin(mailbox, eq(mailbox.id, mailboxFolder.mailboxId))
-    .where(eq(mailbox.userId, userId))
+    .innerJoin(teamMailbox, eq(teamMailbox.id, intakeItem.teamMailboxId))
+    .where(and(openIn(teamIds), isTriaged));
+  const [box] = await db
+    .select({ id: teamMailbox.id })
+    .from(teamMailbox)
+    .where(inArray(teamMailbox.teamId, teamIds))
     .limit(1);
-  return { open: row?.n ?? 0, enabled: Boolean(folder) };
+  return { open: row?.n ?? 0, enabled: Boolean(box) };
 }
 
 export async function listInbox(userId: string) {
+  const teamIds = await memberTeamIds(userId);
+  if (teamIds.length === 0) return { items: [], sortedOut: [] };
   const rows = await db
-    .select({
-      item: intakeItem,
-      teamId: mailboxFolder.teamId,
-      folderName: mailboxFolder.name,
-    })
+    .select({ item: intakeItem, teamId: teamMailbox.teamId })
     .from(intakeItem)
-    .innerJoin(mailboxFolder, eq(mailboxFolder.id, intakeItem.folderId))
-    .innerJoin(mailbox, eq(mailbox.id, mailboxFolder.mailboxId))
-    .where(openFor(userId))
+    .innerJoin(teamMailbox, eq(teamMailbox.id, intakeItem.teamMailboxId))
+    .where(openIn(teamIds))
     .orderBy(desc(intakeItem.sentAt), desc(intakeItem.id))
     .limit(200);
   const ids = rows.map((r) => r.item.id);
@@ -116,7 +122,7 @@ export async function listInbox(userId: string) {
     r.item.draft?.duplicateIssueId ? [r.item.draft.duplicateIssueId] : [],
   );
   const dups = new Map((await getIssues(dupIds)).map((i) => [i.id, i]));
-  const dtos = rows.map(({ item, teamId, folderName }) => {
+  const dtos = rows.map(({ item, teamId }) => {
     const status = triage.get(item.id);
     return {
       id: item.id,
@@ -132,16 +138,18 @@ export async function listInbox(userId: string) {
       })),
       classification: item.classification as
         'bug' | 'feature' | 'question' | 'no_ticket' | 'spam' | null,
-      folderName,
       teamId,
       triage: triageState(status),
       draft: toDraft(item.draft, draftProjects, dups),
     };
   });
-  return {
-    items: dtos.filter((d) => !d.classification || !SORTED_OUT.includes(d.classification)),
-    sortedOut: dtos.filter((d) => d.classification && SORTED_OUT.includes(d.classification)),
-  };
+  const items: typeof dtos = [];
+  const sortedOut: typeof dtos = [];
+  dtos.forEach((dto, i) => {
+    const sorted = !rows[i]!.item.senderAllowed || SORTED_OUT.includes(dto.classification ?? '');
+    (sorted ? sortedOut : items).push(dto);
+  });
+  return { items, sortedOut };
 }
 
 function triageState(runStatus: string | undefined): 'none' | 'pending' | 'done' | 'failed' {
@@ -177,15 +185,16 @@ function toDraft(
   };
 }
 
-// The projects a draft can be moved to: projects of the teams of the user's folders where
-// the user may create issues, with their labels.
+// The projects a draft can be moved to: projects of the user's teams that have a mailbox,
+// where the user may create issues, with their labels.
 export async function inboxProjects(userId: string) {
-  const folders = await db
-    .selectDistinct({ teamId: mailboxFolder.teamId })
-    .from(mailboxFolder)
-    .innerJoin(mailbox, eq(mailbox.id, mailboxFolder.mailboxId))
-    .where(eq(mailbox.userId, userId));
-  if (folders.length === 0) return [];
+  const memberIds = await memberTeamIds(userId);
+  if (memberIds.length === 0) return [];
+  const boxes = await db
+    .select({ teamId: teamMailbox.teamId })
+    .from(teamMailbox)
+    .where(inArray(teamMailbox.teamId, memberIds));
+  if (boxes.length === 0) return [];
   const rows = await db
     .select({ id: project.id, key: project.key, name: project.name, teamId: project.teamId })
     .from(project)
@@ -193,7 +202,7 @@ export async function inboxProjects(userId: string) {
       and(
         inArray(
           project.teamId,
-          folders.map((f) => f.teamId),
+          boxes.map((b) => b.teamId),
         ),
         isNull(project.archivedAt),
       ),
@@ -265,11 +274,11 @@ async function release(itemId: number): Promise<void> {
 // The issue is created by the user who accepts it, not by the agent: their right to create
 // issues in the project is checked here again.
 export async function acceptItem(userId: string, itemId: number, input: AcceptInput) {
-  const owned = await ownedItem(userId, itemId);
+  const owned = await visibleItem(userId, itemId);
   assertOpen(owned.item);
   const target = await getProjectById(input.projectId);
   if (!target || target.teamId !== owned.teamId) {
-    throw new HttpError(400, "Choose a project of the folder's team");
+    throw new HttpError(400, "Choose a project of the email's team");
   }
   await assertPermission(target.id, { id: userId }, 'work_items', 'create');
   await assertProjectWritable(target.id, 'POST');
@@ -310,7 +319,7 @@ export async function acceptItem(userId: string, itemId: number, input: AcceptIn
 }
 
 export async function rejectItem(userId: string, itemId: number): Promise<void> {
-  const owned = await ownedItem(userId, itemId);
+  const owned = await visibleItem(userId, itemId);
   assertOpen(owned.item);
   await db
     .update(intakeItem)
@@ -320,7 +329,7 @@ export async function rejectItem(userId: string, itemId: number): Promise<void> 
 
 // Attaches the email as a comment of the duplicate the agent found, or any issue of the team.
 export async function commentOnIssue(userId: string, itemId: number, issueId: number) {
-  const owned = await ownedItem(userId, itemId);
+  const owned = await visibleItem(userId, itemId);
   assertOpen(owned.item);
   const target = await getIssue(issueId);
   const targetProject = target ? await getProjectById(target.projectId) : null;
@@ -353,10 +362,12 @@ export async function commentOnIssue(userId: string, itemId: number, issueId: nu
   }
 }
 
-// Queues the triage again as a new run of the folder's agent.
+// Queues the triage again as a new run of the team's agent. An email from a sender that is
+// not allowed is never triaged.
 export async function retriage(userId: string, itemId: number): Promise<void> {
-  const owned = await ownedItem(userId, itemId);
+  const owned = await visibleItem(userId, itemId);
   assertOpen(owned.item);
+  if (!owned.item.senderAllowed) throw new HttpError(400, 'The sender is not allowed');
   const [pending] = await db
     .select({ id: agentRun.id })
     .from(agentRun)
@@ -368,11 +379,6 @@ export async function retriage(userId: string, itemId: number): Promise<void> {
       ),
     );
   if (pending) throw new HttpError(409, 'The check is already running');
-  const queued = await queueTriageRun(
-    itemId,
-    { agentId: owned.agentId, teamId: owned.teamId },
-    userId,
-  );
-  if (!queued)
-    throw new HttpError(400, 'The agent works in no project where you can create issues');
+  const queued = await queueTriageRun(itemId, { agentId: owned.agentId, teamId: owned.teamId });
+  if (!queued) throw new HttpError(400, 'The agent works in no project of the team');
 }

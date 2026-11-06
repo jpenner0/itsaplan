@@ -13,7 +13,6 @@ export const InboxItemDto = t.Object({
     t.Object({ filename: t.String(), sizeBytes: t.Number(), stored: t.Boolean() }),
   ),
   classification,
-  folderName: t.String(),
   teamId: t.Number(),
   // none: no run was queued; pending; done; failed. A failed or none item has no draft and
   // offers "Check again".
@@ -36,11 +35,12 @@ export const InboxItemDto = t.Object({
 
 export const InboxResponse = t.Object({
   items: t.Array(InboxItemDto),
-  // Spam, newsletters, automatic replies and "no ticket": kept, and still acceptable.
+  // Spam, newsletters, automatic replies, "no ticket" and senders that are not allowed: kept,
+  // and still acceptable.
   sortedOut: t.Array(InboxItemDto),
 });
 
-// `enabled`: the user has a mailbox folder, so the menu item is shown.
+// `enabled`: a team of the user has a mailbox, so the menu item is shown.
 export const InboxCountResponse = t.Object({ open: t.Number(), enabled: t.Boolean() });
 
 export const InboxProjectsResponse = t.Array(
