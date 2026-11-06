@@ -54,3 +54,28 @@ Put the emails meant for the intake there by hand or with a mail rule in your ma
 After repeated sign-in failures (a changed password, an expired token) the folder is paused. The
 page shows the error. Choose **Reconnect**, enter the new credentials and save: the folder starts
 again and reads the emails that arrived meanwhile.
+
+## Mail inbox
+
+Each new email is checked by the agent of its folder. The agent sorts out spam, newsletters and
+automatic replies, classifies the email (bug, feature, question, no ticket), writes a draft issue
+and suggests a project of the folder's team in which you may create issues. It looks for an open
+issue that reports the same.
+
+The agent only reads. It cannot create or change anything, and it ignores instructions inside an
+email. Teams adjust the rules in the agent's instructions.
+
+Open **Mail inbox** in the sidebar. The number is the count of open drafts. Only you see them. For
+each draft you can change the project, title, description, labels and priority, then:
+
+- **Accept** creates the issue. You are its creator, and it is visible to everyone who may see the
+  project. Attachments within the upload limits become attachments of the issue.
+- **Add as comment to ABC-123** attaches the email to the possible duplicate.
+- **Reject** removes the draft from the list. The email is deleted after 30 days.
+- **Check again** repeats the check, for example after it failed.
+
+Spam, newsletters and emails that need no issue are in the collapsed **Sorted out** section. They
+are not deleted and you can still accept them.
+
+After you accept a draft, the original email and its attachments are deleted from It's a Plan. Only
+the sender, the `Message-ID` and the issue are kept, to match replies.

@@ -345,6 +345,11 @@ export const qk = {
   // folder can use.
   mailboxes: ['mailboxes'] as const,
   mailboxOptions: ['mailboxOptions'] as const,
+  // The Mail inbox: the drafts, the open count for the sidebar and the projects a draft can
+  // be accepted into.
+  mailInbox: ['mailInbox'] as const,
+  mailInboxCount: ['mailInboxCount'] as const,
+  mailInboxProjects: ['mailInboxProjects'] as const,
   // The signed-in user's interface preferences (timezone, theme, issue open mode,
   // start page). Read app-wide, not just on the preferences page.
   accountPreferences: ['accountPreferences'] as const,

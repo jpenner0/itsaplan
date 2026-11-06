@@ -2,7 +2,14 @@ import { db, mailbox } from '@repo/db';
 import { eq } from 'drizzle-orm';
 import { parseMail } from './mail-parse';
 import { ImapAuthError, openFolder, type FolderSession } from './mail-imap';
-import { markFailed, markPolled, setWatermark, storeMail, type DueFolder } from './mail-store';
+import {
+  markFailed,
+  markPolled,
+  queueTriage,
+  setWatermark,
+  storeMail,
+  type DueFolder,
+} from './mail-store';
 
 // Messages read per poll. The rest follows on the next one.
 const BATCH = 50;
@@ -20,7 +27,10 @@ export async function syncFolder(folder: DueFolder, session: FolderSession): Pro
   const messages = await session.fetchAfter(folder.lastUid, BATCH);
   for (const message of messages) {
     const id = await storeMail(folder.id, await parseMail(message.source));
-    if (id != null) ids.push(id);
+    if (id != null) {
+      ids.push(id);
+      await queueTriage(id, folder.id);
+    }
     await setWatermark(folder.id, session.uidValidity, message.uid);
   }
   return ids;

@@ -1,6 +1,18 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { randomUUID } from 'node:crypto';
-import { aiAgent, db, intakeItem, mailbox, mailboxFolder, team, user, workspace } from '@repo/db';
+import {
+  agentRun,
+  aiAgent,
+  db,
+  intakeItem,
+  mailbox,
+  mailboxFolder,
+  project,
+  projectMember,
+  team,
+  user,
+  workspace,
+} from '@repo/db';
 import { encryptSecret } from '@repo/crypto';
 import { eq } from 'drizzle-orm';
 import { ImapAuthError, type FolderSession } from '../../mail-imap';
@@ -103,6 +115,33 @@ describe('syncFolder', () => {
     expect(items.map((i) => i.messageId)).toEqual(['<a@x>', '<b@x>']);
     expect(items[0]).toMatchObject({ fromAddress: 'a@example.com', status: 'new' });
     expect((await reload(folder.id)).lastUid).toBe(13);
+  });
+
+  it('queues a triage run of the folder agent in a project it works in', async () => {
+    const { folder } = await makeFolder({ uidValidity: 7, lastUid: 10 });
+    const [agent] = await db.select().from(aiAgent).where(eq(aiAgent.id, folder.agentId));
+    await syncFolder(due(folder), session(7, 12, [{ uid: 11, source: raw('a') }]));
+    expect(await db.select().from(agentRun)).toHaveLength(0);
+
+    const [p] = await db
+      .insert(project)
+      .values({ teamId: folder.teamId, key: 'MAIL', name: 'Mail' })
+      .returning({ id: project.id });
+    await db.insert(projectMember).values({ projectId: p!.id, userId: agent!.userId });
+    const [item] = await db.select().from(intakeItem);
+    await db.delete(intakeItem).where(eq(intakeItem.id, item!.id));
+    await syncFolder(due(await reload(folder.id)), session(7, 13, [{ uid: 12, source: raw('b') }]));
+
+    const [created] = await db.select().from(intakeItem);
+    expect(await db.select().from(agentRun)).toMatchObject([
+      {
+        agentId: folder.agentId,
+        projectId: p!.id,
+        trigger: 'mail_triage',
+        intakeItemId: created!.id,
+        status: 'pending',
+      },
+    ]);
   });
 
   it('does not store a message id twice', async () => {

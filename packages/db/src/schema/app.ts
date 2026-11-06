@@ -761,6 +761,11 @@ export const agentRun = pgTable(
       () => documentComment.id,
       { onDelete: 'set null' },
     ),
+    // The email a 'mail_triage' run sorts. Such a run has no issue; its prompt is built from
+    // the email when it runs.
+    intakeItemId: integer('intake_item_id').references((): AnyPgColumn => intakeItem.id, {
+      onDelete: 'cascade',
+    }),
     // The mention comment body at enqueue time, framed into the agent's prompt.
     prompt: text('prompt').notNull(),
     // pending -> success | failed | canceled. Like webhook_delivery, a claim keeps the row
@@ -791,8 +796,11 @@ export const agentRun = pgTable(
     ),
     check(
       'agent_run_trigger_check',
-      sql`${t.trigger} IN ('mention', 'delegation', 'field', 'schedule', 'manual', 'status', 'event')`,
+      sql`${t.trigger} IN ('mention', 'delegation', 'field', 'schedule', 'manual', 'status', 'event', 'mail_triage')`,
     ),
+    index('agent_run_intake_item_idx')
+      .on(t.intakeItemId)
+      .where(sql`${t.intakeItemId} IS NOT NULL`),
     uniqueIndex('agent_run_schedule_fire_uq').on(t.scheduleId, t.scheduledFor),
     index('agent_run_due_idx').on(t.status, t.nextAttemptAt),
     index('agent_run_schedule_idx').on(t.scheduleId),
@@ -2708,6 +2716,17 @@ export interface IntakeAttachment {
   s3Key: string | null;
 }
 
+// The draft issue the triage agent proposes. The member can change every field before
+// accepting. Labels and priority come only from values the project has.
+export interface IntakeDraft {
+  projectId: number;
+  title: string;
+  description: string;
+  labelIds: number[];
+  priority: string | null;
+  duplicateIssueId: number | null;
+}
+
 export const intakeItem = pgTable(
   'intake_item',
   {
@@ -2727,8 +2746,14 @@ export const intakeItem = pgTable(
     sentAt: timestamp('sent_at', { withTimezone: true }),
     body: text('body').notNull().default(''),
     attachments: jsonb('attachments').$type<IntakeAttachment[]>().notNull().default([]),
-    // new -> accepted | rejected. A new item is not yet decided.
+    // Set by the triage run: spam covers newsletters and auto-replies. Spam and no_ticket
+    // are listed under "Sorted out".
+    classification: text('classification'),
+    draft: jsonb('draft').$type<IntakeDraft>(),
+    // new -> accepted | rejected. A new item is not yet decided. An accepted item names its
+    // issue, which is what replies are matched against.
     status: text('status').notNull().default('new'),
+    issueId: integer('issue_id').references(() => issue.id, { onDelete: 'set null' }),
     decidedAt: timestamp('decided_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -2736,5 +2761,9 @@ export const intakeItem = pgTable(
     unique().on(t.folderId, t.messageId),
     index('intake_item_message_idx').on(t.messageId),
     check('intake_item_status_check', sql`${t.status} IN ('new', 'accepted', 'rejected')`),
+    check(
+      'intake_item_classification_check',
+      sql`${t.classification} IN ('bug', 'feature', 'question', 'no_ticket', 'spam')`,
+    ),
   ],
 );

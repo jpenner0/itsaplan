@@ -1,15 +1,19 @@
 import { randomUUID } from 'node:crypto';
 import {
+  agentRun,
+  aiAgent,
   db,
   getStorageSettings,
   intakeItem,
   mailboxFolder,
+  project,
+  projectMember,
   mimeAllowed,
   MB,
   type IntakeAttachment,
 } from '@repo/db';
 import { deleteObjects, putObject, safeAttachmentFilename } from '@repo/storage';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import type { ParsedMail } from './mail-parse';
 
 // Database side of the mail fetch: claiming due folders, the watermark and the stored items.
@@ -167,4 +171,37 @@ export async function deleteExpiredRejected(): Promise<number> {
     rows.flatMap((r) => r.attachments.flatMap((a) => (a.s3Key ? [a.s3Key] : []))),
   );
   return rows.length;
+}
+
+// Queues the triage of a new item as a run of the folder's agent. The api executes it. The
+// run needs a project it works in: the first active project of the folder's team the agent
+// is a member of. Without one the item stays in the inbox with no draft and "Check again".
+export async function queueTriage(itemId: number, folderIdValue: number): Promise<void> {
+  const [folder] = await db
+    .select({ teamId: mailboxFolder.teamId, agentId: mailboxFolder.agentId })
+    .from(mailboxFolder)
+    .where(eq(mailboxFolder.id, folderIdValue));
+  if (!folder) return;
+  const [target] = await db
+    .select({ projectId: project.id })
+    .from(project)
+    .innerJoin(projectMember, eq(projectMember.projectId, project.id))
+    .innerJoin(aiAgent, eq(aiAgent.userId, projectMember.userId))
+    .where(
+      and(
+        eq(project.teamId, folder.teamId),
+        eq(aiAgent.id, folder.agentId),
+        isNull(project.archivedAt),
+      ),
+    )
+    .orderBy(project.id)
+    .limit(1);
+  if (!target) return;
+  await db.insert(agentRun).values({
+    agentId: folder.agentId,
+    projectId: target.projectId,
+    trigger: 'mail_triage',
+    intakeItemId: itemId,
+    prompt: '',
+  });
 }

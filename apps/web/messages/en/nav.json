@@ -72,5 +72,6 @@
     "unhide": "Show in my projects",
     "noHiddenProjects": "No hidden projects",
     "hiddenTag": "Hidden"
-  }
+  },
+  "mailInbox": "Mail inbox"
 }

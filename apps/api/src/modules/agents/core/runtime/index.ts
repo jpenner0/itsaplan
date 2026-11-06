@@ -43,7 +43,7 @@ import type { AgentRunTrigger } from '../../model';
 const DEFAULT_MODEL = 'gpt-5-mini';
 const DEFAULT_INSTRUCTIONS = "You are a helpful assistant that manages this project's work items.";
 // Upper bound on the agent's tool-use loop when the agent has no maxSteps set.
-const DEFAULT_MAX_STEPS = 12;
+export const DEFAULT_MAX_STEPS = 12;
 
 // Mastra's model config: an object carrying the provider id, model id, and the
 // explicit apiKey (and url for OpenAI-compatible endpoints).
@@ -59,7 +59,7 @@ type ModelConfig = {
 // integration key is the provider id; its decrypted config carries the apiKey and an
 // optional base URL. The model id is stored on the agent. OpenCode Go rejects a request
 // without an x-opencode-session header, which has to stay the same across one conversation.
-async function resolveModel(row: AiAgentRow, sessionId: string): Promise<ModelConfig> {
+export async function resolveModel(row: AiAgentRow, sessionId: string): Promise<ModelConfig> {
   if (row.modelCredentialId == null) {
     throw new HttpError(400, 'Agent has no model credential set');
   }
@@ -86,7 +86,7 @@ async function resolveModel(row: AiAgentRow, sessionId: string): Promise<ModelCo
 // registry, and any credential with a base URL — and is sent as `reasoning_effort`.
 // Mastra's provider-neutral `modelSettings.reasoning` is not used: it only reaches
 // AI SDK v7 models, and the providers Mastra bundles are v6.
-function reasoningProviderOptions(effort: ReasoningEffort): ProviderOptions {
+export function reasoningProviderOptions(effort: ReasoningEffort): ProviderOptions {
   return {
     openaiCompatible: { reasoningEffort: effort },
     openai: { reasoningEffort: effort },
@@ -398,4 +398,4 @@ type RunOptions = {
   abortSignal?: AbortSignal;
 };
 
-type ProviderOptions = NonNullable<AgentExecutionOptions['providerOptions']>;
+export type ProviderOptions = NonNullable<AgentExecutionOptions['providerOptions']>;

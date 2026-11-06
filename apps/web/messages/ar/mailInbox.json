@@ -1,0 +1,38 @@
+{
+  "label": "Mail inbox",
+  "title": "Mail inbox",
+  "description": "Description",
+  "empty": "No open drafts.",
+  "noSubject": "(no subject)",
+  "showEmail": "Show email",
+  "hideEmail": "Hide email",
+  "attachments": "Attachments: {names}",
+  "checking": "Checking",
+  "checkFailed": "The check failed. There is no draft.",
+  "notChecked": "This email was not checked yet.",
+  "checkAgain": "Check again",
+  "duplicateOf": "Possible duplicate of {identifier}: {title}",
+  "addAsComment": "Add as comment to {identifier}",
+  "project": "Project",
+  "priority": "Priority",
+  "noPriority": "No priority",
+  "accept": "Accept",
+  "reject": "Reject",
+  "sortedOut": "Sorted out ({count})",
+  "sortedOutHint": "Spam, newsletters, automatic replies and emails that need no issue. Nothing is deleted, and you can still accept one.",
+  "classification": {
+    "bug": "Bug",
+    "feature": "Feature",
+    "question": "Question",
+    "no_ticket": "No ticket",
+    "spam": "Spam"
+  },
+  "priorities": {
+    "urgent": "Urgent",
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low"
+  },
+  "fieldTitle": "Title",
+  "fieldDescription": "Description"
+}

@@ -38,6 +38,12 @@ Three decisions a reader would otherwise propose again:
   person's and can add it on another role. `members/` refuses to make it an owner, since an owner
   bypasses the matrix.
 
+## Mail triage runs
+
+`agent_run.trigger = 'mail_triage'` is the triage of one fetched email (`intake_item_id`, no issue).
+`modules/mail-inbox/triage.ts` runs it with two read tools and no other tool. See
+`docs/dev/email-intake.md`.
+
 ## Schema
 
 An AI agent is a row in `ai_agent` with a `team_id` and a `user_id`: the team that owns it and the
