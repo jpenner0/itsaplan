@@ -2,7 +2,7 @@ import { db, userNotificationPreference } from '@repo/db';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 
 // A member's own notification preferences for one project: for each issue event
-// type, whether they want it by email and/or Telegram. One row per (user, project);
+// type, whether they want it by email, Telegram and/or Teams. One row per (user, project);
 // absent means the member has not opted in and receives nothing (opt-in default).
 
 // The issue events a member can subscribe to, matching the inbox notification types.
@@ -12,6 +12,7 @@ export type EventToggles = Record<EventKey, boolean>;
 export interface NotificationPreferenceDto {
   emailEvents: EventToggles;
   telegramEvents: EventToggles;
+  teamsEvents: EventToggles;
 }
 
 function emptyEvents(): EventToggles {
@@ -19,7 +20,7 @@ function emptyEvents(): EventToggles {
 }
 
 function defaults(): NotificationPreferenceDto {
-  return { emailEvents: emptyEvents(), telegramEvents: emptyEvents() };
+  return { emailEvents: emptyEvents(), telegramEvents: emptyEvents(), teamsEvents: emptyEvents() };
 }
 
 // Normalizes the stored jsonb (possibly partial or empty {}) into a full EventToggles.
@@ -33,10 +34,15 @@ function toToggles(value: unknown): EventToggles {
   };
 }
 
-function toDto(row: { emailEvents: unknown; telegramEvents: unknown }): NotificationPreferenceDto {
+function toDto(row: {
+  emailEvents: unknown;
+  telegramEvents: unknown;
+  teamsEvents: unknown;
+}): NotificationPreferenceDto {
   return {
     emailEvents: toToggles(row.emailEvents),
     telegramEvents: toToggles(row.telegramEvents),
+    teamsEvents: toToggles(row.teamsEvents),
   };
 }
 
@@ -50,6 +56,7 @@ export async function getPreferences(
     .select({
       emailEvents: userNotificationPreference.emailEvents,
       telegramEvents: userNotificationPreference.telegramEvents,
+      teamsEvents: userNotificationPreference.teamsEvents,
     })
     .from(userNotificationPreference)
     .where(
@@ -67,7 +74,11 @@ export async function setPreferences(
   projectId: number,
   input: NotificationPreferenceDto,
 ): Promise<NotificationPreferenceDto> {
-  const values = { emailEvents: input.emailEvents, telegramEvents: input.telegramEvents };
+  const values = {
+    emailEvents: input.emailEvents,
+    telegramEvents: input.telegramEvents,
+    teamsEvents: input.teamsEvents,
+  };
   await db
     .insert(userNotificationPreference)
     .values({ userId, projectId, ...values })
@@ -91,6 +102,7 @@ export async function getPreferencesForUsers(
       userId: userNotificationPreference.userId,
       emailEvents: userNotificationPreference.emailEvents,
       telegramEvents: userNotificationPreference.telegramEvents,
+      teamsEvents: userNotificationPreference.teamsEvents,
     })
     .from(userNotificationPreference)
     .where(

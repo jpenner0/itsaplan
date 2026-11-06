@@ -270,7 +270,11 @@
     "telegramBotHint": "팀의 모든 프로젝트에서 알림을 전송하는 봇입니다. 멤버는 각자의 환경 설정에서 자신의 채팅을 선택합니다. 토큰은 암호화되어 저장됩니다.",
     "botToken": "봇 API 토큰 (선택 사항)",
     "emailSaved": "이메일 서비스 공급자가 저장되었습니다",
-    "telegramSaved": "Telegram 서비스 공급자가 저장되었습니다"
+    "telegramSaved": "Telegram 서비스 공급자가 저장되었습니다",
+    "teams": "Microsoft Teams",
+    "teamsTitle": "Microsoft Teams",
+    "teamsHint": "Let members of the team's projects receive notifications in Teams. Each member connects their own Workflows webhook in their account settings.",
+    "teamsSaved": "Teams setting saved"
   },
   "integrations": {
     "noAccess": "이 팀의 연동에 접근할 수 없습니다.",

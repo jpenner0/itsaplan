@@ -39,6 +39,7 @@ export interface NotificationSettingsDto {
   resend: { enabled: boolean; hasApiKey: boolean };
   from: string;
   telegram: { enabled: boolean; hasBotToken: boolean };
+  teams: { enabled: boolean };
 }
 
 // A partial write. Each section, when present, replaces that section's non-secret
@@ -59,6 +60,7 @@ export interface NotificationSettingsPatch {
   resend?: { enabled: boolean; apiKey?: string };
   from?: string;
   telegram?: { enabled: boolean; botToken?: string };
+  teams?: { enabled: boolean };
 }
 
 function toDto(config: NotificationConfig): NotificationSettingsDto {
@@ -79,6 +81,7 @@ function toDto(config: NotificationConfig): NotificationSettingsDto {
       enabled: config.telegram.enabled,
       hasBotToken: config.telegram.botToken.length > 0,
     },
+    teams: { enabled: config.teams.enabled },
   };
 }
 
@@ -100,6 +103,7 @@ function applyPatch(
     resend: { ...current.resend },
     from: current.from,
     telegram: { ...current.telegram },
+    teams: { ...current.teams },
   };
 
   if (patch.system) next.system = { enabled: patch.system.enabled };
@@ -127,6 +131,8 @@ function applyPatch(
       botToken: mergeSecret(current.telegram.botToken, patch.telegram.botToken),
     };
   }
+
+  if (patch.teams) next.teams = { enabled: patch.teams.enabled };
 
   return next;
 }

@@ -270,7 +270,11 @@
     "telegramBotHint": "Bot yang mengirimkan notifikasi untuk setiap proyek tim. Anggota memilih obrolan masing-masing di preferensi mereka. Token disimpan secara terenkripsi.",
     "botToken": "Token API bot (opsional)",
     "emailSaved": "Penyedia email disimpan",
-    "telegramSaved": "Penyedia Telegram disimpan"
+    "telegramSaved": "Penyedia Telegram disimpan",
+    "teams": "Microsoft Teams",
+    "teamsTitle": "Microsoft Teams",
+    "teamsHint": "Let members of the team's projects receive notifications in Teams. Each member connects their own Workflows webhook in their account settings.",
+    "teamsSaved": "Teams setting saved"
   },
   "integrations": {
     "noAccess": "Anda tidak memiliki akses ke integrasi tim ini.",

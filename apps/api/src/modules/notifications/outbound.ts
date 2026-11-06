@@ -9,6 +9,7 @@ import {
   user,
   emailSource,
   getProjectEmailConfig,
+  getUsableTeamsUserIds,
   type DeliveryPayload,
 } from '@repo/db';
 import { eq, inArray } from 'drizzle-orm';
@@ -16,6 +17,7 @@ import { isAccountDeactivated } from '@repo/auth';
 import { readRedactedSettings } from '#modules/notification-settings/service';
 import { getPreferencesForUsers } from '#modules/notification-preferences/service';
 import { getTelegramChatIds, hasUsableInstanceBot } from '#modules/telegram/service';
+import { isTeamsBotConfigured } from '@repo/net/teams-bot';
 import { escapeHtml } from '#shared/lib';
 import { commentUrl, documentUrl, issueUrl, teamRef } from '#modules/teams/ref';
 import type { NotificationType, NewNotificationRow } from './service';
@@ -24,8 +26,8 @@ import type { NotificationType, NewNotificationRow } from './service';
 // issue or document event into notification_delivery outbox rows. Delivery is per
 // member and per their own preferences: for each inbox row (already one per
 // recipient), the member's notification-preferences decide whether it goes by email
-// (to their account address) and/or Telegram (to the chat of the Telegram account
-// they linked). The team that owns the project supplies the provider credentials
+// (to their account address), Telegram (to the chat of the Telegram account
+// they linked) and Teams (to the webhook they saved). The team that owns the project supplies the provider credentials
 // (SMTP/Resend, and optionally its own bot token — Telegram otherwise goes through
 // the instance bot). The message text is composed here at enqueue time and stored on
 // the row; the worker drains the outbox and the sender reads the credentials at send
@@ -36,7 +38,7 @@ import type { NotificationType, NewNotificationRow } from './service';
 
 interface OutboxRow {
   projectId: number;
-  channel: 'email' | 'telegram';
+  channel: 'email' | 'telegram' | 'teams';
   recipient: string;
   payload: DeliveryPayload;
 }
@@ -163,6 +165,12 @@ interface Messages {
   telegram: (type: NotificationType) => DeliveryPayload;
 }
 
+// Teams gets the email copy: the subject is the card title, the text and the link
+// follow. Only those fields are read by the Teams sender.
+function teamsPayload(email: DeliveryPayload): DeliveryPayload {
+  return { subject: email.subject, text: email.text, url: email.url };
+}
+
 // The copy of one event, about the issue or the document its rows point at. Null when
 // that is gone. A comment's event links to the comment.
 async function composeMessages(
@@ -245,7 +253,9 @@ export async function enqueueOutbound(
   // set no token, the instance bot.
   const telegramEnabled =
     settings.telegram.enabled && (settings.telegram.hasBotToken || (await hasUsableInstanceBot()));
-  if (!emailEnabled && !telegramEnabled) return;
+  // The team turns Teams on; each member brings their own webhook.
+  const teamsEnabled = settings.teams.enabled;
+  if (!emailEnabled && !telegramEnabled && !teamsEnabled) return;
 
   const messages = await composeMessages(
     notifications,
@@ -256,13 +266,16 @@ export async function enqueueOutbound(
   if (!messages) return;
 
   const userIds = [...new Set(notifications.map((n) => n.userId))];
-  const [users, prefsByUser, chatIdByUser] = await Promise.all([
+  const [users, prefsByUser, chatIdByUser, teamsUserIds] = await Promise.all([
     db
       .select({ id: user.id, email: user.email, active: user.active })
       .from(user)
       .where(inArray(user.id, userIds)),
     getPreferencesForUsers(projectId, userIds),
     telegramEnabled ? getTelegramChatIds(userIds) : Promise.resolve(new Map<string, string>()),
+    teamsEnabled
+      ? getUsableTeamsUserIds(userIds, isTeamsBotConfigured())
+      : Promise.resolve(new Set<string>()),
   ]);
   // A deactivated account keeps its projects, but nothing from them reaches it.
   const emailById = new Map(
@@ -295,6 +308,15 @@ export async function enqueueOutbound(
           payload: messages.telegram(n.type),
         });
       }
+    }
+    // No webhook, or a broken one, means nowhere to send.
+    if (teamsEnabled && prefs.teamsEvents[n.type] && teamsUserIds.has(n.userId)) {
+      out.push({
+        projectId,
+        channel: 'teams',
+        recipient: n.userId,
+        payload: teamsPayload(messages.email(n.type)),
+      });
     }
   }
 

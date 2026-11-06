@@ -73,6 +73,7 @@ import {
 } from '@/lib/api/endpoints/labels';
 import {
   type NotificationPreferences,
+  type NotificationPreferencesView,
   getNotificationPreferences,
   setNotificationPreferences,
 } from '@/lib/api/endpoints/notificationPreferences';
@@ -407,7 +408,10 @@ export function useUpdateNotificationPreferences(projectKey: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: NotificationPreferences) => setNotificationPreferences(projectKey, input),
-    onSuccess: (data) => qc.setQueryData(qk.notificationPreferences(projectKey), data),
+    onSuccess: (data) =>
+      qc.setQueryData<NotificationPreferencesView>(qk.notificationPreferences(projectKey), (old) =>
+        old ? { ...old, ...data } : old,
+      ),
   });
 }
 

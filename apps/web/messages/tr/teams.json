@@ -270,7 +270,11 @@
     "telegramBotHint": "Takımın her projesi için bildirimleri ileten bot. Üyeler kendi sohbetlerini tercihlerinden seçerler. Jeton şifrelenmiş olarak saklanır.",
     "botToken": "Bot API jetonu (isteğe bağlı)",
     "emailSaved": "E-posta sağlayıcısı kaydedildi",
-    "telegramSaved": "Telegram sağlayıcısı kaydedildi"
+    "telegramSaved": "Telegram sağlayıcısı kaydedildi",
+    "teams": "Microsoft Teams",
+    "teamsTitle": "Microsoft Teams",
+    "teamsHint": "Let members of the team's projects receive notifications in Teams. Each member connects their own Workflows webhook in their account settings.",
+    "teamsSaved": "Teams setting saved"
   },
   "integrations": {
     "noAccess": "Bu takımın entegrasyonlarına erişiminiz yok.",

@@ -270,7 +270,11 @@
     "telegramBotHint": "البوت الذي يوصّل الإشعارات لكل مشاريع الفريق. يختار كل عضو محادثته في تفضيلاته. يُخزَّن الرمز مشفَّرًا.",
     "botToken": "رمز API للبوت (اختياري)",
     "emailSaved": "حُفظ مزوّد البريد الإلكتروني",
-    "telegramSaved": "حُفظ مزوّد Telegram"
+    "telegramSaved": "حُفظ مزوّد Telegram",
+    "teams": "Microsoft Teams",
+    "teamsTitle": "Microsoft Teams",
+    "teamsHint": "Let members of the team's projects receive notifications in Teams. Each member connects their own Workflows webhook in their account settings.",
+    "teamsSaved": "Teams setting saved"
   },
   "integrations": {
     "noAccess": "ليس لديك صلاحية الوصول إلى عمليات تكامل هذا الفريق.",

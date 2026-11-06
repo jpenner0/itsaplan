@@ -270,7 +270,11 @@
     "telegramBotHint": "Бот, який доставляє сповіщення в усіх проєктах команди. Свій чат учасник обирає в налаштуваннях сповіщень. Токен зберігається в зашифрованому вигляді.",
     "botToken": "API-токен бота (необов'язково)",
     "emailSaved": "Поштового провайдера збережено",
-    "telegramSaved": "Telegram-провайдера збережено"
+    "telegramSaved": "Telegram-провайдера збережено",
+    "teams": "Microsoft Teams",
+    "teamsTitle": "Microsoft Teams",
+    "teamsHint": "Let members of the team's projects receive notifications in Teams. Each member connects their own Workflows webhook in their account settings.",
+    "teamsSaved": "Teams setting saved"
   },
   "integrations": {
     "noAccess": "У вас немає доступу до інтеграцій цієї команди.",

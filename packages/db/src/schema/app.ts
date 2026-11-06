@@ -1089,6 +1089,7 @@ export const userNotificationPreference = pgTable(
       .references(() => project.id, { onDelete: 'cascade' }),
     emailEvents: jsonb('email_events').notNull().default({}),
     telegramEvents: jsonb('telegram_events').notNull().default({}),
+    teamsEvents: jsonb('teams_events').notNull().default({}),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -1127,15 +1128,70 @@ export const userTelegramAccount = pgTable(
   ],
 );
 
+// A member's Microsoft Teams Workflows webhook, instance-wide (one row per user,
+// whatever the project). The URL carries a signature, so it is a secret: stored
+// encrypted (AES-256-GCM) and never returned to the client; `host` is kept in plaintext
+// for display. The worker sets broken_at and last_error when Teams answers with a
+// permanent 4xx; no Teams delivery is queued while broken_at is set. Saving the URL
+// again clears both.
+export const userTeamsWebhook = pgTable('user_teams_webhook', {
+  userId: text('user_id')
+    .primaryKey()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  ciphertext: text('ciphertext').notNull(),
+  iv: text('iv').notNull(),
+  authTag: text('auth_tag').notNull(),
+  host: text('host').notNull(),
+  brokenAt: timestamp('broken_at', { withTimezone: true }),
+  lastError: text('last_error'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// The Microsoft Teams account a user has linked to the instance's Teams bot, instance-
+// wide (one row per user). Linking is "pending" while teams_user_id is null: the api
+// mints a one-time link_code, and the bot endpoint fills the rest when the user sends
+// `link <code>` to the bot in a personal chat. service_url and conversation_id are the
+// conversation reference notifications are sent to. teams_user_id is unique, so one
+// Teams account cannot serve two product accounts. The worker sets broken_at when the
+// bot can no longer reach the conversation (the user removed the bot); no Teams
+// delivery uses the bot while it is set, and linking again clears it.
+export const userTeamsBotAccount = pgTable(
+  'user_teams_bot_account',
+  {
+    userId: text('user_id')
+      .primaryKey()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    teamsUserId: text('teams_user_id'),
+    displayName: text('display_name'),
+    serviceUrl: text('service_url'),
+    conversationId: text('conversation_id'),
+    linkCode: text('link_code'),
+    linkCodeExpiresAt: timestamp('link_code_expires_at', { withTimezone: true }),
+    linkedAt: timestamp('linked_at', { withTimezone: true }),
+    brokenAt: timestamp('broken_at', { withTimezone: true }),
+    lastError: text('last_error'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('user_teams_bot_account_teams_user_id_unique')
+      .on(t.teamsUserId)
+      .where(sql`${t.teamsUserId} IS NOT NULL`),
+    uniqueIndex('user_teams_bot_account_link_code_unique')
+      .on(t.linkCode)
+      .where(sql`${t.linkCode} IS NOT NULL`),
+  ],
+);
+
 // Outbox for outbound notification delivery. One row per (recipient, channel,
 // message) to send for an issue event: an email or a Telegram message to one member.
 // Rows are enqueued when inbox notifications are created (see
 // apps/api/src/modules/notifications/outbound.ts) and drained by the worker
 // following the same claim/retry pattern as webhook_delivery. The message text is
 // composed at enqueue time and stored in `payload`; the channel credentials are read
-// from team_notification_setting at send time. channel is 'email' | 'telegram'
+// from team_notification_setting at send time. channel is 'email' | 'telegram' | 'teams'
 // ('email' picks SMTP or Resend from the team config). recipient is the member's
-// email address for email rows, or their Telegram chat id for telegram rows.
+// email address for email rows, or their Telegram chat id for telegram rows, or their user id for teams rows (the webhook is read from user_teams_webhook at send time).
 // The stored message on a notification_delivery row, composed at enqueue time by the
 // api and read by the worker that sends it. `subject`/`html` are channel-specific:
 // email uses `subject` and builds its own HTML from `text`; Telegram sends `html`
@@ -1171,7 +1227,10 @@ export const notificationDelivery = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    check('notification_delivery_channel_check', sql`${t.channel} IN ('email', 'telegram')`),
+    check(
+      'notification_delivery_channel_check',
+      sql`${t.channel} IN ('email', 'telegram', 'teams')`,
+    ),
     // Backs the worker's claim query: due pending rows ordered by next_attempt_at.
     index('notification_delivery_due_idx')
       .on(t.nextAttemptAt)
