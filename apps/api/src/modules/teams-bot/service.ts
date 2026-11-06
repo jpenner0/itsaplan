@@ -117,6 +117,7 @@ async function assertBotFrameworkRequest(
   if (!token) throw new HttpError(401, 'Missing bearer token');
   try {
     const { payload } = await jwtVerify(token, botFrameworkKeys, {
+      algorithms: ['RS256'],
       issuer: 'https://api.botframework.com',
       audience: config.appId,
     });
