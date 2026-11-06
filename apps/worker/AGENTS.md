@@ -1,9 +1,10 @@
 # worker
 
-Standalone Bun process (own Dockerfile). `start.ts` runs three poll loops: `worker.ts` (webhook and
-notification delivery, webhook cleanup), `agent-worker.ts` (cron schedules) and
-`import-worker.ts` (source imports). Webhook defaults are in `src/config.ts`; other settings are
-read with `intEnv` where they are used. The import pipeline: `docs/dev/import-worker.md`.
+Standalone Bun process (own Dockerfile). `start.ts` runs four poll loops: `worker.ts` (webhook and
+notification delivery, webhook cleanup), `agent-worker.ts` (cron schedules),
+`import-worker.ts` (source imports) and `src/mail-worker.ts` (IMAP fetch). Webhook defaults are in
+`src/config.ts`; other settings are read with `intEnv` where they are used. The import pipeline:
+`docs/dev/import-worker.md`. The mail fetch: `docs/dev/email-intake.md`.
 
 ## Invariants
 
@@ -30,6 +31,8 @@ read with `intEnv` where they are used. The import pipeline: `docs/dev/import-wo
   webhook URLs, import source hosts and attachment links.
 - **Pure logic stays free of `@repo/db`.** `backoff.ts`, `reader.ts`, `*-adapter.ts` and
   `*-mapping.ts` import nothing from it, so unit tests run without a database.
+- **A mailbox's credential is decrypted in `src/mail-imap.ts` only.** The folder is opened read-only and
+  the host goes through `resolveHostForConnect` from `@repo/net` first.
 - **An import job's credential is decrypted here, never routed through
   `packages/db/src/domains/`.** Only the worker decrypts it.
 - A new import source needs a `SourceReader` adapter, an entry in `import-sources.ts`, api routes

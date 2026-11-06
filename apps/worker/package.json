@@ -17,11 +17,16 @@
     "@repo/net": "workspace:*",
     "@repo/storage": "workspace:*",
     "croner": "^10.0.1",
-    "drizzle-orm": "^0.45.4"
+    "drizzle-orm": "^0.45.4",
+    "imapflow": "^2.10.2",
+    "mailparser": "^3.14.2",
+    "turndown": "^7.2.5"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@types/bun": "latest",
+    "@types/mailparser": "^3.9.0",
+    "@types/turndown": "^5.0.6",
     "eslint": "^9.39.0",
     "typescript": "^6.0.3"
   }

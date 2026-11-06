@@ -5,7 +5,8 @@
     "accounts": "Hesaplar",
     "security": "Güvenlik",
     "api-keys": "API anahtarları",
-    "invitations": "Invitations"
+    "invitations": "Invitations",
+    "mailboxes": "Mailboxes"
   },
   "godGroups": {
     "management": "Yönetim",

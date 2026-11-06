@@ -2,6 +2,7 @@ import account from '../../messages/en/account.json';
 import agentAnalytics from '../../messages/en/agentAnalytics.json';
 import aiChat from '../../messages/en/aiChat.json';
 import apiKeys from '../../messages/en/apiKeys.json';
+import mailboxes from '../../messages/en/mailboxes.json';
 import auth from '../../messages/en/auth.json';
 import common from '../../messages/en/common.json';
 import cycles from '../../messages/en/cycles.json';
@@ -54,6 +55,7 @@ const coreMessages = {
   filters,
   workItems,
   apiKeys,
+  mailboxes,
   invite,
   mcp,
   projects,

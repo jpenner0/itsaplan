@@ -2630,3 +2630,111 @@ export const documentComment = pgTable(
   },
   (t) => [index('document_comment_document_idx').on(t.documentId, t.createdAt)],
 );
+
+// A user's IMAP mailbox for the email intake. Only its owner reads or edits it. The sign-in
+// is stored encrypted like team_notification_setting: `ciphertext`/`iv`/`auth_tag` hold a
+// JSON blob (a password, or the Microsoft 365 app credentials), `redacted` mirrors it with
+// every secret as a boolean for the settings UI.
+export const mailbox = pgTable(
+  'mailbox',
+  {
+    id: serial('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    label: text('label').notNull(),
+    host: text('host').notNull(),
+    port: integer('port').notNull().default(993),
+    // true: TLS from the first byte (993). false: STARTTLS.
+    secure: boolean('secure').notNull().default(true),
+    auth: text('auth').notNull().default('password'),
+    username: text('username').notNull(),
+    ciphertext: text('ciphertext').notNull(),
+    iv: text('iv').notNull(),
+    authTag: text('auth_tag').notNull(),
+    redacted: jsonb('redacted').notNull().default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('mailbox_user_idx').on(t.userId),
+    check('mailbox_auth_check', sql`${t.auth} IN ('password', 'microsoft365')`),
+  ],
+);
+
+// One folder of a mailbox that is read. The team pays for the AI and only its projects are
+// suggested; the agent is the internal agent of that team that triages the folder.
+// `uid_validity` and `last_uid` are the watermark: mail at or below `last_uid` is never read
+// again. A folder with `status = 'paused'` is skipped until the user reconnects it.
+export const mailboxFolder = pgTable(
+  'mailbox_folder',
+  {
+    id: serial('id').primaryKey(),
+    mailboxId: integer('mailbox_id')
+      .notNull()
+      .references(() => mailbox.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    teamId: integer('team_id')
+      .notNull()
+      .references(() => team.id, { onDelete: 'cascade' }),
+    agentId: integer('agent_id')
+      .notNull()
+      .references(() => aiAgent.id, { onDelete: 'cascade' }),
+    // Null until the first poll sets the watermark to the highest UID of the folder.
+    uidValidity: bigint('uid_validity', { mode: 'number' }),
+    lastUid: bigint('last_uid', { mode: 'number' }),
+    status: text('status').notNull().default('active'),
+    failures: integer('failures').notNull().default(0),
+    lastError: text('last_error'),
+    nextPollAt: timestamp('next_poll_at', { withTimezone: true }).notNull().defaultNow(),
+    lastPolledAt: timestamp('last_polled_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique().on(t.mailboxId, t.name),
+    index('mailbox_folder_due_idx').on(t.status, t.nextPollAt),
+    check('mailbox_folder_status_check', sql`${t.status} IN ('active', 'paused')`),
+  ],
+);
+
+// One fetched email. `body` and `attachments` are the raw content and are cleared when the
+// item is accepted or, 30 days after, rejected; the rest is the metadata that matches
+// replies (message_id, sender, issue) and stays.
+export interface IntakeAttachment {
+  filename: string;
+  contentType: string;
+  sizeBytes: number;
+  // Null when the file was over the storage limits: it is only listed.
+  s3Key: string | null;
+}
+
+export const intakeItem = pgTable(
+  'intake_item',
+  {
+    id: serial('id').primaryKey(),
+    folderId: integer('folder_id')
+      .notNull()
+      .references(() => mailboxFolder.id, { onDelete: 'cascade' }),
+    messageId: text('message_id').notNull(),
+    inReplyTo: text('in_reply_to'),
+    references: text('references')
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    fromName: text('from_name').notNull().default(''),
+    fromAddress: text('from_address').notNull(),
+    subject: text('subject').notNull().default(''),
+    sentAt: timestamp('sent_at', { withTimezone: true }),
+    body: text('body').notNull().default(''),
+    attachments: jsonb('attachments').$type<IntakeAttachment[]>().notNull().default([]),
+    // new -> accepted | rejected. A new item is not yet decided.
+    status: text('status').notNull().default('new'),
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique().on(t.folderId, t.messageId),
+    index('intake_item_message_idx').on(t.messageId),
+    check('intake_item_status_check', sql`${t.status} IN ('new', 'accepted', 'rejected')`),
+  ],
+);

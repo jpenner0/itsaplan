@@ -18,6 +18,7 @@ export {
   hasConfiguredEmailProvider,
   type InstanceEmailConfig,
 } from './domains/instance-email';
+export { readMailboxSecret, type MailboxSecret } from './domains/mailbox';
 export {
   defaultNotificationConfig,
   emailSource,

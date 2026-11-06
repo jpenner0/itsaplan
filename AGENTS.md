@@ -114,6 +114,7 @@ Read the doc for what your task touches:
 | live updates: scopes, counters, refetch       | `docs/dev/revision-engine.md`                                        |
 | interface languages                           | `docs/dev/i18n.md`                                                   |
 | imports                                       | `docs/dev/import-worker.md`, `docs/dev/{linear,trello,plane}-import.md` |
+| the email intake: mailboxes, IMAP fetch, triage | `docs/dev/email-intake.md`                                         |
 | migrations in deploys, backups                | `docs/dev/deploy-stack.md`                                           |
 | commit types, versions, release config        | `docs/dev/releasing.md`                                              |
 | self-hosting, Coolify, Railway, Helm          | `docs/self-hosting.md`, `docs/coolify.md`, `docs/railway.md`, `docs/helm.md` |
