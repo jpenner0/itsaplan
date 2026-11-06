@@ -92,13 +92,13 @@ export function errorAnswer(
   code: unknown,
   error: unknown,
 ): { status: number; body: { error: string; code?: string } } {
+  // An HttpError thrown in a route's parse hook reaches onError wrapped in a ParseError.
+  if (code === 'PARSE' && error instanceof Error && error.cause instanceof HttpError) {
+    return errorAnswer(undefined, error.cause);
+  }
   if (error instanceof HttpError) {
     const body = error.code ? { error: error.message, code: error.code } : { error: error.message };
     return { status: error.status, body };
-  }
-  // Elysia wraps an error thrown in a route's parse hook, such as a body size check.
-  if (code === 'PARSE' && error instanceof Error && error.cause instanceof HttpError) {
-    return errorAnswer(undefined, error.cause);
   }
   if (code === 'VALIDATION') {
     // The validator's first message is enough for the UI; the full report is

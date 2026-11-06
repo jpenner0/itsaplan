@@ -177,6 +177,7 @@
     "todoList": "To-do list",
     "quote": "Quote",
     "codeBlock": "Code block",
+    "mermaidDiagram": "Diagram (Mermaid)",
     "divider": "Divider",
     "table": "Table",
     "image": "Image",
@@ -205,6 +206,13 @@
     "copyLink": "Copy link to block",
     "linkCopied": "Link copied",
     "copyFailed": "Could not copy the link"
+  },
+  "mermaid": {
+    "editCode": "Edit code",
+    "done": "Done",
+    "copyCode": "Copy code",
+    "codeCopied": "Code copied",
+    "copyFailed": "Could not copy the code"
   },
   "sync": {
     "connecting": "Connecting to the document…",

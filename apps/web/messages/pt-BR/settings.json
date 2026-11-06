@@ -15,7 +15,9 @@
     "type": "Execução",
     "types": {
       "cron": "Por agendamento",
-      "status": "Quando uma issue entra em um estado"
+      "status": "Quando uma issue entra em um estado",
+      "synced_issue_created": "Com uma nova issue do GitHub",
+      "pull_request_opened": "Quando um pull request é aberto"
     },
     "taskOptional": "Tarefa (opcional)",
     "issueTaskPlaceholder": "Escreva os critérios de aceitação na descrição da issue.",
@@ -82,7 +84,11 @@
     "createAgent": "Criar um agente",
     "empty": "Nenhum agendamento ainda",
     "emptyHint": "Escolha um agente, uma tarefa e com que frequência ela roda.",
-    "deleteMessage": "O agendamento <v>{name}</v> e seu histórico de execuções serão removidos. Isso não pode ser desfeito."
+    "deleteMessage": "O agendamento <v>{name}</v> e seu histórico de execuções serão removidos. Isso não pode ser desfeito.",
+    "typeHints": {
+      "synced_issue_created": "Executa apenas para issues criadas no GitHub enquanto a sincronização de issues está ativa. Não na primeira importação nem para issues que o It's a Plan criou no GitHub.",
+      "pull_request_opened": "Executa quando um pull request que referencia uma issue sincronizada é aberto ou muda de rascunho para pronto. Não a cada push. Para iniciar uma nova revisão, mencione o agente na issue."
+    }
   },
   "agents": {
     "empty": "Nenhum agente ainda",
@@ -440,7 +446,7 @@
     "nativeAskTeamManager": "Peça a um proprietário ou gerente da equipe para conectar uma conta de provedor.",
     "nativeConnectTitle": "Conectar {provider}",
     "nativeTokenHint": {
-      "github": "Use um token fine-grained com acesso de leitura de Metadata, escrita de Webhooks e escrita de Pull requests para os repositórios que você quer conectar.",
+      "github": "Use um token fine-grained com acesso de leitura de Metadata, escrita de Webhooks, escrita de Pull requests e leitura e escrita de Issues para os repositórios que você quer conectar. Um token clássico precisa do escopo repo (public_repo apenas para repositórios públicos) e admin:repo_hook.",
       "gitlab": "Use um personal access token com acesso à API. Apenas projetos onde você é Maintainer ou Owner são listados.",
       "gitea": "Use um access token que possa administrar hooks nos repositórios que você quer conectar.",
       "forgejo": "Use um access token que possa administrar hooks nos repositórios que você quer conectar.",
@@ -494,7 +500,13 @@
     "onOpenHint": "Só move issues que não foram iniciadas. Issues em andamento e fechadas ficam onde estão.",
     "onOpenNone": "Sem ação",
     "changeState": "Alterar estado…",
-    "noState": "Sem estado."
+    "noState": "Sem estado.",
+    "issueSyncTitle": "Sincronização de issues",
+    "issueSyncOnHint": "Ao ativar, todas as issues abertas do GitHub são importadas uma vez.",
+    "issueSyncOffHint": "Ao desativar, apenas os vínculos são removidos. As issues permanecem nos dois lados.",
+    "newIssuesToGithub": "Novas issues para o GitHub",
+    "newIssuesToGithubHint": "As issues criadas neste projeto também são criadas no GitHub.",
+    "issueSyncSaved": "Configurações de sincronização de issues salvas"
   },
   "importExport": {
     "import": "Importar",

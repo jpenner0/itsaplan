@@ -253,7 +253,8 @@
     "edited": "편집됨",
     "deleteComment": "댓글 삭제",
     "deleteCommentTitle": "이 댓글을 삭제하시겠습니까?",
-    "deleteCommentConfirmation": "댓글과 해당 답글이 영구적으로 삭제됩니다."
+    "deleteCommentConfirmation": "댓글과 해당 답글이 영구적으로 삭제됩니다.",
+    "viaGithub": "GitHub의 @{login}"
   },
   "stats": {
     "title": "통계",
@@ -415,7 +416,9 @@
       "failed": "실패",
       "canceled": "취소됨",
       "skipped": "건너뜀"
-    }
+    },
+    "publish": "GitHub에 게시",
+    "published": "GitHub에 게시했습니다"
   },
   "documents": {
     "title": "문서",
@@ -564,5 +567,11 @@
     "selectRun": "Select a run to see its details",
     "runNotFound": "This run is not in your queue, or you cannot read it.",
     "backToRuns": "Back to runs"
+  },
+  "sync": {
+    "settingsConflict": "이 저장소는 이미 다른 프로젝트와 동기화되어 있습니다.",
+    "publishConflict": "이 이슈는 이미 GitHub에 있거나 프로젝트가 이슈를 동기화하지 않습니다.",
+    "github": "GitHub에서 오류가 반환되었습니다. 나중에 다시 시도하세요.",
+    "busy": "동기화가 진행 중입니다. 잠시 후 다시 시도하세요."
   }
 }

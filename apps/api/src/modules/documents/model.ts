@@ -208,17 +208,6 @@ export const DocumentExportResponse = t.Object({
 
 export const uploadDocumentAssetBody = t.Object({ file: t.File() });
 
-export const importMarkdownBody = t.Object({
-  file: t.File({ description: 'A ZIP file of Markdown files and the files they reference.' }),
-  parentId: t.Optional(t.Numeric({ minimum: 1 })),
-});
-
-export const MarkdownImportResponse = t.Object({
-  documents: DocumentSummaryListResponse,
-  createdCount: t.Integer({ description: 'All created pages, subpages included.' }),
-  skipped: t.Array(t.String()),
-});
-
 export const documentAssetFromChatBody = t.Object({
   chatAttachmentId: t.String({
     format: 'uuid',
@@ -322,4 +311,17 @@ export const documentCommentResponse = t.Object({
   resolvedAt: t.Nullable(t.String()),
   createdAt: t.String(),
   updatedAt: t.String(),
+});
+
+export const importDocumentsBody = t.Object({
+  file: t.File({ description: 'A ZIP file of Markdown files and the files they reference.' }),
+  parentId: t.Optional(
+    t.Numeric({ minimum: 1, description: 'The page to import below; the top level without it.' }),
+  ),
+});
+
+export const DocumentImportResponse = t.Object({
+  pages: t.Array(DocumentSummaryResponse, { description: 'The created top-level pages.' }),
+  createdCount: t.Integer({ description: 'All created pages, the subpages included.' }),
+  skipped: t.Array(t.String(), { description: 'ZIP paths that were not imported.' }),
 });

@@ -269,7 +269,7 @@ export const uploadDocumentAsset = (projectKey: string, documentId: number, file
   ).then(withDocumentAssetUrl);
 
 export interface MarkdownImportResult {
-  documents: ProjectDocumentSummary[];
+  pages: ProjectDocumentSummary[];
   createdCount: number;
   skipped: string[];
 }

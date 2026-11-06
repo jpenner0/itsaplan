@@ -19,6 +19,7 @@ import {
 } from '#shared/access';
 import { boundProjectId, isMcpRequest } from '#shared/mcp-request';
 import { getProjectById } from '#modules/projects/service';
+import { projectSyncsIssues, publishIssue, publishNewIssue } from '#modules/issue-sync/outbound';
 import { HttpError, instantParam } from '#shared/lib';
 import { accessErrors, commonErrors, errors } from '#shared/responses';
 import { deleteObject } from '@repo/storage';
@@ -87,7 +88,12 @@ import {
   listIssueDevelopmentLinks,
   removeIssueDevelopmentLink,
 } from '#modules/git/development';
-import { listDevelopmentRepositories, listManagedBranches } from '#modules/git/connections-service';
+import {
+  commentOnLinkedPullRequest,
+  getLinkedPullRequestDiff,
+  listDevelopmentRepositories,
+  listManagedBranches,
+} from '#modules/git/connections-service';
 import { DevelopmentLinkResponse } from '#modules/git/model';
 import {
   createChecklist,
@@ -119,7 +125,11 @@ import {
   DevelopmentRepositoryResponse,
   LinkablePullRequestPageResponse,
   DevelopmentBranchPageResponse,
+  PullRequestCommentResponse,
+  PullRequestDiffResponse,
+  pullRequestCommentBody,
   IssueResponse,
+  PublishedIssueResponse,
   IssueLinkResponse,
   IssueWatcherResponse,
   issueWatcherParams,
@@ -326,7 +336,10 @@ export const issueRoutes = new Elysia({ name: 'issues', detail: { tags: ['Issues
     '/projects/:projectKey/issues',
     async ({ project, body, user, set }) => {
       set.status = 201;
-      return createIssue(project, body, requireUser(user).id);
+      const created = await createIssue(project, body, requireUser(user).id);
+      // Only issues created here go to the synced repository; an import does not.
+      await publishNewIssue(created.id, project.id);
+      return created;
     },
     {
       body: createIssueBody,
@@ -565,7 +578,18 @@ export const issueRoutes = new Elysia({ name: 'issues', detail: { tags: ['Issues
       const subtasks = await listSubtasks(issue.id);
       const checklists = await listChecklists(issue.id);
       const development = await listIssueDevelopmentLinks(issue.id);
-      return { ...issue, fields, links, watchers, parent, subtasks, checklists, development };
+      const syncsIssues = await projectSyncsIssues(issue.projectId);
+      return {
+        ...issue,
+        fields,
+        links,
+        watchers,
+        parent,
+        subtasks,
+        checklists,
+        development,
+        syncsIssues,
+      };
     },
     {
       params: issueSequenceParams,
@@ -693,7 +717,18 @@ export const issueRoutes = new Elysia({ name: 'issues', detail: { tags: ['Issues
       const subtasks = await listSubtasks(issue.id);
       const checklists = await listChecklists(issue.id);
       const development = await listIssueDevelopmentLinks(issue.id);
-      return { ...issue, fields, links, watchers, parent, subtasks, checklists, development };
+      const syncsIssues = await projectSyncsIssues(issue.projectId);
+      return {
+        ...issue,
+        fields,
+        links,
+        watchers,
+        parent,
+        subtasks,
+        checklists,
+        development,
+        syncsIssues,
+      };
     },
     {
       params: issueParams,
@@ -896,6 +931,56 @@ export const issueRoutes = new Elysia({ name: 'issues', detail: { tags: ['Issues
     },
   )
 
+  .get(
+    '/issues/:issueId/development/:linkId/diff',
+    async ({ params, projectId }) =>
+      getLinkedPullRequestDiff(projectId, params.issueId, params.linkId),
+    {
+      params: issueDevelopmentLinkParams,
+      developmentRepositories: 'edit',
+      response: { 200: PullRequestDiffResponse, ...commonErrors },
+      detail: {
+        summary: 'Read the diff of a linked pull request',
+        description:
+          'Return the unified diff of a GitHub pull request linked to this issue. linkId is ' +
+          "the id of a pull_request entry in the issue's development list (get_issue). A " +
+          'diff over 100 KB is cut off and returned with truncated: true.',
+        ...mcpTool('get_pull_request_diff'),
+      },
+    },
+  )
+
+  .post(
+    '/issues/:issueId/development/:linkId/comments',
+    async ({ params, body, projectId, user, set }) => {
+      const text = body.body.trim();
+      if (!text) throw new HttpError(400, 'Comment body is required');
+      const result = await commentOnLinkedPullRequest(
+        projectId,
+        params.issueId,
+        params.linkId,
+        requireUser(user).id,
+        text,
+      );
+      set.status = 201;
+      return result;
+    },
+    {
+      params: issueDevelopmentLinkParams,
+      body: pullRequestCommentBody,
+      developmentRepositories: 'edit',
+      response: { 201: PullRequestCommentResponse, ...commonErrors },
+      detail: {
+        summary: 'Comment on a linked pull request',
+        description:
+          'Post a Markdown comment on a GitHub pull request linked to this issue. linkId is ' +
+          "the id of a pull_request entry in the issue's development list (get_issue). The " +
+          'comment is a plain conversation comment: it does not approve or request changes.',
+        ...mcpTool('comment_on_pull_request'),
+      },
+    },
+  )
+
   .delete(
     '/issues/:issueId/development/:linkId',
     async ({ params }) => {
@@ -943,6 +1028,26 @@ export const issueRoutes = new Elysia({ name: 'issues', detail: { tags: ['Issues
         description:
           "Permanently delete an issue by its numeric id. Irreversible. An issue that has subtasks needs the subtasks parameter, which says whether they are deleted with it ('cascade'), detached into ordinary issues ('detach'), or moved to newParentId ('reassign').",
         ...mcpTool('delete_issue'),
+      },
+    },
+  )
+
+  // "Publish to GitHub": creates the synced external issue for an issue that has none.
+  // Existing issues are never sent on their own.
+  .post(
+    '/issues/:issueId/publish',
+    async ({ params, projectId, set }) => {
+      set.status = 201;
+      return publishIssue(params.issueId, projectId);
+    },
+    {
+      params: issueParams,
+      workItem: 'edit',
+      response: { 201: PublishedIssueResponse, ...commonErrors, ...errors(409, 502) },
+      detail: {
+        summary: 'Publish an issue to the synced repository',
+        description:
+          'Create the issue in the repository its project syncs issues with, and link the two. 409 when the issue is already synced or the project does not sync its issues.',
       },
     },
   )

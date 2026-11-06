@@ -1,4 +1,6 @@
 import {
+  CircleCheck,
+  CircleDot,
   GitBranch,
   GitMerge,
   GitPullRequest,
@@ -21,6 +23,20 @@ export default function IssueDevelopmentStateBadge({ link }: { link: Development
       >
         <GitBranch />
         {t('branch')}
+      </Badge>
+    );
+  if (link.kind === 'issue')
+    return (
+      <Badge
+        variant="outline"
+        className={`${issueDevelopmentBadgeClassName} ${
+          link.state === 'open'
+            ? 'border-border/70 bg-muted/30 text-foreground/80'
+            : 'border-violet-500/25 bg-violet-500/10 text-violet-700 dark:text-violet-300'
+        }`}
+      >
+        {link.state === 'open' ? <CircleDot /> : <CircleCheck />}
+        {link.state === 'open' ? t('open') : t('closed')}
       </Badge>
     );
   if (link.draft)

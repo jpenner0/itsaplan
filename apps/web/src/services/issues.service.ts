@@ -23,6 +23,7 @@ import {
   type BoardIssues,
   type SubtaskDisposition,
   getIssue,
+  publishIssue,
   listIssueAgentRuns,
   getIssueAgentRunTrace,
   listIssueCycles,
@@ -68,6 +69,15 @@ export function useRemoveIssueDevelopmentLink(issueId: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (linkId: number) => removeIssueDevelopmentLink(issueId, linkId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.issue(issueId) }),
+  });
+}
+
+export function usePublishIssue(issueId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => publishIssue(issueId),
+    meta: { suppressErrorToast: true },
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.issue(issueId) }),
   });
 }

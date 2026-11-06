@@ -26,8 +26,11 @@ export const scheduleType = t.String({
   maxLength: 40,
   description:
     "'cron' runs the task on a cron. 'status' runs on an issue each time one enters a " +
-    'column: moved there, or created in it. An instance may add types of its own, which ' +
-    'take no cron and no column.',
+    "column: moved there, or created in it. 'synced_issue_created' runs on an issue the " +
+    "issue sync brings in new from the provider. 'pull_request_opened' runs on a synced " +
+    'issue when a pull request that references it is opened or marked ready for review. ' +
+    'An instance may add types of its own. Every type but cron and status takes no cron ' +
+    'and no column.',
 });
 
 export const scheduleOptions = t.Record(t.String(), t.Any(), {

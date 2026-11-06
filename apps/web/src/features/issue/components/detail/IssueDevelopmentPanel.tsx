@@ -5,11 +5,13 @@ import IssueDevelopmentAddMenu from './IssueDevelopmentAddMenu';
 import IssueDevelopmentCreateDialog from './IssueDevelopmentCreateDialog';
 import IssueDevelopmentLinkCard from './IssueDevelopmentLinkCard';
 import IssueDevelopmentLinkDialog from './IssueDevelopmentLinkDialog';
+import { useIssuePublish } from '../../hooks/useIssuePublish';
 import IssueSectionHeading from './IssueSectionHeading';
 import { useTranslations } from 'next-intl';
 
 export default function IssueDevelopmentPanel({
   issueId,
+  syncsIssues,
   identifier,
   issueTitle,
   links,
@@ -17,6 +19,7 @@ export default function IssueDevelopmentPanel({
   canManage,
 }: {
   issueId: number;
+  syncsIssues: boolean;
   identifier: string;
   issueTitle: string;
   links: DevelopmentLink[];
@@ -27,7 +30,8 @@ export default function IssueDevelopmentPanel({
   const { open, toggle } = usePersistedOpen('issue-development-open');
   const [linkOpen, setLinkOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
-  if (links.length === 0 && !canManage) return null;
+  const publish = useIssuePublish(issueId, links, syncsIssues, canEdit);
+  if (links.length === 0 && !canManage && !publish.available) return null;
 
   return (
     <div className={`mt-6 border-t pt-5 ${open ? '' : '-mb-2'}`}>
@@ -38,16 +42,17 @@ export default function IssueDevelopmentPanel({
           open={open}
           onToggle={toggle}
         />
-        {canManage && (
+        {(canManage || publish.available) && (
           <IssueDevelopmentAddMenu
-            onLink={() => setLinkOpen(true)}
-            onCreate={() => setCreateOpen(true)}
+            onLink={canManage ? () => setLinkOpen(true) : undefined}
+            onCreate={canManage ? () => setCreateOpen(true) : undefined}
+            onPublish={publish.available ? publish.publish : undefined}
           />
         )}
       </div>
       {open && (
         <div className="space-y-2">
-          {links.length === 0 && (
+          {links.length === 0 && canManage && (
             <button
               type="button"
               className="w-full rounded-md border border-dashed px-4 py-5 text-center text-sm text-muted-foreground hover:border-border hover:bg-muted/30 hover:text-foreground"

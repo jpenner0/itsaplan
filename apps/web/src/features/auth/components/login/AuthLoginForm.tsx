@@ -23,6 +23,7 @@ import {
   resendVerificationEmail,
   sendMagicLink,
   signInWithPassword,
+  signInWithGithub,
   signInWithGoogle,
   signInWithOidc,
   signInWithPasskey,
@@ -62,7 +63,7 @@ export default function AuthLoginForm({ title }: { title?: string }) {
   // `apiFailure` in lib/api/core/client.ts sends the browser here with ?expired=1 after the API
   // refused the session, so the screen can say why the user is back on it.
   const sessionExpired = params.get('expired') === '1';
-  // A Google, OIDC or magic-link sign-in, or a confirmation link, that could not
+  // A Google, GitHub, OIDC or magic-link sign-in, or a confirmation link, that could not
   // complete comes back here as a redirect rather than as a rejected promise, so its
   // reason arrives in the query string.
   const redirectErrorMessage = useRedirectError();
@@ -197,6 +198,7 @@ export default function AuthLoginForm({ title }: { title?: string }) {
           onToggleMethod={() => switchTo(signingInWithLink ? 'password' : 'link')}
           onOidc={() => run(signInWithOidc, { redirect: false })}
           onGoogle={() => run(signInWithGoogle, { redirect: false })}
+          onGithub={() => run(signInWithGithub, { redirect: false })}
           onPasskey={() => run(signInWithPasskey, { fallback: t('errors.passkey') })}
         />
 

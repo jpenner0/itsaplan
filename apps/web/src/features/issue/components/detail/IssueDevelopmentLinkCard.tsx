@@ -1,4 +1,4 @@
-import { ExternalLink, GitBranch, GitPullRequest, Unlink } from 'lucide-react';
+import { CircleDot, ExternalLink, GitBranch, GitPullRequest, Unlink } from 'lucide-react';
 import { useFormatter, useTranslations } from 'next-intl';
 import type { DevelopmentLink } from '@/lib/api/endpoints/git';
 import IssueDevelopmentChecks from './IssueDevelopmentChecks';
@@ -36,11 +36,9 @@ export default function IssueDevelopmentLinkCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            {link.kind === 'branch' ? (
-              <GitBranch className="size-3.5" />
-            ) : (
-              <GitPullRequest className="size-3.5" />
-            )}
+            {link.kind === 'branch' && <GitBranch className="size-3.5" />}
+            {link.kind === 'issue' && <CircleDot className="size-3.5" />}
+            {link.kind === 'pull_request' && <GitPullRequest className="size-3.5" />}
             <span>{PROVIDER_LABEL[link.provider]}</span>
             <span>·</span>
             <span className="truncate">
@@ -83,7 +81,7 @@ export default function IssueDevelopmentLinkCard({
         <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
           <IssueDevelopmentStateBadge link={link} />
           {ciStatus && <IssueDevelopmentCiBadge status={ciStatus} url={ciUrl} />}
-          {canEdit && (
+          {canEdit && link.kind !== 'issue' && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button

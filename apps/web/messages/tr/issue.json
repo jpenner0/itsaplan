@@ -253,7 +253,8 @@
     "edited": "düzenlendi",
     "deleteComment": "Yorumu sil",
     "deleteCommentTitle": "Bu yorum silinsin mi?",
-    "deleteCommentConfirmation": "Yorum ve yanıtları kalıcı olarak silinecektir."
+    "deleteCommentConfirmation": "Yorum ve yanıtları kalıcı olarak silinecektir.",
+    "viaGithub": "GitHub'da @{login}"
   },
   "stats": {
     "title": "İstatistikler",
@@ -415,7 +416,9 @@
       "failed": "Başarısız",
       "canceled": "İptal edildi",
       "skipped": "Atlandı"
-    }
+    },
+    "publish": "GitHub'da yayınla",
+    "published": "GitHub'da yayınlandı"
   },
   "documents": {
     "title": "Belgeler",
@@ -564,5 +567,11 @@
     "selectRun": "Select a run to see its details",
     "runNotFound": "This run is not in your queue, or you cannot read it.",
     "backToRuns": "Back to runs"
+  },
+  "sync": {
+    "settingsConflict": "Bu depo zaten başka bir projeyle senkronize.",
+    "publishConflict": "Bu sorun zaten GitHub'da veya projesi sorunları senkronize etmiyor.",
+    "github": "GitHub bir hata döndürdü. Daha sonra tekrar deneyin.",
+    "busy": "Bir senkronizasyon şu anda çalışıyor. Birazdan tekrar deneyin."
   }
 }

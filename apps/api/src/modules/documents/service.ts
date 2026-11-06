@@ -287,7 +287,7 @@ export async function listDocuments(
   }));
 }
 
-export async function selectDocument(
+async function selectDocument(
   executor: Executor,
   projectId: number,
   documentId: number,
@@ -477,14 +477,13 @@ async function visibleDocumentParentId(
   return parent?.id ?? null;
 }
 
-// Returns the depth of the parent: 0 at the top level, 1 for a top-level parent.
 export async function assertValidParent(
   executor: Executor,
   projectId: number,
   documentId: number | null,
   parentId: number | null,
   userId: string,
-): Promise<number> {
+): Promise<void> {
   let cursor = parentId;
   const seen = new Set<number>();
   while (cursor !== null) {
@@ -508,7 +507,6 @@ export async function assertValidParent(
     }
     cursor = parent.parentId;
   }
-  return seen.size;
 }
 
 export async function nextPosition(
@@ -672,13 +670,13 @@ function assertExpectedVersion(row: { version: number }, expected: number): void
   }
 }
 
-export function assertActive(row: { archivedAt: Date | null }): void {
+function assertActive(row: { archivedAt: Date | null }): void {
   if (row.archivedAt !== null) {
     throw new HttpError(409, 'Restore this document before changing it.');
   }
 }
 
-export function assertUnlocked(row: { isLocked: boolean }): void {
+function assertUnlocked(row: { isLocked: boolean }): void {
   if (row.isLocked) {
     throw new HttpError(409, 'Unlock this document before changing it.');
   }
@@ -687,7 +685,7 @@ export function assertUnlocked(row: { isLocked: boolean }): void {
 const MAX_DOCUMENT_JSON_BYTES = 1_000_000;
 const MAX_DOCUMENT_JSON_NODES = 10_000;
 const MAX_DOCUMENT_JSON_DEPTH = 100;
-export const MAX_DOCUMENT_METADATA_BYTES = 16_384;
+const MAX_DOCUMENT_METADATA_BYTES = 16_384;
 const DOCUMENT_NODE_TYPES = new Set([
   'doc',
   'paragraph',
@@ -1020,7 +1018,7 @@ export function assertValidDocumentContentJson(
   assertDocumentJsonNode(value, 0, { value: 0 });
 }
 
-function assertValidMetadata(value: Record<string, unknown> | undefined): void {
+export function assertValidMetadata(value: Record<string, unknown> | undefined): void {
   if (value === undefined) return;
   if (!isRecord(value)) throw new HttpError(400, 'metadata must be an object.');
   assertJsonByteSize(value, MAX_DOCUMENT_METADATA_BYTES, 'metadata');

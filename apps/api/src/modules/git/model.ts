@@ -33,7 +33,7 @@ export const DevelopmentLinkResponse = t.Object({
     t.Literal('bitbucket'),
   ]),
   repository: t.String(),
-  kind: t.Union([t.Literal('pull_request'), t.Literal('branch')]),
+  kind: t.Union([t.Literal('pull_request'), t.Literal('branch'), t.Literal('issue')]),
   number: t.Nullable(t.Number()),
   title: t.String(),
   url: t.Nullable(t.String()),
@@ -85,6 +85,8 @@ export const GitManagedRepositoryResponse = t.Object({
   webUrl: t.String(),
   status: t.Union([t.Literal('connected'), t.Literal('error')]),
   lastError: t.Nullable(t.String()),
+  issuesSyncEnabled: t.Boolean(),
+  newIssuesToProvider: t.Boolean(),
 });
 
 export const GitProviderConnectionResponse = t.Object({
@@ -144,4 +146,16 @@ export const connectRepositoriesBody = t.Object({
     minItems: 1,
     maxItems: 50,
   }),
+});
+
+export const updateIssueSyncBody = t.Object({
+  issuesSyncEnabled: t.Optional(t.Boolean()),
+  newIssuesToProvider: t.Optional(t.Boolean()),
+});
+
+export const IssueSyncSettingsResponse = t.Object({
+  repositoryId: t.Number(),
+  issuesSyncEnabled: t.Boolean(),
+  newIssuesToProvider: t.Boolean(),
+  issuesWatermark: t.Nullable(t.String()),
 });

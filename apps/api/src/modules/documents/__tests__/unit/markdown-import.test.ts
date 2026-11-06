@@ -1,374 +1,370 @@
 import { describe, expect, it } from 'bun:test';
-import { zipSync, type Zippable } from 'fflate';
+import JSZip from 'jszip';
 import { HttpError } from '#shared/lib';
 import {
-  MARKDOWN_IMPORT_LIMITS,
-  MARKDOWN_IMPORT_MAX_DEPTH,
-  parseMarkdownZip,
-  rewriteMarkdownReferences,
-  type MarkdownImportPage,
+  MAX_IMPORT_DEPTH,
+  MAX_IMPORT_PAGES,
+  MAX_PAGE_CHARS,
+  MAX_UNCOMPRESSED_BYTES,
+  MAX_ZIP_BYTES,
+  readMarkdownZip,
+  rewriteReferences,
+  type ImportPage,
 } from '../../markdown-import';
 
-const encoder = new TextEncoder();
-const opts = { maxDepth: MARKDOWN_IMPORT_MAX_DEPTH };
-
-function zip(files: Record<string, string | Uint8Array>): Uint8Array {
-  const input: Zippable = {};
-  for (const [name, value] of Object.entries(files)) {
-    input[name] = typeof value === 'string' ? encoder.encode(value) : value;
-  }
-  return zipSync(input);
+async function zipOf(files: Record<string, string | Uint8Array>): Promise<Uint8Array> {
+  const zip = new JSZip();
+  for (const [name, content] of Object.entries(files)) zip.file(name, content);
+  return zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' });
 }
 
-function parse(files: Record<string, string | Uint8Array>, maxDepth = opts.maxDepth) {
-  return parseMarkdownZip(zip(files), { maxDepth });
-}
-
-function failure(run: () => unknown): HttpError {
+async function rejection(promise: Promise<unknown>): Promise<HttpError> {
   try {
-    run();
-  } catch (err) {
-    if (err instanceof HttpError) return err;
-    throw err;
+    await promise;
+  } catch (error) {
+    if (error instanceof HttpError) return error;
+    throw error;
   }
-  throw new Error('did not throw');
+  throw new Error('expected a rejection');
 }
 
-function outline(pages: MarkdownImportPage[]): unknown[] {
-  return pages.map((page) =>
-    page.children.length > 0 ? { [page.title]: outline(page.children) } : page.title,
+const titles = (pages: ImportPage[]): unknown[] =>
+  pages.map((page) =>
+    page.children.length ? { [page.title]: titles(page.children) } : page.title,
   );
-}
 
-/** Sets the declared uncompressed size of the first entry in the central directory. */
-function withDeclaredSize(bytes: Uint8Array, size: number): Uint8Array {
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  for (let offset = 0; offset < bytes.length - 4; offset += 1) {
-    if (view.getUint32(offset, true) === 0x02014b50) {
-      view.setUint32(offset + 24, size, true);
-      return bytes;
-    }
-  }
-  throw new Error('no central directory');
-}
-
-describe('parseMarkdownZip: tree', () => {
-  it('turns nested folders into nested pages', () => {
-    const plan = parse({
-      'Guide/Setup/Install.md': 'install',
-      'Guide/Intro.md': 'intro',
-      'Top.md': 'top',
-    });
-    expect(outline(plan.pages)).toEqual([{ Guide: ['Intro', { Setup: ['Install'] }] }, 'Top']);
-    expect(plan.pages[0]).toMatchObject({ path: 'Guide', sourcePath: null, content: '' });
-    expect(plan.pages[0].children[1].children[0]).toMatchObject({
-      path: 'Guide/Setup/Install.md',
-      sourcePath: 'Guide/Setup/Install.md',
-      content: 'install',
-    });
+describe('page tree', () => {
+  it('turns folders into parent pages and files into pages', async () => {
+    const plan = await readMarkdownZip(
+      await zipOf({ 'a.md': 'A', 'guide/setup.md': 'S', 'guide/deep/x.md': 'X' }),
+    );
+    expect(titles(plan.pages)).toEqual(['a', { guide: [{ deep: ['x'] }, 'setup'] }]);
+    expect(plan.pages[1]).toMatchObject({ path: 'guide', content: '' });
   });
 
-  it('takes folder content from index.md, README.md or a sibling <folder>.md', () => {
-    const plan = parse({
-      'A/index.md': 'from index',
-      'A/README.md': 'readme stays a page',
-      'B/ReadMe.md': 'from readme',
-      'B/child.md': 'x',
-      'C.md': 'from sibling',
-      'C/child.md': 'x',
-      'D/child.md': 'x',
-    });
-    const [a, b, c, d] = plan.pages;
-    expect(a).toMatchObject({ title: 'A', sourcePath: 'A/index.md', content: 'from index' });
-    expect(outline(a.children)).toEqual(['README']);
-    expect(b).toMatchObject({ title: 'B', sourcePath: 'B/ReadMe.md', content: 'from readme' });
-    expect(outline(b.children)).toEqual(['child']);
-    expect(c).toMatchObject({ title: 'C', sourcePath: 'C.md', content: 'from sibling' });
-    expect(d).toMatchObject({ title: 'D', sourcePath: null, content: '' });
-    expect(plan.pages).toHaveLength(4);
+  it('takes folder content from index.md, README.md or a sibling <folder>.md', async () => {
+    const plan = await readMarkdownZip(
+      await zipOf({
+        'one/index.md': 'from index',
+        'one/README.md': 'readme stays a page',
+        'two/readme.md': 'from readme',
+        'two/child.md': 'c',
+        'three.md': 'from sibling',
+        'three/child.md': 'c',
+      }),
+    );
+    const [one, three, two] = plan.pages;
+    expect(one).toMatchObject({ title: 'one', path: 'one/index.md', content: 'from index' });
+    expect(titles(one.children)).toEqual(['README']);
+    expect(two).toMatchObject({ title: 'two', path: 'two/readme.md', content: 'from readme' });
+    expect(three).toMatchObject({ title: 'three', path: 'three.md', content: 'from sibling' });
+    expect(plan.pages).toHaveLength(3);
   });
 
-  it('does not make a page of a folder without Markdown files', () => {
-    const plan = parse({ 'page.md': '![](img/a.png)', 'img/a.png': 'png' });
-    expect(outline(plan.pages)).toEqual(['page']);
+  it('keeps .md files whose names differ only by case as separate pages', async () => {
+    const plan = await readMarkdownZip(
+      await zipOf({
+        'Notes.md': 'upper',
+        'notes.md': 'lower',
+        'dir/README.md': 'first',
+        'dir/readme.md': 'second',
+      }),
+    );
+    expect(plan.pages.map((page) => [page.path, page.content])).toEqual([
+      ['dir/README.md', 'first'],
+      ['Notes.md', 'upper'],
+      ['notes.md', 'lower'],
+    ]);
+    expect(plan.pages[0].children.map((page) => [page.path, page.content])).toEqual([
+      ['dir/readme.md', 'second'],
+    ]);
+    expect(plan.skipped).toEqual([]);
   });
 
-  it('sorts siblings naturally', () => {
-    const plan = parse({
-      '10-ten.md': '',
-      '2-two.md': '',
-      '1-one/x.md': '',
-      'b.md': '',
-      'A.md': '',
-    });
-    expect(outline(plan.pages)).toEqual([{ '1-one': ['x'] }, '2-two', '10-ten', 'A', 'b']);
+  it('sorts siblings naturally by file name', async () => {
+    const plan = await readMarkdownZip(
+      await zipOf({ '10-ten.md': '', '2-two.md': '', '1-one/x.md': '', 'b.md': '' }),
+    );
+    expect(plan.pages.map((page) => page.title)).toEqual(['1-one', '2-two', '10-ten', 'b']);
+  });
+
+  it('keeps a single wrapping folder as one root page', async () => {
+    const plan = await readMarkdownZip(await zipOf({ 'wiki/a.md': '', 'wiki/b.md': '' }));
+    expect(titles(plan.pages)).toEqual([{ wiki: ['a', 'b'] }]);
   });
 });
 
-describe('parseMarkdownZip: page content', () => {
-  it('reads title and icon from frontmatter and keeps the rest', () => {
-    const [page] = parse({
-      'file.md': '---\ntitle: Real title\nicon: 🚀\ntags: [a, b]\n---\n# Real title\n\nBody',
-    }).pages;
-    expect(page).toMatchObject({
-      title: 'Real title',
+describe('frontmatter and title', () => {
+  it('reads title and icon and keeps the rest', async () => {
+    const plan = await readMarkdownZip(
+      await zipOf({
+        'page.md': '---\ntitle: Real Title\nicon: "🚀"\ntags: [a, b]\n---\n# Real Title\n\nBody',
+      }),
+    );
+    expect(plan.pages[0]).toMatchObject({
+      title: 'Real Title',
       icon: '🚀',
-      frontmatter: { title: 'Real title', tags: ['a', 'b'] },
+      frontmatter: { tags: ['a', 'b'] },
       content: 'Body',
     });
   });
 
-  it('uses the file name as title and removes an equal H1 only', () => {
-    const plan = parse({
-      'Same.md': '# Same\n\ntext',
-      'Other.md': '# Different\n\ntext',
-      'Crlf.md': '---\r\nkey: 1\r\n---\r\n# Crlf\r\nline',
-    });
-    expect(plan.pages.map((p) => [p.title, p.content])).toEqual([
-      ['Crlf', 'line'],
-      ['Other', '# Different\n\ntext'],
-      ['Same', 'text'],
-    ]);
-    expect(plan.pages[0].frontmatter).toEqual({ key: 1 });
+  it('falls back to the file name and removes only an H1 equal to the title', async () => {
+    const plan = await readMarkdownZip(
+      await zipOf({ 'Notes.md': '# Notes\nText', 'Other.md': '# Something else\nText' }),
+    );
+    expect(plan.pages[0]).toMatchObject({ title: 'Notes', content: 'Text', frontmatter: {} });
+    expect(plan.pages[1]).toMatchObject({ title: 'Other', content: '# Something else\nText' });
   });
 
-  it('keeps a leading block that is not a YAML mapping in the content', () => {
-    const [page] = parse({ 'a.md': '---\njust a line\n---\ntext' }).pages;
-    expect(page.frontmatter).toEqual({});
-    expect(page.content).toBe('---\njust a line\n---\ntext');
+  it('uses the frontmatter title for a folder page', async () => {
+    const plan = await readMarkdownZip(
+      await zipOf({ 'dir/index.md': '---\ntitle: Folder Title\n---\nX', 'dir/a.md': '' }),
+    );
+    expect(plan.pages[0]).toMatchObject({ title: 'Folder Title', content: 'X' });
   });
 
-  it('names the file that is not valid UTF-8', () => {
-    const err = failure(() => parse({ 'dir/bad.md': new Uint8Array([0x61, 0xff, 0x62]) }));
-    expect(err.status).toBe(400);
-    expect(err.message).toContain('dir/bad.md');
+  it('leaves a leading thematic break that is no YAML mapping in the content', async () => {
+    const text = '---\njust text\n---\nBody';
+    const plan = await readMarkdownZip(await zipOf({ 'p.md': text }));
+    expect(plan.pages[0]).toMatchObject({ content: text, frontmatter: {} });
+  });
+
+  it('refuses frontmatter over 16 KB', async () => {
+    const yaml = `notes: "${'x'.repeat(16_384)}"`;
+    const error = await rejection(
+      readMarkdownZip(await zipOf({ 'big.md': `---\n${yaml}\n---\n` })),
+    );
+    expect(error.status).toBe(400);
+    expect(error.message).toContain('big.md');
+  });
+
+  it('refuses frontmatter that expands through aliases', async () => {
+    const lines = ['a: &a [x, x, x, x, x, x, x, x, x, x]'];
+    for (const n of ['b', 'c', 'd', 'e']) {
+      const prev = lines.at(-1)!.split(':')[0];
+      lines.push(`${n}: &${n} [${Array(10).fill(`*${prev}`).join(', ')}]`);
+    }
+    const error = await rejection(
+      readMarkdownZip(await zipOf({ 'bomb.md': `---\n${lines.join('\n')}\n---\n` })),
+    );
+    expect(error.status).toBe(400);
+    expect(error.message).toContain('bomb.md');
   });
 });
 
-describe('parseMarkdownZip: references', () => {
-  const files = {
-    'docs/page.md': [
-      '![shot](../img/shot%201.png "Title")',
-      '[next](sub/next.md#part)',
-      '[up](../root.md)',
-      '<img alt="x" src="../img/logo.svg">',
-      '[web](https://example.com/a.png) [mail](mailto:a@b.c) [proto](//cdn/a.png)',
-      '![data](data:image/png;base64,AAA) [anchor](#top) [missing](nope.png)',
-      '[[Wikilink]] `![code](../img/code.png)`',
-      '```\n![fenced](../img/code.png)\n```',
-    ].join('\n'),
-    'docs/sub/next.md': 'next',
-    'root.md': 'root',
-    'img/shot 1.png': 'png',
-    'img/logo.svg': 'svg',
-    'img/code.png': 'code',
-    'img/unused.png': 'unused',
-  };
+describe('references', () => {
+  const page = [
+    '![logo](img/logo.png "Logo")',
+    '<img alt="x" src="./img/my%20pic.png">',
+    '[spec](../docs/spec.pdf)',
+    '[other](sub/other.md#part)',
+    '![remote](https://example.com/a.png)',
+    '[anchor](#top)',
+    '[[Wikilink]]',
+    '[ref]: img/logo.png',
+    '```',
+    '![in code](img/logo.png)',
+    '```',
+  ].join('\n');
 
-  it('lists local images, files and page links', () => {
-    const plan = parse(files);
-    const page = plan.pages[0].children.find((p) => p.path === 'docs/page.md')!;
-    expect(page.references).toEqual([
-      { path: 'img/shot 1.png', kind: 'asset' },
-      { path: 'docs/sub/next.md', kind: 'page' },
-      { path: 'root.md', kind: 'page' },
-      { path: 'img/logo.svg', kind: 'asset' },
-    ]);
-    expect(plan.assets.map((a) => [a.path, a.filename, new TextDecoder().decode(a.bytes)])).toEqual(
-      [
-        ['img/logo.svg', 'logo.svg', 'svg'],
-        ['img/shot 1.png', 'shot 1.png', 'png'],
-      ],
+  async function plan() {
+    return readMarkdownZip(
+      await zipOf({
+        'notes/page.md': page,
+        'notes/img/logo.png': new Uint8Array([1, 2, 3]),
+        'notes/img/my pic.png': new Uint8Array([4]),
+        'notes/sub/other.md': 'O',
+        'docs/spec.pdf': new Uint8Array([5]),
+        'notes/img/unused.png': new Uint8Array([6]),
+      }),
     );
-    expect(plan.skipped).toEqual(['img/code.png', 'img/unused.png']);
-  });
-
-  it('ignores references in code spans with longer backtick runs', () => {
-    const [page] = parse({ 'a.md': '``![x](b.png) ` ``\n![y](b.png)', 'b.png': 'png' }).pages;
-    const urls = new Map([['b.png', '/new']]);
-    expect(rewriteMarkdownReferences(page.content, 'a.md', urls)).toBe(
-      '``![x](b.png) ` ``\n![y](/new)',
-    );
-  });
-
-  for (const [name, hostile] of [
-    [
-      'unmatched backtick runs',
-      () => {
-        let text = '';
-        for (let length = 2; text.length < 120_000; length += 1) text += `${'`'.repeat(length)}a`;
-        return text;
-      },
-    ],
-    ['unclosed img tags', () => '<img a '.repeat(34_000)],
-  ] as const) {
-    it(`scans a page of ${name} in linear time`, () => {
-      const content = `${hostile()} [x](b.png)`;
-      const started = performance.now();
-      const [page] = parse({ 'a.md': content, 'b.png': 'png' }).pages;
-      expect(performance.now() - started).toBeLessThan(1_000);
-      expect(page.references).toEqual([{ path: 'b.png', kind: 'asset' }]);
-    });
   }
 
-  it('ends a code span at a blank line', () => {
-    const [page] = parse({
-      'a.md': 'Don`t\n\n![a](b.png)\n\nA `code` span',
-      'b.png': 'png',
-    }).pages;
-    expect(page.references).toEqual([{ path: 'b.png', kind: 'asset' }]);
+  it('collects local files and .md links resolved to the page folder', async () => {
+    const result = await plan();
+    const notes = result.pages.find((p) => p.title === 'notes')!;
+    const ref = notes.children.find((p) => p.title === 'page')!;
+    expect(ref.assetRefs.sort()).toEqual([
+      'docs/spec.pdf',
+      'notes/img/logo.png',
+      'notes/img/my pic.png',
+    ]);
+    expect(ref.pageLinks).toEqual(['notes/sub/other.md']);
+    expect(result.files.map((f) => [f.path, f.filename, [...f.bytes]])).toEqual([
+      ['docs/spec.pdf', 'spec.pdf', [5]],
+      ['notes/img/logo.png', 'logo.png', [1, 2, 3]],
+      ['notes/img/my pic.png', 'my pic.png', [4]],
+    ]);
+    expect(result.skipped).toEqual(['notes/img/unused.png']);
   });
 
-  it('rewrites only the references in the map and keeps everything else', () => {
-    const plan = parse(files);
-    const page = plan.pages[0].children.find((p) => p.path === 'docs/page.md')!;
+  it('rewrites references from a map and leaves the rest unchanged', async () => {
+    const result = await plan();
+    const ref = result.pages
+      .find((p) => p.title === 'notes')!
+      .children.find((p) => p.title === 'page')!;
     const urls = new Map([
-      ['img/shot 1.png', '/api/a/1'],
-      ['docs/sub/next.md', '/docs/2'],
-      ['img/logo.svg', '/api/a/3'],
+      ['notes/img/logo.png', '/assets/1'],
+      ['notes/img/my pic.png', '/assets/2'],
+      ['docs/spec.pdf', '/assets/3'],
+      ['notes/sub/other.md', '/docs/9'],
     ]);
-    const result = rewriteMarkdownReferences(page.content, page.sourcePath!, urls);
-    expect(result.split('\n').slice(0, 4)).toEqual([
-      '![shot](/api/a/1 "Title")',
-      '[next](/docs/2#part)',
-      '[up](../root.md)',
-      '<img alt="x" src="/api/a/3">',
+    expect(rewriteReferences(ref, urls).split('\n')).toEqual([
+      '![logo](/assets/1 "Logo")',
+      '<img alt="x" src="/assets/2">',
+      '[spec](/assets/3)',
+      '[other](/docs/9#part)',
+      '![remote](https://example.com/a.png)',
+      '[anchor](#top)',
+      '[[Wikilink]]',
+      '[ref]: /assets/1',
+      '```',
+      '![in code](img/logo.png)',
+      '```',
     ]);
-    expect(result.split('\n').slice(4)).toEqual(page.content.split('\n').slice(4));
   });
 });
 
-describe('parseMarkdownZip: skipped files', () => {
-  it('skips hidden files and folders and unreferenced files', () => {
-    const plan = parse({
-      'a.md': 'a',
-      '.obsidian/app.json': '{}',
-      '.obsidian/deep/x.md': 'x',
-      'dir/.DS_Store': '',
-      '__MACOSX/a.md': '',
-      'notes.txt': 'x',
+describe('skipped files', () => {
+  it('skips hidden files and folders', async () => {
+    const plan = await readMarkdownZip(
+      await zipOf({
+        'a.md': '',
+        '.git/HEAD': 'x',
+        '.obsidian/app.json': '{}',
+        '__MACOSX/a.md': '',
+        'dir/.DS_Store': 'x',
+        'dir/.hidden.md': '',
+        'dir/b.md': '',
+      }),
+    );
+    expect(titles(plan.pages)).toEqual(['a', { dir: ['b'] }]);
+    expect(plan.skipped).toEqual([
+      '.git/',
+      '.obsidian/',
+      '__MACOSX/',
+      'dir/.DS_Store',
+      'dir/.hidden.md',
+    ]);
+  });
+});
+
+describe('limits', () => {
+  it('accepts the maximum page count and refuses one more', async () => {
+    const files = (n: number) =>
+      Object.fromEntries(Array.from({ length: n }, (_, i) => [`p${i}.md`, '']));
+    const plan = await readMarkdownZip(await zipOf(files(MAX_IMPORT_PAGES)));
+    expect(plan.pages).toHaveLength(MAX_IMPORT_PAGES);
+    const error = await rejection(readMarkdownZip(await zipOf(files(MAX_IMPORT_PAGES + 1))));
+    expect(error.status).toBe(400);
+  });
+
+  it('counts folder pages toward the page limit', async () => {
+    const files = Object.fromEntries(
+      Array.from({ length: MAX_IMPORT_PAGES / 2 }, (_, i) => [`d${i}/a.md`, '']),
+    );
+    files['extra.md'] = '';
+    const error = await rejection(readMarkdownZip(await zipOf(files)));
+    expect(error.status).toBe(400);
+  });
+
+  it('accepts a page at the character limit and refuses one more', async () => {
+    const plan = await readMarkdownZip(await zipOf({ 'p.md': 'x'.repeat(MAX_PAGE_CHARS) }));
+    expect(plan.pages[0].content).toHaveLength(MAX_PAGE_CHARS);
+    const error = await rejection(
+      readMarkdownZip(await zipOf({ 'big.md': 'x'.repeat(MAX_PAGE_CHARS + 1) })),
+    );
+    expect(error.status).toBe(400);
+    expect(error.message).toContain('big.md');
+  });
+
+  it('accepts the maximum depth and refuses one level more', async () => {
+    const nested = (levels: number) =>
+      Array.from({ length: levels - 1 }, (_, i) => `d${i}`).join('/') + '/leaf.md';
+    const plan = await readMarkdownZip(await zipOf({ [nested(MAX_IMPORT_DEPTH)]: '' }));
+    expect(plan.pages).toHaveLength(1);
+    const error = await rejection(
+      readMarkdownZip(await zipOf({ [nested(MAX_IMPORT_DEPTH + 1)]: '' })),
+    );
+    expect(error.status).toBe(400);
+    expect(error.message).toContain('leaf.md');
+  });
+
+  it('refuses a ZIP over the size limit before reading it', async () => {
+    const error = await rejection(readMarkdownZip(new Uint8Array(MAX_ZIP_BYTES + 1)));
+    expect(error.status).toBe(413);
+  });
+
+  it('stops reading when the uncompressed budget is exceeded', async () => {
+    const chunk = new Uint8Array(MAX_UNCOMPRESSED_BYTES / 2 + 1);
+    const data = await zipOf({ 'a.md': '![](a.bin)\n![](b.bin)', 'a.bin': chunk, 'b.bin': chunk });
+    const error = await rejection(readMarkdownZip(data));
+    expect(error.status).toBe(413);
+  });
+
+  // Sets the uncompressed size the central directory declares for a.bin.
+  function declareSize(data: Uint8Array, size: number): void {
+    const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+    for (let i = 0; i < data.length - 51; i++) {
+      const name = Buffer.from(data.subarray(i + 46, i + 51)).toString();
+      if (view.getUint32(i, true) === 0x02014b50 && name === 'a.bin') {
+        view.setUint32(i + 24, size, true);
+      }
+    }
+  }
+
+  it('refuses a ZIP whose declared sizes exceed the budget', async () => {
+    const data = await zipOf({ 'a.md': '![](a.bin)', 'a.bin': new Uint8Array(10) });
+    declareSize(data, MAX_UNCOMPRESSED_BYTES + 1);
+    const error = await rejection(readMarkdownZip(data));
+    expect(error.status).toBe(413);
+  });
+
+  it('counts the real bytes when the declared size lies', async () => {
+    const data = await zipOf({
+      'a.md': '![](a.bin)',
+      'a.bin': new Uint8Array(MAX_UNCOMPRESSED_BYTES + 1),
     });
-    expect(outline(plan.pages)).toEqual(['a']);
-    expect(plan.skipped).toEqual(['.obsidian/', '__MACOSX/', 'dir/.DS_Store', 'notes.txt']);
+    declareSize(data, 1);
+    const error = await rejection(readMarkdownZip(data));
+    expect(error.status).toBe(413);
+  });
+
+  it('refuses a file that is not a ZIP', async () => {
+    const error = await rejection(readMarkdownZip(new TextEncoder().encode('not a zip')));
+    expect(error.status).toBe(400);
   });
 });
 
-describe('parseMarkdownZip: paths', () => {
-  it('normalises backslashes', () => {
-    expect(outline(parse({ 'dir\\a.md': 'a' }).pages)).toEqual([{ dir: ['a'] }]);
+describe('unsafe input', () => {
+  it('names a .md file that is not valid UTF-8', async () => {
+    const error = await rejection(
+      readMarkdownZip(await zipOf({ 'dir/latin1.md': new Uint8Array([0x63, 0x61, 0xe9]) })),
+    );
+    expect(error.status).toBe(400);
+    expect(error.message).toContain('dir/latin1.md');
   });
+
+  // jszip refuses to write these names, so they are patched into the archive bytes.
+  async function zipWithName(name: string): Promise<Uint8Array> {
+    const placeholder = 'x'.repeat(name.length - 3) + '.md';
+    const data = await zipOf({ [placeholder]: 'x' });
+    const text = Buffer.from(data).toString('latin1').replaceAll(placeholder, name);
+    return new Uint8Array(Buffer.from(text, 'latin1'));
+  }
 
   for (const name of [
     '../evil.md',
     'a/../../evil.md',
-    '..\\evil.md',
     '/etc/evil.md',
     'C:/evil.md',
-    'C:\\evil.md',
+    'a\\evil.md',
   ]) {
-    it(`rejects ${name}`, () => {
-      const err = failure(() => parse({ [name]: 'x' }));
-      expect(err.status).toBe(400);
-      expect(err.message).toContain(name);
+    it(`refuses the entry name ${name}`, async () => {
+      const error = await rejection(readMarkdownZip(await zipWithName(name)));
+      expect(error.status).toBe(400);
+      expect(error.message).toContain('unsafe path');
     });
   }
-
-  it('rejects a file that is not a ZIP', () => {
-    expect(failure(() => parseMarkdownZip(encoder.encode('plain text'), opts)).status).toBe(400);
-  });
-});
-
-describe('parseMarkdownZip: limits', () => {
-  it('accepts a 50 MB ZIP and rejects one byte more', () => {
-    const overhead = zipSync({ 'big.bin': [new Uint8Array(0), { level: 0 }] }).length;
-    const stored = zipSync({
-      'big.bin': [new Uint8Array(MARKDOWN_IMPORT_LIMITS.zipBytes - overhead), { level: 0 }],
-    });
-    expect(stored.length).toBe(MARKDOWN_IMPORT_LIMITS.zipBytes);
-    expect(parseMarkdownZip(stored, opts).skipped).toEqual(['big.bin']);
-    const err = failure(() =>
-      parseMarkdownZip(new Uint8Array(MARKDOWN_IMPORT_LIMITS.zipBytes + 1), opts),
-    );
-    expect(err.status).toBe(413);
-  });
-
-  it('accepts the entry limit and rejects one more', () => {
-    const files: Record<string, string> = {};
-    for (let i = 0; i < MARKDOWN_IMPORT_LIMITS.entries; i += 1) files[`.hidden/${i}`] = '';
-    expect(parse(files).skipped).toEqual(['.hidden/']);
-    files['.hidden/extra'] = '';
-    expect(failure(() => parse(files)).status).toBe(413);
-  });
-
-  it('accepts 500 pages and rejects 501', () => {
-    const files: Record<string, string> = {};
-    for (let i = 0; i < MARKDOWN_IMPORT_LIMITS.pages - 1; i += 1) files[`folder/${i}.md`] = '';
-    expect(parse(files).pages[0].children).toHaveLength(MARKDOWN_IMPORT_LIMITS.pages - 1);
-    files['extra.md'] = '';
-    expect(failure(() => parse(files)).status).toBe(413);
-  });
-
-  it('accepts 250,000 characters per page and rejects one more', () => {
-    const max = 'x'.repeat(MARKDOWN_IMPORT_LIMITS.pageChars);
-    expect(parse({ 'a.md': max }).pages[0].content).toHaveLength(MARKDOWN_IMPORT_LIMITS.pageChars);
-    const err = failure(() => parse({ 'dir/a.md': `${max}x` }));
-    expect(err.status).toBe(413);
-    expect(err.message).toContain('dir/a.md');
-  });
-
-  it('counts the frontmatter toward the page limit', () => {
-    const frontmatter = '---\nkey: value\n---\n';
-    const body = 'x'.repeat(MARKDOWN_IMPORT_LIMITS.pageChars - frontmatter.length);
-    expect(parse({ 'a.md': frontmatter + body }).pages[0].content).toBe(body);
-    const err = failure(() => parse({ 'dir/a.md': `${frontmatter}${body}x` }));
-    expect(err.status).toBe(413);
-    expect(err.message).toContain('dir/a.md');
-  });
-
-  it('rejects a Markdown file whose declared size cannot fit the page limit', () => {
-    const maxBytes = MARKDOWN_IMPORT_LIMITS.pageChars * 3 + 3;
-    const bytes = withDeclaredSize(zip({ 'a.md': 'x'.repeat(1_000) }), maxBytes + 1);
-    const err = failure(() => parseMarkdownZip(bytes, opts));
-    expect(err.status).toBe(413);
-    expect(err.message).toContain('a.md');
-  });
-
-  it('accepts the maximum depth and rejects one level more', () => {
-    expect(outline(parse({ 'a/b.md': '' }, 2).pages)).toEqual([{ a: ['b'] }]);
-    const err = failure(() => parse({ 'a/b/c.md': '' }, 2));
-    expect(err.status).toBe(400);
-    expect(err.message).toContain('a/b');
-  });
-
-  it('accepts the total uncompressed size and rejects one byte more', () => {
-    // The budget uses declared sizes, so no 200 MB is inflated. At the limit the entry passes
-    // the budget and then fails as damaged (400).
-    const page = '![](big.bin)';
-    const declare = (size: number) => withDeclaredSize(zip({ 'big.bin': 'x', 'a.md': page }), size);
-    const atLimit = MARKDOWN_IMPORT_LIMITS.uncompressedBytes - page.length;
-    expect(failure(() => parseMarkdownZip(declare(atLimit), opts)).status).toBe(400);
-    expect(failure(() => parseMarkdownZip(declare(atLimit + 1), opts)).status).toBe(413);
-  });
-
-  it('rejects a declared size over the limit before inflating', () => {
-    const bytes = withDeclaredSize(
-      zip({ 'a.md': 'a' }),
-      MARKDOWN_IMPORT_LIMITS.uncompressedBytes + 1,
-    );
-    expect(failure(() => parseMarkdownZip(bytes, opts)).status).toBe(413);
-  });
-
-  it('rejects a declared size its compressed data cannot produce', () => {
-    const bytes = withDeclaredSize(zip({ 'a.bin': 'x', 'a.md': '![](a.bin)' }), 10_000_000);
-    const err = failure(() => parseMarkdownZip(bytes, opts));
-    expect(err.status).toBe(400);
-    expect(err.message).toContain('a.bin');
-  });
-
-  it('stops inflating an entry that is larger than declared', () => {
-    const bomb = withDeclaredSize(zip({ 'a.md': new Uint8Array(10 * 1024 * 1024) }), 10);
-    const err = failure(() => parseMarkdownZip(bomb, opts));
-    expect(err.status).toBe(400);
-    expect(err.message).toContain('a.md');
-  });
 });

@@ -660,9 +660,9 @@ export const agentSchedule = pgTable(
     // Empty on a 'status' schedule that sends no task of its own.
     prompt: text('prompt').notNull(),
     // 'cron' runs on `cron` and carries `next_run_at`; 'status' runs on an issue each
-    // time one enters `column_id`, `delay_sec` after it does. Any other type is one an
-    // extension of the api adds (modules/agents/schedules/extension.ts), which queues
-    // its runs itself.
+    // time one enters `column_id`, `delay_sec` after it does. Every other type takes
+    // neither: an event type of the core or one an extension of the api adds
+    // (modules/agents/schedules/extension.ts), whose runs are queued by what they react to.
     type: text('type').notNull().default('cron'),
     cron: text('cron'),
     timezone: text('timezone').notNull(),
@@ -996,6 +996,12 @@ export const gitProviderConnection = pgTable(
     ciphertext: text('ciphertext').notNull(),
     iv: text('iv').notNull(),
     authTag: text('auth_tag').notNull(),
+    // Author of synced comments whose external author has no linked account. A hidden
+    // user like an agent's bot user, but without team_member or ai_agent rows. NULL
+    // until the first such comment is synced.
+    botUserId: text('bot_user_id')
+      .unique()
+      .references(() => user.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -1018,6 +1024,12 @@ export const gitManagedRepository = pgTable(
     webhookExternalId: text('webhook_external_id').notNull(),
     status: text('status').notNull().default('connected'),
     lastError: text('last_error'),
+    issuesSyncEnabled: boolean('issues_sync_enabled').notNull().default(false),
+    // Whether an issue created in the project is also created in the repository.
+    newIssuesToProvider: boolean('new_issues_to_provider').notNull().default(true),
+    // Provider `updated_at` of the newest issue the reconcile has read; its next run
+    // asks only for issues changed since then.
+    issuesWatermark: timestamp('issues_watermark', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -1028,6 +1040,10 @@ export const gitManagedRepository = pgTable(
       t.externalId,
     ),
     index('git_managed_repository_project_connection_idx').on(t.projectId, t.connectionId),
+    // A repository syncs its issues with at most one project.
+    uniqueIndex('git_managed_repository_issues_sync_uq')
+      .on(t.connectionId, t.externalId)
+      .where(sql`${t.issuesSyncEnabled}`),
   ],
 );
 
@@ -2028,6 +2044,139 @@ export const issueActivity = pgTable(
     index('issue_activity_issue_idx').on(t.issueId, t.createdAt.desc(), t.id.desc()),
     index('issue_activity_reply_idx').on(t.replyToId),
     index('issue_activity_initiative_idx').on(t.initiativeId, t.createdAt.desc(), t.id.desc()),
+  ],
+);
+
+// Hash of each synced field's value at the last sync.
+export interface IssueSyncFieldHashes {
+  title?: string;
+  description?: string;
+  status?: string;
+  labels?: string;
+  assignee?: string;
+}
+
+// An issue synced with an issue in a managed repository. The link belongs to the
+// issue and stays when the issue moves to another project. Unlinking the repository
+// deletes the links and keeps the issues.
+//
+// synced_hash covers the whole synced state: an incoming change with the same hash is
+// the sync's own write coming back and is ignored. field_hashes tells which side
+// changed a field since the last sync. When both did, the later change wins: the
+// local time is the field's newest issue_activity row, the external time is
+// external_updated_at.
+export const issueSyncLink = pgTable(
+  'issue_sync_link',
+  {
+    id: serial('id').primaryKey(),
+    issueId: integer('issue_id')
+      .notNull()
+      .unique()
+      .references(() => issue.id, { onDelete: 'cascade' }),
+    managedRepositoryId: integer('managed_repository_id')
+      .notNull()
+      .references(() => gitManagedRepository.id, { onDelete: 'cascade' }),
+    externalId: text('external_id').notNull(),
+    externalNumber: integer('external_number').notNull(),
+    externalUrl: text('external_url').notNull(),
+    syncedHash: text('synced_hash').notNull(),
+    fieldHashes: jsonb('field_hashes').$type<IssueSyncFieldHashes>().notNull().default({}),
+    externalUpdatedAt: timestamp('external_updated_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    unique('issue_sync_link_repository_number_uq').on(t.managedRepositoryId, t.externalNumber),
+  ],
+);
+
+// A comment synced with a comment on the linked external issue. external_author_login
+// is set for a comment that came from the provider; its author is the linked user or
+// the connection's bot user.
+export const issueCommentSyncLink = pgTable(
+  'issue_comment_sync_link',
+  {
+    id: serial('id').primaryKey(),
+    activityId: integer('activity_id')
+      .notNull()
+      .unique()
+      .references(() => issueActivity.id, { onDelete: 'cascade' }),
+    issueSyncLinkId: integer('issue_sync_link_id')
+      .notNull()
+      .references(() => issueSyncLink.id, { onDelete: 'cascade' }),
+    externalId: text('external_id').notNull(),
+    externalUrl: text('external_url').notNull(),
+    externalAuthorLogin: text('external_author_login'),
+    syncedHash: text('synced_hash').notNull(),
+    externalUpdatedAt: timestamp('external_updated_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [unique('issue_comment_sync_link_external_uq').on(t.issueSyncLinkId, t.externalId)],
+);
+
+export type IssueSyncOutboxKind = 'issue' | 'comment' | 'close_issue' | 'delete_comment';
+
+// Changes the issue sync still has to send to the provider. A row stays until the push
+// succeeds, so a provider error is retried. `issue` and `comment` rows are written by
+// triggers on issue, issue_label and issue_activity, one row per issue or comment: the
+// push sends the current state. `close_issue` and `delete_comment` rows are written by
+// triggers when a sync link is deleted. They copy the connection, repository and
+// external id, because the link and often the repository are gone by then. A deferred
+// trigger drops them at commit when the issue or comment still exists (an unlink).
+// No foreign keys: a row outlives its issue, and a team delete must not fail on it.
+export const issueSyncOutbox = pgTable(
+  'issue_sync_outbox',
+  {
+    id: serial('id').primaryKey(),
+    kind: text('kind').$type<IssueSyncOutboxKind>().notNull(),
+    issueId: integer('issue_id'),
+    activityId: integer('activity_id'),
+    // An `issue` row for an issue without a link: create the external issue.
+    publish: boolean('publish').notNull().default(false),
+    connectionId: integer('connection_id'),
+    repository: text('repository'),
+    // The provider's id of the repository, to find it again after a rename.
+    repositoryExternalId: text('repository_external_id'),
+    externalId: text('external_id'),
+    attempts: integer('attempts').notNull().default(0),
+    lastError: text('last_error'),
+    nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }).notNull().defaultNow(),
+    // Raised by every new change, so a push only removes the row it read.
+    version: integer('version').notNull().default(0),
+  },
+  (t) => [
+    uniqueIndex('issue_sync_outbox_issue_uq')
+      .on(t.issueId)
+      .where(sql`${t.kind} = 'issue'`),
+    uniqueIndex('issue_sync_outbox_comment_uq')
+      .on(t.activityId)
+      .where(sql`${t.kind} = 'comment'`),
+    index('issue_sync_outbox_due_idx').on(t.nextAttemptAt),
+    index('issue_sync_outbox_issue_idx').on(t.issueId),
+  ],
+);
+
+// Issue and comment webhook deliveries the issue sync still has to apply. The webhook
+// stores a delivery and answers at once; a background run applies the rows of one
+// repository under its lock, in id order per external issue, and deletes each applied
+// row. A failed row is retried after next_attempt_at; NULL means the sync gave up on
+// it, and the row stays with its last_error for 30 days. `event` is the parsed provider
+// event.
+export const issueSyncInbox = pgTable(
+  'issue_sync_inbox',
+  {
+    id: serial('id').primaryKey(),
+    managedRepositoryId: integer('managed_repository_id')
+      .notNull()
+      .references(() => gitManagedRepository.id, { onDelete: 'cascade' }),
+    deliveryId: text('delivery_id'),
+    externalNumber: integer('external_number').notNull(),
+    event: jsonb('event').notNull(),
+    attempts: integer('attempts').notNull().default(0),
+    lastError: text('last_error'),
+    nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }).defaultNow(),
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('issue_sync_inbox_delivery_uq').on(t.managedRepositoryId, t.deliveryId),
+    index('issue_sync_inbox_due_idx').on(t.nextAttemptAt),
   ],
 );
 

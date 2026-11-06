@@ -83,6 +83,29 @@ describe('internal agent route tools', () => {
     expect(tools.create_checklist_items).toBeUndefined();
   });
 
+  it('offers the pull request tools only to an agent that was given them', async () => {
+    const { asOwner } = await setup();
+    const keys = ['get_pull_request_diff', 'comment_on_pull_request'];
+
+    const granted = await toolsFor(asOwner, keys);
+    expect(Object.keys(granted)).toEqual(expect.arrayContaining(keys));
+    const comment = granted.comment_on_pull_request!.inputSchema as unknown as {
+      getJsonSchema(): { properties: Record<string, unknown> };
+    };
+    expect(Object.keys(comment.getJsonSchema().properties).sort()).toEqual([
+      'body',
+      'issueId',
+      'linkId',
+    ]);
+
+    const other = await toolsFor(asOwner, ['create_issue']);
+    for (const key of keys) expect(other[key]).toBeUndefined();
+
+    const catalog = new Map(actionCatalog().map((action) => [action.key, action.permission]));
+    expect(catalog.get('get_pull_request_diff')).toEqual(['repositories', 'edit']);
+    expect(catalog.get('comment_on_pull_request')).toEqual(['repositories', 'edit']);
+  });
+
   it('opens an attachment: a text file as its text, an image as an image part', async () => {
     const { asOwner } = await setup();
     const view = await asOwner.projects({ projectKey: 'MKT' }).get();

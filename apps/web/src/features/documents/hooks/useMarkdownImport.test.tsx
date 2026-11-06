@@ -138,7 +138,7 @@ describe('useMarkdownImport', () => {
 
   it('uploads the ZIP with the parent, toasts the created count and closes', async () => {
     stubImport(
-      new Response(JSON.stringify({ documents: [], createdCount: 3, skipped: [] }), {
+      new Response(JSON.stringify({ pages: [], createdCount: 3, skipped: [] }), {
         status: 201,
       }),
     );
@@ -168,7 +168,7 @@ describe('useMarkdownImport', () => {
 
   it('uploads once when Import is clicked twice', async () => {
     stubImport(
-      new Response(JSON.stringify({ documents: [], createdCount: 1, skipped: [] }), {
+      new Response(JSON.stringify({ pages: [], createdCount: 1, skipped: [] }), {
         status: 201,
       }),
     );

@@ -189,6 +189,7 @@
     "numberedList": "قائمة مرقمة",
     "quote": "اقتباس",
     "codeBlock": "كتلة كود",
+    "mermaidDiagram": "مخطط (Mermaid)",
     "divider": "فاصل",
     "undo": "تراجع",
     "redo": "إعادة",
@@ -205,6 +206,13 @@
     "copyLink": "Copy link to block",
     "linkCopied": "Link copied",
     "copyFailed": "Could not copy the link"
+  },
+  "mermaid": {
+    "editCode": "تعديل الكود",
+    "done": "تم",
+    "copyCode": "نسخ الكود",
+    "codeCopied": "تم نسخ الكود",
+    "copyFailed": "تعذر نسخ الكود"
   },
   "sync": {
     "connecting": "Connecting to the document…",

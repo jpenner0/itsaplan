@@ -1,526 +1,405 @@
-import { Inflate } from 'fflate';
-import { parse as parseYaml } from 'yaml';
+import { posix } from 'node:path';
+import JSZip from 'jszip';
 import { HttpError } from '#shared/lib';
 
-export const MARKDOWN_IMPORT_LIMITS = {
-  zipBytes: 50 * 1024 * 1024,
-  uncompressedBytes: 200 * 1024 * 1024,
-  entries: 20_000,
-  pages: 500,
-  pageChars: 250_000,
-};
-
-// The Docs tree has no depth limit of its own. This cap keeps an import readable in the sidebar.
-export const MARKDOWN_IMPORT_MAX_DEPTH = 10;
-
+const MB = 1024 * 1024;
+export const MAX_ZIP_BYTES = 50 * MB;
+// Bounds the bytes decompressed from one ZIP, so a ZIP bomb stops early.
+export const MAX_UNCOMPRESSED_BYTES = 200 * MB;
+export const MAX_ZIP_ENTRIES = 10_000;
+export const MAX_IMPORT_PAGES = 500;
+export const MAX_PAGE_CHARS = 250_000;
+// Depth of the imported tree alone. The caller adds the depth of the parent page.
+export const MAX_IMPORT_DEPTH = 20;
+// The same limits as the document create body in model.ts.
 const MAX_TITLE_LENGTH = 255;
 const MAX_ICON_LENGTH = 64;
-// UTF-8 needs at most 3 bytes per UTF-16 code unit, plus 3 for a byte order mark.
-const MAX_PAGE_BYTES = MARKDOWN_IMPORT_LIMITS.pageChars * 3 + 3;
-// Deflate expands at most about 1032:1, so a larger declared size is a lie.
-const MAX_DEFLATE_RATIO = 1032;
-// A small slice bounds the output of one inflate step, so the size check stops a bomb early.
-const INFLATE_SLICE_BYTES = 4096;
+// Frontmatter is stored in document metadata, which service.ts caps at 16 KB.
+const MAX_FRONTMATTER_CHARS = 16_384;
+const MAX_FRONTMATTER_NODES = 1_000;
 
-export interface MarkdownImportReference {
+export interface ImportPage {
+  // The .md file the content comes from. For a folder page without one, the folder.
   path: string;
-  kind: 'page' | 'asset';
-}
-
-export interface MarkdownImportPage {
-  /** The folder or `.md` file this page stands for. */
-  path: string;
-  /** The `.md` file the content comes from, `null` for a folder without one. */
-  sourcePath: string | null;
   title: string;
   icon: string | null;
-  frontmatter: Record<string, unknown>;
   content: string;
-  children: MarkdownImportPage[];
-  references: MarkdownImportReference[];
+  frontmatter: Record<string, unknown>;
+  children: ImportPage[];
+  // Resolved ZIP paths of the local files and of the .md pages the content refers to.
+  assetRefs: string[];
+  pageLinks: string[];
 }
 
-export interface MarkdownImportAsset {
+export interface ImportFile {
   path: string;
   filename: string;
   bytes: Uint8Array;
 }
 
-export interface MarkdownImportPlan {
-  pages: MarkdownImportPage[];
-  assets: MarkdownImportAsset[];
+export interface ImportPlan {
+  pages: ImportPage[];
+  files: ImportFile[];
   skipped: string[];
 }
 
-interface ZipEntry {
-  path: string;
-  method: number;
-  crc: number;
-  compressedSize: number;
-  size: number;
-  dataOffset: number;
-}
-
-interface Folder {
+interface TreeNode {
+  key: string;
   name: string;
-  path: string;
-  folders: Map<string, Folder>;
-  files: string[];
+  source: string | null;
+  children: TreeNode[];
 }
 
-const collator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
-const utf8 = new TextDecoder('utf-8', { fatal: true });
-const utf8Lenient = new TextDecoder('utf-8');
+const MARKDOWN = /\.md$/i;
+const naturalOrder = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
 
-/**
- * `maxDepth` is the number of page levels the import may create below its target: 1 allows
- * top-level pages only.
- */
-export function parseMarkdownZip(
-  bytes: Uint8Array,
-  opts: { maxDepth: number },
-): MarkdownImportPlan {
-  if (bytes.length > MARKDOWN_IMPORT_LIMITS.zipBytes) {
-    throw new HttpError(413, 'The ZIP file is larger than 50 MB.');
-  }
-  const markdown = new Map<string, ZipEntry>();
-  const others = new Map<string, ZipEntry>();
-  const skipped = new Set<string>();
-  for (const entry of readCentralDirectory(bytes)) {
-    const hidden = hiddenPrefix(entry.path);
-    if (hidden) skipped.add(hidden);
-    else if (entry.path.toLowerCase().endsWith('.md')) markdown.set(entry.path, entry);
-    else others.set(entry.path, entry);
+// Reads a ZIP of Markdown files into the pages and files to create. Every folder that
+// holds a .md file becomes a page, so a ZIP of one wrapped folder imports as one root
+// page with that folder's name, the same as a folder the browser packs itself.
+export async function readMarkdownZip(data: Uint8Array): Promise<ImportPlan> {
+  const { entries, skipped } = await openZip(data);
+  const budget = { left: MAX_UNCOMPRESSED_BYTES };
+
+  const markdown = [...entries.keys()].filter((path) => MARKDOWN.test(path)).sort();
+  const roots = buildTree(markdown);
+  const pageCount = countNodes(roots);
+  if (pageCount > MAX_IMPORT_PAGES) {
+    throw new HttpError(400, `The import has ${pageCount} pages, the limit is ${MAX_IMPORT_PAGES}`);
   }
 
-  const budget = { used: 0 };
-  const isFile = (path: string) => markdown.has(path) || others.has(path);
-  const referenced = new Set<string>();
-  let pageCount = 0;
-
-  const buildPage = (
-    path: string,
-    sourcePath: string | null,
-    name: string,
-    children: MarkdownImportPage[],
-  ): MarkdownImportPage => {
-    pageCount += 1;
-    if (pageCount > MARKDOWN_IMPORT_LIMITS.pages) {
-      throw new HttpError(413, `The import has more than ${MARKDOWN_IMPORT_LIMITS.pages} pages.`);
-    }
-    if (sourcePath === null) {
-      return {
-        path,
-        sourcePath,
-        title: name,
-        icon: null,
-        frontmatter: {},
-        content: '',
-        children,
-        references: [],
-      };
-    }
-    const entry = markdown.get(sourcePath)!;
-    const tooLong = new HttpError(
-      413,
-      `"${sourcePath}" has more than ${MARKDOWN_IMPORT_LIMITS.pageChars} characters.`,
-    );
-    if (entry.size > MAX_PAGE_BYTES) throw tooLong;
-    const text = decodeUtf8(inflateEntry(bytes, entry, budget), sourcePath);
-    if (text.length > MARKDOWN_IMPORT_LIMITS.pageChars) throw tooLong;
-    const page = parsePage(text, name);
-    const references = new Map<string, MarkdownImportReference>();
-    for (const match of scanReferences(page.content, sourcePath, isFile)) {
-      const kind = markdown.has(match.path) ? 'page' : 'asset';
-      references.set(match.path, { path: match.path, kind });
-      if (kind === 'asset') referenced.add(match.path);
-    }
-    return { path, sourcePath, ...page, children, references: [...references.values()] };
+  assertDeclaredSizes(entries, markdown, budget);
+  const pagePaths = new Set(markdown);
+  const readNode = async (node: TreeNode): Promise<ImportPage> => {
+    const page = node.source
+      ? await readPage(entries, node.source, node.name, budget, pagePaths)
+      : emptyPage(node.key, node.name);
+    for (const child of node.children) page.children.push(await readNode(child));
+    return page;
   };
+  const pages: ImportPage[] = [];
+  for (const root of roots) pages.push(await readNode(root));
 
-  const buildLevel = (
-    folder: Folder,
-    depth: number,
-    ownSource: string | null,
-  ): MarkdownImportPage[] => {
-    const consumed = new Set<string>(ownSource ? [ownSource] : []);
-    const items: { name: string; build: () => MarkdownImportPage }[] = [];
-    for (const sub of folder.folders.values()) {
-      const source = folderContentFile(sub, folder);
-      if (source) consumed.add(source);
-      items.push({
-        name: sub.name,
-        build: () => buildPage(sub.path, source, sub.name, buildLevel(sub, depth + 1, source)),
-      });
-    }
-    for (const file of folder.files) {
-      if (consumed.has(file)) continue;
-      const name = basename(file).slice(0, -3);
-      items.push({ name, build: () => buildPage(file, file, name, []) });
-    }
-    if (items.length > 0 && depth > opts.maxDepth) {
-      throw new HttpError(400, `"${folder.path}" is nested deeper than ${opts.maxDepth} levels.`);
-    }
-    items.sort((a, b) => collator.compare(a.name, b.name) || (a.name < b.name ? -1 : 1));
-    return items.map((item) => item.build());
-  };
-
-  const pages = buildLevel(folderTree([...markdown.keys()]), 1, null);
-
-  const assets: MarkdownImportAsset[] = [];
-  for (const [path, entry] of [...others].sort(([a], [b]) => (a < b ? -1 : 1))) {
-    if (!referenced.has(path)) skipped.add(path);
-    else assets.push({ path, filename: basename(path), bytes: inflateEntry(bytes, entry, budget) });
+  const referenced = new Set(flatten(pages).flatMap((page) => page.assetRefs));
+  const assetPaths = [...referenced].sort();
+  assertDeclaredSizes(entries, assetPaths, budget);
+  const files: ImportFile[] = [];
+  for (const path of assetPaths) {
+    const bytes = await readEntry(entries.get(path)!, budget);
+    files.push({ path, filename: posix.basename(path), bytes });
   }
-  return { pages, assets, skipped: [...skipped].sort() };
+  for (const path of entries.keys()) {
+    if (!MARKDOWN.test(path) && !referenced.has(path)) skipped.add(path);
+  }
+  return { pages, files, skipped: [...skipped].sort() };
 }
 
-/**
- * Replaces each local reference whose resolved path is a key of `urls`. A page link keeps its
- * `#fragment`. Everything else stays as written.
- */
-export function rewriteMarkdownReferences(
-  content: string,
-  sourcePath: string,
+// Rewrites the references listed in a page's assetRefs and pageLinks. `urls` maps a
+// resolved ZIP path to its new URL. A reference to a path without a URL stays unchanged.
+export function rewriteReferences(
+  page: Pick<ImportPage, 'path' | 'content'>,
   urls: ReadonlyMap<string, string>,
 ): string {
-  let result = content;
-  const matches = scanReferences(content, sourcePath, (path) => urls.has(path));
-  for (const match of matches.reverse()) {
-    const url = urls.get(match.path)! + match.fragment;
-    result = result.slice(0, match.start) + url + result.slice(match.end);
-  }
-  return result;
+  return mapReferences(page.content, posix.dirname(page.path), (path) => urls.get(path));
 }
 
-function readCentralDirectory(bytes: Uint8Array): ZipEntry[] {
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  const end = findEndOfCentralDirectory(view);
-  const count = view.getUint16(end + 10, true);
-  const directoryOffset = view.getUint32(end + 16, true);
-  if (count === 0xffff || directoryOffset === 0xffffffff) {
-    throw new HttpError(400, 'ZIP64 archives are not supported.');
+async function openZip(data: Uint8Array) {
+  if (data.byteLength > MAX_ZIP_BYTES) {
+    throw new HttpError(413, `The ZIP file exceeds the ${MAX_ZIP_BYTES / MB} MB limit`);
   }
-  if (count > MARKDOWN_IMPORT_LIMITS.entries) {
+  let zip: JSZip;
+  try {
+    zip = await JSZip.loadAsync(data);
+  } catch {
+    throw new HttpError(400, 'The file is not a valid ZIP archive');
+  }
+  const all = Object.values(zip.files);
+  if (all.length > MAX_ZIP_ENTRIES) {
+    throw new HttpError(400, `The ZIP file has more than ${MAX_ZIP_ENTRIES} entries`);
+  }
+  const entries = new Map<string, JSZip.JSZipObject>();
+  const skipped = new Set<string>();
+  for (const entry of all) {
+    // jszip removes ".." from `name`; the original name is the one to check.
+    const segments = entrySegments(entry.unsafeOriginalName ?? entry.name);
+    const hidden = segments.findIndex((s) => s.startsWith('.') || s === '__MACOSX');
+    if (hidden >= 0) {
+      const isFolder = entry.dir || hidden < segments.length - 1;
+      skipped.add(segments.slice(0, hidden + 1).join('/') + (isFolder ? '/' : ''));
+    } else if (!entry.dir && segments.length > 0) {
+      entries.set(segments.join('/'), entry);
+    }
+  }
+  return { entries, skipped };
+}
+
+function entrySegments(name: string): string[] {
+  const segments = name.split('/').filter((s) => s !== '' && s !== '.');
+  if (
+    name.includes('\\') ||
+    name.startsWith('/') ||
+    /^[a-z]:/i.test(name) ||
+    segments.includes('..')
+  ) {
+    throw new HttpError(400, `The ZIP file contains an unsafe path: "${name.slice(0, 200)}"`);
+  }
+  return segments;
+}
+
+// Folder content comes from index.md, then README.md inside it, then a sibling
+// <folder>.md, matched case-insensitively. That file then is no page of its own. Of
+// names that differ only by case (README.md, readme.md) the first in sorted order is
+// the content and the others stay pages.
+function buildTree(markdown: string[]): TreeNode[] {
+  const byLowerCase = new Map<string, string[]>();
+  for (const path of markdown) {
+    const key = path.toLowerCase();
+    byLowerCase.set(key, [...(byLowerCase.get(key) ?? []), path]);
+  }
+  const folders = new Set<string>();
+  for (const path of markdown) {
+    const parts = path.split('/');
+    for (let i = 1; i < parts.length; i++) folders.add(parts.slice(0, i).join('/'));
+  }
+  const roots: TreeNode[] = [];
+  const folderNodes = new Map<string, TreeNode>();
+  const used = new Set<string>();
+  const attach = (node: TreeNode) => {
+    if (node.key.split('/').length > MAX_IMPORT_DEPTH) {
+      throw new HttpError(400, `"${node.key}" is nested deeper than ${MAX_IMPORT_DEPTH} levels`);
+    }
+    const dir = posix.dirname(node.key);
+    (dir === '.' ? roots : folderNodes.get(dir)!.children).push(node);
+  };
+  const byDepth = [...folders].sort((a, b) => a.split('/').length - b.split('/').length);
+  for (const folder of byDepth) {
+    const source =
+      [`${folder}/index.md`, `${folder}/readme.md`, `${folder}.md`]
+        .flatMap((candidate) => byLowerCase.get(candidate.toLowerCase()) ?? [])
+        .find((path) => !used.has(path)) ?? null;
+    if (source) used.add(source);
+    const node: TreeNode = { key: folder, name: posix.basename(folder), source, children: [] };
+    folderNodes.set(folder, node);
+    attach(node);
+  }
+  for (const path of markdown) {
+    if (used.has(path)) continue;
+    attach({ key: path, name: posix.basename(path), source: path, children: [] });
+  }
+  sortTree(roots);
+  return roots;
+}
+
+function sortTree(nodes: TreeNode[]): void {
+  nodes.sort((a, b) => naturalOrder.compare(a.name, b.name) || (a.name < b.name ? -1 : 1));
+  for (const node of nodes) sortTree(node.children);
+}
+
+function countNodes(nodes: TreeNode[]): number {
+  return nodes.reduce((sum, node) => sum + 1 + countNodes(node.children), 0);
+}
+
+function flatten(pages: ImportPage[]): ImportPage[] {
+  return pages.flatMap((page) => [page, ...flatten(page.children)]);
+}
+
+function emptyPage(path: string, name: string): ImportPage {
+  return {
+    path,
+    title: name.slice(0, MAX_TITLE_LENGTH),
+    icon: null,
+    content: '',
+    frontmatter: {},
+    children: [],
+    assetRefs: [],
+    pageLinks: [],
+  };
+}
+
+async function readPage(
+  entries: Map<string, JSZip.JSZipObject>,
+  path: string,
+  name: string,
+  budget: { left: number },
+  pagePaths: ReadonlySet<string>,
+): Promise<ImportPage> {
+  const bytes = await readEntry(entries.get(path)!, budget);
+  let text: string;
+  try {
+    text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    throw new HttpError(400, `"${path}" is not valid UTF-8`);
+  }
+  const { data, body } = splitFrontmatter(text, path);
+  const { title: rawTitle, icon: rawIcon, ...frontmatter } = data;
+  const frontmatterTitle =
+    typeof rawTitle === 'string' || typeof rawTitle === 'number' ? String(rawTitle).trim() : '';
+  const title = (frontmatterTitle || name.replace(MARKDOWN, '')).slice(0, MAX_TITLE_LENGTH);
+  const trimmedIcon = typeof rawIcon === 'string' ? rawIcon.trim() : '';
+  const icon = trimmedIcon && trimmedIcon.length <= MAX_ICON_LENGTH ? trimmedIcon : null;
+  const content = removeTitleHeading(body, title);
+  if (content.length > MAX_PAGE_CHARS) {
     throw new HttpError(
-      413,
-      `The ZIP file has more than ${MARKDOWN_IMPORT_LIMITS.entries} entries.`,
+      400,
+      `"${path}" exceeds the ${MAX_PAGE_CHARS.toLocaleString('en-US')} character limit`,
     );
   }
-  const entries: ZipEntry[] = [];
-  const seen = new Set<string>();
-  let offset = directoryOffset;
-  for (let i = 0; i < count; i += 1) {
-    if (offset + 46 > bytes.length || view.getUint32(offset, true) !== 0x02014b50) {
-      throw corrupt();
-    }
-    const flags = view.getUint16(offset + 8, true);
-    const nameLength = view.getUint16(offset + 28, true);
-    const next =
-      offset +
-      46 +
-      nameLength +
-      view.getUint16(offset + 30, true) +
-      view.getUint16(offset + 32, true);
-    if (offset + 46 + nameLength > bytes.length) throw corrupt();
-    const rawName = utf8Lenient.decode(bytes.subarray(offset + 46, offset + 46 + nameLength));
-    const entry = {
-      method: view.getUint16(offset + 10, true),
-      crc: view.getUint32(offset + 16, true),
-      compressedSize: view.getUint32(offset + 20, true),
-      size: view.getUint32(offset + 24, true),
-      localOffset: view.getUint32(offset + 42, true),
-    };
-    offset = next;
-    const path = normalizeEntryPath(rawName);
-    if (rawName.endsWith('/') || rawName.endsWith('\\') || path === '') continue;
-    if (seen.has(path)) throw new HttpError(400, `"${path}" appears twice in the ZIP file.`);
-    seen.add(path);
-    if (flags & 1) throw new HttpError(400, `"${path}" is encrypted.`);
-    if (entry.method !== 0 && entry.method !== 8) {
-      throw new HttpError(400, `"${path}" uses an unsupported compression method.`);
-    }
-    const local = entry.localOffset;
-    if (local + 30 > bytes.length || view.getUint32(local, true) !== 0x04034b50) throw corrupt();
-    const dataOffset =
-      local + 30 + view.getUint16(local + 26, true) + view.getUint16(local + 28, true);
-    if (dataOffset + entry.compressedSize > bytes.length) throw corrupt();
-    entries.push({ path, ...entry, dataOffset });
-  }
-  return entries;
+  const assetRefs = new Set<string>();
+  const pageLinks = new Set<string>();
+  mapReferences(content, posix.dirname(path), (target) => {
+    if (pagePaths.has(target)) pageLinks.add(target);
+    else if (entries.has(target)) assetRefs.add(target);
+    return undefined;
+  });
+  return {
+    path,
+    title,
+    icon,
+    content,
+    frontmatter,
+    children: [],
+    assetRefs: [...assetRefs],
+    pageLinks: [...pageLinks],
+  };
 }
 
-function findEndOfCentralDirectory(view: DataView): number {
-  const lowest = Math.max(0, view.byteLength - 22 - 0xffff);
-  for (let offset = view.byteLength - 22; offset >= lowest; offset -= 1) {
-    if (view.getUint32(offset, true) === 0x06054b50) return offset;
-  }
-  throw new HttpError(400, 'The file is not a ZIP archive.');
+// The declared sizes come from the ZIP directory and can lie; readEntry counts the
+// real bytes. This check only refuses an honest oversized ZIP before any inflating.
+function assertDeclaredSizes(
+  entries: Map<string, JSZip.JSZipObject>,
+  paths: string[],
+  budget: { left: number },
+): void {
+  // jszip keeps the declared size on a private field and has no public accessor.
+  const declared = paths.reduce(
+    (sum, path) =>
+      sum +
+      ((entries.get(path) as unknown as { _data?: { uncompressedSize?: number } })._data
+        ?.uncompressedSize ?? 0),
+    0,
+  );
+  if (declared > budget.left) throw uncompressedTooLarge();
 }
 
-function corrupt(): HttpError {
-  return new HttpError(400, 'The ZIP file is damaged.');
-}
-
-function normalizeEntryPath(raw: string): string {
-  const name = raw.replaceAll('\\', '/');
-  // eslint-disable-next-line no-control-regex
-  if (name.startsWith('/') || /^[a-zA-Z]:/.test(name) || /[\u0000-\u001f]/.test(name)) {
-    throw new HttpError(400, `"${raw}" is not a relative path.`);
-  }
-  const segments = name.split('/').filter((segment) => segment !== '' && segment !== '.');
-  if (segments.includes('..')) {
-    throw new HttpError(400, `"${raw}" points outside the folder.`);
-  }
-  return segments.join('/');
-}
-
-function hiddenPrefix(path: string): string | null {
-  const segments = path.split('/');
-  const index = segments.findIndex((s) => s.startsWith('.') || s === '__MACOSX');
-  if (index === -1) return null;
-  const prefix = segments.slice(0, index + 1).join('/');
-  return index === segments.length - 1 ? prefix : `${prefix}/`;
-}
-
-function inflateEntry(bytes: Uint8Array, entry: ZipEntry, budget: { used: number }): Uint8Array {
-  if (budget.used + entry.size > MARKDOWN_IMPORT_LIMITS.uncompressedBytes) {
-    throw new HttpError(413, 'The files in the ZIP file are larger than 200 MB in total.');
-  }
-  budget.used += entry.size;
-  const data = bytes.subarray(entry.dataOffset, entry.dataOffset + entry.compressedSize);
-  let out: Uint8Array;
-  if (entry.method === 0) {
-    if (entry.compressedSize !== entry.size) throw damaged(entry);
-    out = data.slice();
-  } else {
-    if (entry.size > entry.compressedSize * MAX_DEFLATE_RATIO) throw damaged(entry);
-    const chunks: Uint8Array[] = [];
-    let written = 0;
-    let finished = false;
-    const inflater = new Inflate((chunk, final) => {
-      if (written + chunk.length > entry.size) throw damaged(entry);
-      chunks.push(chunk);
-      written += chunk.length;
-      finished = final;
-    });
-    try {
-      let offset = 0;
-      do {
-        const next = offset + INFLATE_SLICE_BYTES;
-        inflater.push(data.subarray(offset, next), next >= data.length);
-        offset = next;
-      } while (offset < data.length);
-    } catch (err) {
-      if (err instanceof HttpError) throw err;
-      throw damaged(entry);
-    }
-    if (!finished || written !== entry.size) throw damaged(entry);
-    out = new Uint8Array(written);
-    let offset = 0;
-    for (const chunk of chunks) {
-      out.set(chunk, offset);
-      offset += chunk.length;
-    }
-  }
-  if (Bun.hash.crc32(out) !== entry.crc) throw damaged(entry);
-  return out;
-}
-
-function damaged(entry: ZipEntry): HttpError {
-  return new HttpError(400, `"${entry.path}" is damaged in the ZIP file.`);
-}
-
-function decodeUtf8(bytes: Uint8Array, path: string): string {
-  try {
-    return utf8.decode(bytes);
-  } catch {
-    throw new HttpError(400, `"${path}" is not valid UTF-8.`);
-  }
-}
-
-function folderTree(paths: string[]): Folder {
-  const root: Folder = { name: '', path: '', folders: new Map(), files: [] };
-  for (const path of paths) {
-    const segments = path.split('/');
-    let folder = root;
-    for (const segment of segments.slice(0, -1)) {
-      let child = folder.folders.get(segment);
-      if (!child) {
-        const childPath = folder.path ? `${folder.path}/${segment}` : segment;
-        child = { name: segment, path: childPath, folders: new Map(), files: [] };
-        folder.folders.set(segment, child);
+function readEntry(entry: JSZip.JSZipObject, budget: { left: number }): Promise<Uint8Array> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    const stream = entry.nodeStream('nodebuffer');
+    stream.on('data', (chunk: Buffer) => {
+      budget.left -= chunk.length;
+      if (budget.left < 0) {
+        (stream as unknown as { destroy(): void }).destroy();
+        reject(uncompressedTooLarge());
+        return;
       }
-      folder = child;
-    }
-    folder.files.push(path);
-  }
-  return root;
+      chunks.push(chunk);
+    });
+    stream.on('error', () => reject(new HttpError(400, `"${entry.name}" could not be read`)));
+    stream.on('end', () => resolve(Buffer.concat(chunks)));
+  });
 }
 
-/** `index.md`, then `README.md` inside the folder, then a sibling `<folder>.md`. */
-function folderContentFile(folder: Folder, parent: Folder): string | null {
-  for (const wanted of ['index.md', 'readme.md']) {
-    const match = folder.files.filter((file) => basename(file).toLowerCase() === wanted).sort()[0];
-    if (match) return match;
-  }
-  return parent.files.find((file) => basename(file).slice(0, -3) === folder.name) ?? null;
+function uncompressedTooLarge(): HttpError {
+  return new HttpError(413, `The ZIP file unpacks to more than ${MAX_UNCOMPRESSED_BYTES / MB} MB`);
 }
 
-function basename(path: string): string {
-  return path.slice(path.lastIndexOf('/') + 1);
-}
+const FRONTMATTER = /^---[ \t]*\r?\n(?:([\s\S]*?)\r?\n)?(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/;
 
-const FRONTMATTER = /^---[ \t]*\n(?:([\s\S]*?)\n)?(?:---|\.\.\.)[ \t]*(?:\n|$)/;
-const ATX_H1 = /^# +(.*?)(?: +#+)? *(?:\n|$)/;
-
-function parsePage(
+// A leading block that is no YAML mapping stays in the content: "---" also opens a
+// Markdown thematic break.
+function splitFrontmatter(
   text: string,
-  fallbackTitle: string,
-): Pick<MarkdownImportPage, 'title' | 'icon' | 'frontmatter' | 'content'> {
-  let content = text.replace(/\r\n?/g, '\n');
-  let frontmatter: Record<string, unknown> = {};
-  const block = FRONTMATTER.exec(content);
-  const data = block ? parseFrontmatter(block[1] ?? '') : null;
-  if (block && data) {
-    frontmatter = data;
-    content = content.slice(block[0].length);
-  }
-
-  let icon: string | null = null;
-  if (typeof frontmatter.icon === 'string') {
-    const value = frontmatter.icon.trim();
-    if (value && value.length <= MAX_ICON_LENGTH) {
-      icon = value;
-      const { icon: _icon, ...rest } = frontmatter;
-      frontmatter = rest;
-    }
-  }
-
-  const rawTitle = frontmatter.title;
-  const fromFrontmatter =
-    typeof rawTitle === 'string' || typeof rawTitle === 'number' ? String(rawTitle).trim() : '';
-  const title = (fromFrontmatter || fallbackTitle).slice(0, MAX_TITLE_LENGTH);
-
-  content = content.replace(/^\n+/, '');
-  const heading = ATX_H1.exec(content);
-  if (heading && heading[1].trim() === title) {
-    content = content.slice(heading[0].length).replace(/^\n+/, '');
-  }
-  return { title, icon, frontmatter, content };
-}
-
-/** A block that is not a YAML mapping stays in the content, so a leading `---` rule survives. */
-function parseFrontmatter(source: string): Record<string, unknown> | null {
-  if (source.trim() === '') return {};
+  path: string,
+): { data: Record<string, unknown>; body: string } {
+  const match = FRONTMATTER.exec(text);
+  if (!match) return { data: {}, body: text };
+  const tooLarge = () => new HttpError(400, `The frontmatter of "${path}" is too large`);
+  if ((match[1]?.length ?? 0) > MAX_FRONTMATTER_CHARS) throw tooLarge();
+  let data: unknown = {};
   try {
-    const value: unknown = parseYaml(source, { schema: 'core' });
-    if (value && typeof value === 'object' && !Array.isArray(value)) {
-      return value as Record<string, unknown>;
-    }
+    if (match[1] !== undefined) data = Bun.YAML.parse(match[1]);
   } catch {
-    // Fall through: the block is not frontmatter.
+    return { data: {}, body: text };
   }
-  return null;
+  if (!isPlainObject(data)) return { data: {}, body: text };
+  // YAML aliases can expand a short text into a huge or cyclic value.
+  let nodes = 0;
+  const walk = (value: unknown): void => {
+    if (++nodes > MAX_FRONTMATTER_NODES) throw tooLarge();
+    if (value !== null && typeof value === 'object') Object.values(value).forEach(walk);
+  };
+  walk(data);
+  return { data, body: text.slice(match[0].length) };
 }
 
-interface ReferenceMatch {
-  start: number;
-  end: number;
-  path: string;
-  fragment: string;
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-const MARKDOWN_LINK = /\]\(\s*(<[^<>\n]*>|[^\s()]*(?:\([^\s()]*\)[^\s()]*)*)/g;
-const HTML_IMG = /<img\b[^<>]*?\ssrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/gi;
-const FENCED_CODE = /^ {0,3}(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:^ {0,3}\1[ \t]*$|(?![\s\S]))/gm;
+function removeTitleHeading(body: string, title: string): string {
+  const rest = body.replace(/^(?:[ \t]*\r?\n)*/, '');
+  const end = rest.indexOf('\n');
+  const line = (end === -1 ? rest : rest.slice(0, end)).replace(/\r$/, '');
+  if (!/^ {0,3}#[ \t]/.test(line)) return body;
+  const heading = line
+    .trim()
+    .slice(1)
+    .replace(/(?:^|[ \t])#+$/, '')
+    .trim();
+  if (heading !== title) return body;
+  return end === -1 ? '' : rest.slice(end + 1).replace(/^(?:[ \t]*\r?\n)*/, '');
+}
 
-function scanReferences(
+// Code fences and code spans are matched first so that references inside them stay
+// untouched. Then: a Markdown link or image destination "](dest", a reference definition
+// "[id]: dest", and an HTML <img src>.
+const REFERENCE =
+  /((?:^ {0,3}(`{3,}|~{3,})[\s\S]*?(?:^ {0,3}\2|(?![\s\S])))|`[^`\n]*`)|(\]\([ \t]*)(<[^>\n]*>|[^\s)]+)|(^ {0,3}\[[^\]\n]+\]:[ \t]*)(<[^>\n]*>|\S+)|(<img\b[^>]{0,1000}?\ssrc[ \t]*=[ \t]*)("[^"]*"|'[^']*'|[^\s>]+)/gim;
+
+function mapReferences(
   content: string,
-  sourcePath: string,
-  isFile: (path: string) => boolean,
-): ReferenceMatch[] {
-  const text = maskCode(content);
-  const candidates: { start: number; raw: string }[] = [];
-  for (const m of text.matchAll(MARKDOWN_LINK)) {
-    candidates.push({ start: m.index + m[0].length - m[1].length, raw: m[1] });
-  }
-  for (const m of text.matchAll(HTML_IMG)) {
-    const raw = m[1] ?? m[2] ?? m[3];
-    const quoted = m[3] === undefined ? 1 : 0;
-    candidates.push({ start: m.index + m[0].length - raw.length - quoted, raw });
-  }
-  const matches: ReferenceMatch[] = [];
-  for (const { start, raw } of candidates) {
-    const resolved = resolveReference(raw, sourcePath);
-    if (resolved && isFile(resolved.path)) {
-      matches.push({ start, end: start + raw.length, ...resolved });
-    }
-  }
-  return matches.sort((a, b) => a.start - b.start);
+  dir: string,
+  replace: (path: string) => string | undefined,
+): string {
+  return content.replace(
+    REFERENCE,
+    (
+      match: string,
+      code: string | undefined,
+      _fence: string | undefined,
+      linkPrefix: string | undefined,
+      linkDest: string | undefined,
+      defPrefix: string | undefined,
+      defDest: string | undefined,
+      imgPrefix: string | undefined,
+      imgSrc: string | undefined,
+    ) => {
+      if (code !== undefined) return match;
+      const prefix = linkPrefix ?? defPrefix ?? imgPrefix ?? '';
+      const raw = linkDest ?? defDest ?? imgSrc ?? '';
+      const open = /^["'<]/.test(raw) ? raw[0] : '';
+      const target = resolveTarget(open ? raw.slice(1, -1) : raw, dir);
+      const url = target && replace(target.path);
+      if (!target || url === undefined) return match;
+      const close = open === '<' ? '>' : open;
+      return `${prefix}${open}${url}${target.fragment}${close}`;
+    },
+  );
 }
 
-/**
- * Replaces fenced code blocks and inline code spans with spaces of the same length, so the
- * reference scan skips them and the indices still match `content`.
- */
-function maskCode(content: string): string {
-  const text = content.replace(FENCED_CODE, (block) => block.replace(/[^\n]/g, ' '));
-  // A code span runs to the next backtick run of the same length in the same paragraph. Indexing
-  // the next such run keeps this linear on pages with many unmatched backticks.
-  const runs = [...text.matchAll(/`+/g)];
-  const blankLines = [...text.matchAll(/\n[ \t]*\n/g)].map((m) => m.index);
-  const runKeys: string[] = [];
-  for (let i = 0, paragraph = 0; i < runs.length; i += 1) {
-    while (paragraph < blankLines.length && blankLines[paragraph] < runs[i].index) paragraph += 1;
-    runKeys.push(`${paragraph}:${runs[i][0].length}`);
-  }
-  const nextSameLength: number[] = [];
-  const latest = new Map<string, number>();
-  for (let i = runs.length - 1; i >= 0; i -= 1) {
-    nextSameLength[i] = latest.get(runKeys[i]) ?? -1;
-    latest.set(runKeys[i], i);
-  }
-  let masked = '';
-  let copied = 0;
-  for (let i = 0; i < runs.length;) {
-    const close = nextSameLength[i];
-    if (close === -1) {
-      i += 1;
-      continue;
-    }
-    const start = runs[i].index;
-    const end = runs[close].index + runs[close][0].length;
-    masked += text.slice(copied, start) + text.slice(start, end).replace(/[^\n]/g, ' ');
-    copied = end;
-    i = close + 1;
-  }
-  return masked + text.slice(copied);
-}
-
-function resolveReference(
-  raw: string,
-  sourcePath: string,
-): { path: string; fragment: string } | null {
-  const url = raw.startsWith('<') ? raw.slice(1, -1).trim() : raw;
-  if (url === '' || /^[a-z][a-z\d+.-]*:/i.test(url) || /^[/#?]/.test(url)) return null;
-  const hash = url.indexOf('#');
-  const fragment = hash === -1 ? '' : url.slice(hash);
-  const target = url.split(/[?#]/, 1)[0];
+// External URLs, anchors and root-relative paths are no file in the ZIP. A query is
+// dropped from a rewritten reference; a #fragment is kept.
+function resolveTarget(dest: string, dir: string): { path: string; fragment: string } | null {
+  if (!dest || /^(?:[a-z][a-z0-9+.-]*:|[#/])/i.test(dest)) return null;
+  const cut = dest.search(/[?#]/);
+  const rawPath = cut === -1 ? dest : dest.slice(0, cut);
+  const hash = dest.indexOf('#');
   let decoded: string;
   try {
-    decoded = decodeURIComponent(target);
+    decoded = decodeURIComponent(rawPath);
   } catch {
-    return null;
+    decoded = rawPath;
   }
-  const segments = sourcePath.split('/').slice(0, -1);
-  for (const segment of decoded.split('/')) {
-    if (segment === '..') {
-      if (segments.length === 0) return null;
-      segments.pop();
-    } else if (segment !== '.' && segment !== '') {
-      segments.push(segment);
-    }
-  }
-  return segments.length > 0 ? { path: segments.join('/'), fragment } : null;
+  const path = posix.normalize(posix.join(dir, decoded));
+  if (path === '..' || path.startsWith('../')) return null;
+  return { path, fragment: hash === -1 ? '' : dest.slice(hash) };
 }

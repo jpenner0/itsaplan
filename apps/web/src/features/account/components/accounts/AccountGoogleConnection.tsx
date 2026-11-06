@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import GoogleIcon from '@/components/common/GoogleIcon';
 import AccountConnectionRow from './AccountConnectionRow';
 import {
-  connectGoogle,
+  connectProvider,
   hasPasswordCredential,
   useDisconnectProvider,
   useLinkedAccountsQuery,
@@ -21,7 +21,8 @@ export default function AccountGoogleConnection() {
   const disconnect = useDisconnectProvider();
   const [connecting, setConnecting] = useState(false);
 
-  const list = accounts ?? [];
+  // A linked GitHub account is no way in, so it does not count here.
+  const list = (accounts ?? []).filter((a) => a.providerId !== 'github');
   const google = list.find((a) => a.providerId === 'google');
   // Passkeys are a sign-in method too, but they are managed on another page and can
   // be removed there; the password is the one this page can reason about.
@@ -30,7 +31,7 @@ export default function AccountGoogleConnection() {
   async function onConnect() {
     setConnecting(true);
     try {
-      await connectGoogle(t('connectFailed'));
+      await connectProvider('google', t('connectFailed'));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('googleConnectFailed'));
     } finally {
@@ -51,10 +52,7 @@ export default function AccountGoogleConnection() {
       onConnect={() => void onConnect()}
       onDisconnect={() => {
         if (!google) return;
-        disconnect.mutate(
-          { providerId: 'google', accountId: google.accountId },
-          { onSuccess: () => toast.success(t('googleDisconnected')) },
-        );
+        disconnect.mutate(google.id, { onSuccess: () => toast.success(t('googleDisconnected')) });
       }}
     />
   );

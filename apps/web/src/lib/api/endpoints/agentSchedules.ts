@@ -3,8 +3,11 @@ import type { AgentRun, AgentRunStatus } from '@/lib/api/endpoints/agents';
 import { pageQuery, type Page, type PageParams } from '@/lib/api/core/paging';
 
 // 'cron' runs on its cron; 'status' runs on an issue each time one enters its column.
-// Any other is a type the hosted build adds, in its own schedule dialog.
-export type AgentScheduleType = string;
+// 'synced_issue_created' runs on an issue the issue sync brings in new, and
+// 'pull_request_opened' on a synced issue a pull request references. Any other is a
+// type the hosted build adds, in its own schedule dialog.
+export type AgentScheduleType =
+  'cron' | 'status' | 'synced_issue_created' | 'pull_request_opened' | (string & {});
 
 // Settings the hosted build keeps on a schedule; {} on a self-hosted instance.
 export type AgentScheduleOptions = Record<string, unknown>;

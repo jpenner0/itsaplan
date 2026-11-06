@@ -189,6 +189,7 @@
     "numberedList": "Нумерований список",
     "quote": "Цитата",
     "codeBlock": "Блок коду",
+    "mermaidDiagram": "Діаграма (Mermaid)",
     "divider": "Роздільник",
     "undo": "Скасувати",
     "redo": "Повторити",
@@ -205,6 +206,13 @@
     "copyLink": "Copy link to block",
     "linkCopied": "Link copied",
     "copyFailed": "Could not copy the link"
+  },
+  "mermaid": {
+    "editCode": "Редагувати код",
+    "done": "Готово",
+    "copyCode": "Копіювати код",
+    "codeCopied": "Код скопійовано",
+    "copyFailed": "Не вдалося скопіювати код"
   },
   "sync": {
     "connecting": "Connecting to the document…",

@@ -2,6 +2,7 @@ import { Elysia } from 'elysia';
 import { HttpError } from '#shared/lib';
 import { errors } from '#shared/responses';
 import { getProjectById } from '#modules/projects/service';
+import { queueIssueSyncEvent } from '#modules/issue-sync/inbox';
 import { handleGitEvent } from './handler';
 import { detectProvider } from './providers';
 import { WebhookAckResponse, webhookBody, webhookParams } from './model';
@@ -41,10 +42,14 @@ async function receive({
 
   const event = provider.parse(payload, headers);
   if (!event) return { ok: true, handled: 'ignored' };
-  if (!found.settings.enabled) return { ok: true, handled: 'disabled' };
   // A provider sends a unique id per delivery and reuses it on redelivery; an id
   // seen before means a replay, which must not repeat its side effects.
-  const deliveryId = provider.deliveryId(headers);
+  const deliveryId = provider.deliveryId(headers) ?? null;
+  // Issue events follow the repository's own issue sync switch.
+  if (event.kind === 'issue' || event.kind === 'issue_comment') {
+    return { ok: true, handled: await queueIssueSyncEvent(found.projectId, deliveryId, event) };
+  }
+  if (!found.settings.enabled) return { ok: true, handled: 'disabled' };
   if (deliveryId && !(await claimGitDelivery(found.projectId, deliveryId)))
     return { ok: true, handled: 'duplicate' };
   const project = await getProjectById(found.projectId);

@@ -246,6 +246,7 @@ export interface IssueWithWatchers extends IssueRelations {
   watchers: IssueWatcher[];
   checklists: Checklist[];
   development: DevelopmentLink[];
+  syncsIssues: boolean;
 }
 
 export interface NewIssueInput {
@@ -481,4 +482,12 @@ export const listIssueAgentRuns = (issueId: number, before?: number) =>
 export const getIssueAgentRunTrace = (issueId: number, runId: number, traceId?: string) =>
   request<IssueAgentRunTrace | null>(
     `/issues/${issueId}/agent-runs/${runId}/trace${traceId == null ? '' : `?traceId=${encodeURIComponent(traceId)}`}`,
+  );
+
+// Creates the GitHub issue of an issue that has none and links the two (409 when it is
+// already synced or its project does not sync).
+export const publishIssue = (issueId: number) =>
+  request<{ issueId: number; externalNumber: number; externalUrl: string }>(
+    `/issues/${issueId}/publish`,
+    { method: 'POST' },
   );
