@@ -103,7 +103,12 @@
     "telegramAccount": "Telegram hesabı",
     "telegramAccountHint": "Telegram bildirimleri, dahil olduğunuz tüm projeler için profilinize bağlı olan hesaba gönderilir.",
     "noTelegramAccount": "Bağlı Telegram hesabı yok",
-    "preferencesSaved": "Bildirim tercihleri kaydedildi"
+    "preferencesSaved": "Bildirim tercihleri kaydedildi",
+    "teams": "Teams",
+    "teamsAccount": "Microsoft Teams webhook",
+    "teamsAccountHint": "Teams notifications go to the Workflows webhook saved in your account settings, for every project you are in.",
+    "noTeamsWebhook": "No Teams webhook connected",
+    "teamsBroken": "Connection broken. Save the URL again."
   },
   "transfer": {
     "actions": {

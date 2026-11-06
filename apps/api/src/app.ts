@@ -199,6 +199,14 @@ export const app = new Elysia()
             description: "The session user's linked Telegram account",
           },
           {
+            name: 'Microsoft Teams',
+            description: "The session user's Microsoft Teams Workflows webhook",
+          },
+          {
+            name: 'Microsoft Teams',
+            description: "The session user's Microsoft Teams Workflows webhook",
+          },
+          {
             name: 'Analytics',
             description: 'Project metrics: stats, pulse, throughput, breakdowns, activity',
           },

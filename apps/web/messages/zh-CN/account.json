@@ -92,7 +92,13 @@
     "telegramConnectedLabel": "已连接",
     "loadFailed": "无法加载关联账户。",
     "connectFailed": "无法连接 Google。",
-    "disconnectFailed": "无法断开此账户。"
+    "disconnectFailed": "无法断开此账户。",
+    "teamsConnected": "Microsoft Teams connected",
+    "teamsDisconnected": "Microsoft Teams disconnected",
+    "teamsDescription": "Receive notifications in a Teams chat or channel through a Workflows webhook.",
+    "teamsBroken": "Connection broken: {error}. Save the URL again.",
+    "teamsSave": "Save",
+    "teamsHelp": "How to create the webhook in Teams"
   },
   "preferences": {
     "label": "偏好设置",

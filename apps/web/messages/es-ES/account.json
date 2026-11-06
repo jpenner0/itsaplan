@@ -92,7 +92,13 @@
     "telegramConnectedLabel": "Conectado",
     "loadFailed": "No se han podido cargar las cuentas conectadas.",
     "connectFailed": "No se ha podido conectar Google.",
-    "disconnectFailed": "No se ha podido desconectar esta cuenta."
+    "disconnectFailed": "No se ha podido desconectar esta cuenta.",
+    "teamsConnected": "Microsoft Teams connected",
+    "teamsDisconnected": "Microsoft Teams disconnected",
+    "teamsDescription": "Receive notifications in a Teams chat or channel through a Workflows webhook.",
+    "teamsBroken": "Connection broken: {error}. Save the URL again.",
+    "teamsSave": "Save",
+    "teamsHelp": "How to create the webhook in Teams"
   },
   "preferences": {
     "label": "Preferencias",

@@ -4,6 +4,7 @@ import { useTranslations } from 'next-intl';
 import FullPageView from '@/components/common/page/FullPageView';
 import AccountGoogleConnection from './components/accounts/AccountGoogleConnection';
 import AccountTelegramConnection from './components/accounts/AccountTelegramConnection';
+import AccountTeamsConnection from './components/accounts/AccountTeamsConnection';
 import { useGoogleAvailable } from './services/accounts.service';
 
 // A provider is only listed when the instance has it configured, so the page never
@@ -17,6 +18,7 @@ export default function AccountAccountsPage() {
       <div className="divide-y">
         {googleAvailable && <AccountGoogleConnection />}
         <AccountTelegramConnection />
+        <AccountTeamsConnection />
       </div>
     </FullPageView>
   );

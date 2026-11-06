@@ -92,7 +92,13 @@
     "telegramConnectedLabel": "已連線",
     "loadFailed": "無法載入關聯帳號。",
     "connectFailed": "無法連線 Google。",
-    "disconnectFailed": "無法斷開此帳號。"
+    "disconnectFailed": "無法斷開此帳號。",
+    "teamsConnected": "Microsoft Teams connected",
+    "teamsDisconnected": "Microsoft Teams disconnected",
+    "teamsDescription": "Receive notifications in a Teams chat or channel through a Workflows webhook.",
+    "teamsBroken": "Connection broken: {error}. Save the URL again.",
+    "teamsSave": "Save",
+    "teamsHelp": "How to create the webhook in Teams"
   },
   "preferences": {
     "label": "偏好設定",

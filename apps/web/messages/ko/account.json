@@ -92,7 +92,13 @@
     "telegramConnectedLabel": "연결됨",
     "loadFailed": "연결된 계정을 불러올 수 없습니다.",
     "connectFailed": "Google에 연결할 수 없습니다.",
-    "disconnectFailed": "이 계정의 연결을 해제할 수 없습니다."
+    "disconnectFailed": "이 계정의 연결을 해제할 수 없습니다.",
+    "teamsConnected": "Microsoft Teams connected",
+    "teamsDisconnected": "Microsoft Teams disconnected",
+    "teamsDescription": "Receive notifications in a Teams chat or channel through a Workflows webhook.",
+    "teamsBroken": "Connection broken: {error}. Save the URL again.",
+    "teamsSave": "Save",
+    "teamsHelp": "How to create the webhook in Teams"
   },
   "preferences": {
     "label": "환경 설정",

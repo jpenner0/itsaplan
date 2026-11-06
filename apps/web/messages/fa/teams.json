@@ -270,7 +270,11 @@
     "telegramBotHint": "رباتی که اعلان‌ها را برای هر پروژه تیم ارسال می‌کند. اعضا چت خود را در تنظیمات شخصی انتخاب می‌کنند. توکن به‌صورت رمزنگاری‌شده ذخیره می‌شود.",
     "botToken": "توکن API ربات (اختیاری)",
     "emailSaved": "ارائه‌دهنده ایمیل ذخیره شد",
-    "telegramSaved": "ارائه‌دهنده Telegram ذخیره شد"
+    "telegramSaved": "ارائه‌دهنده Telegram ذخیره شد",
+    "teams": "Microsoft Teams",
+    "teamsTitle": "Microsoft Teams",
+    "teamsHint": "Let members of the team's projects receive notifications in Teams. Each member connects their own Workflows webhook in their account settings.",
+    "teamsSaved": "Teams setting saved"
   },
   "integrations": {
     "noAccess": "شما به یکپارچه‌سازی‌های این تیم دسترسی ندارید.",

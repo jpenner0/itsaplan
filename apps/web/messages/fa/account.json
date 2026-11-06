@@ -92,7 +92,13 @@
     "telegramConnectedLabel": "متصل",
     "loadFailed": "بارگذاری حساب‌های متصل ممکن نشد.",
     "connectFailed": "اتصال Google ممکن نشد.",
-    "disconnectFailed": "قطع اتصال این حساب ممکن نشد."
+    "disconnectFailed": "قطع اتصال این حساب ممکن نشد.",
+    "teamsConnected": "Microsoft Teams connected",
+    "teamsDisconnected": "Microsoft Teams disconnected",
+    "teamsDescription": "Receive notifications in a Teams chat or channel through a Workflows webhook.",
+    "teamsBroken": "Connection broken: {error}. Save the URL again.",
+    "teamsSave": "Save",
+    "teamsHelp": "How to create the webhook in Teams"
   },
   "preferences": {
     "label": "ترجیحات",

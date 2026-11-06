@@ -8,10 +8,13 @@ import {
   getInstanceEmailConfig,
   getProjectEmailConfig,
   isInstanceBotUsable,
+  markTeamsWebhookBroken,
+  readTeamsWebhookUrl,
   type DeliveryPayload,
   type NotificationConfig,
 } from '@repo/db';
 import { and, eq } from 'drizzle-orm';
+import { postTeamsCard } from '@repo/net/teams-webhook';
 import { sendEmail, emailBody, type EmailConfig, type SendResult } from '@repo/mailer';
 
 // Sends one claimed notification_delivery row over its channel. Email transport lives
@@ -108,9 +111,31 @@ async function sendTelegram(input: SendInput): Promise<SendResult> {
   }
 }
 
+// The recipient is the member's user id; the webhook URL is decrypted here. A permanent
+// failure marks the connection broken, so nothing more is queued until the member saves
+// the URL again.
+async function sendTeams(input: SendInput): Promise<SendResult> {
+  if (!input.config.teams.enabled) {
+    return { ok: false, retryable: false, error: 'teams not enabled' };
+  }
+  if (!input.recipient) return { ok: false, retryable: false, error: 'no recipient' };
+  const url = await readTeamsWebhookUrl(input.recipient);
+  if (!url) return { ok: false, retryable: false, error: 'no teams webhook' };
+  const result = await postTeamsCard(url, {
+    title: input.payload.subject ?? '',
+    text: input.payload.text,
+    url: input.payload.url,
+  });
+  if (!result.ok && !result.retryable) {
+    await markTeamsWebhookBroken(input.recipient, result.error);
+  }
+  return result;
+}
+
 async function sendDelivery(input: SendInput): Promise<SendResult> {
   if (input.channel === 'email') return sendNotificationEmail(input);
   if (input.channel === 'telegram') return sendTelegram(input);
+  if (input.channel === 'teams') return sendTeams(input);
   return { ok: false, retryable: false, error: `unknown channel: ${input.channel}` };
 }
 
