@@ -15,7 +15,9 @@
     "type": "Exécution",
     "types": {
       "cron": "Selon une planification",
-      "status": "Quand un ticket entre dans un état"
+      "status": "Quand un ticket entre dans un état",
+      "synced_issue_created": "Pour une nouvelle issue GitHub",
+      "pull_request_opened": "À l'ouverture d'une pull request"
     },
     "taskOptional": "Tâche (facultatif)",
     "issueTaskPlaceholder": "Rédige les critères d'acceptation dans la description du ticket.",
@@ -82,7 +84,11 @@
     "createAgent": "Créer un agent",
     "empty": "Aucune planification pour l'instant",
     "emptyHint": "Choisissez un agent, une tâche et la fréquence d'exécution.",
-    "deleteMessage": "La planification <v>{name}</v> et son historique d'exécutions seront supprimés. Cette action est irréversible."
+    "deleteMessage": "La planification <v>{name}</v> et son historique d'exécutions seront supprimés. Cette action est irréversible.",
+    "typeHints": {
+      "synced_issue_created": "S'exécute uniquement pour les issues nouvellement créées sur GitHub tant que la synchronisation des issues est active. Pas pour le premier import, ni pour les issues créées sur GitHub par It's a Plan.",
+      "pull_request_opened": "S'exécute quand une pull request qui référence une issue synchronisée est ouverte ou passe de brouillon à prête. Pas à chaque push. Pour lancer une nouvelle revue, mentionnez l'agent dans l'issue."
+    }
   },
   "agents": {
     "empty": "Aucun agent pour l'instant",
@@ -445,7 +451,7 @@
     "nativeAskTeamManager": "Demandez à un propriétaire ou à un gestionnaire de l'équipe de connecter un compte de fournisseur.",
     "nativeConnectTitle": "Connecter {provider}",
     "nativeTokenHint": {
-      "github": "Utilisez un token fine-grained avec les accès Metadata en lecture, Webhooks en écriture et Pull requests en écriture sur les dépôts que vous voulez connecter.",
+      "github": "Utilisez un token fine-grained avec les accès Metadata en lecture, Webhooks en écriture, Pull requests en écriture et Issues en lecture et écriture sur les dépôts que vous voulez connecter. Un token classique nécessite le scope repo (public_repo pour les dépôts publics uniquement) et admin:repo_hook.",
       "gitlab": "Utilisez un token d'accès personnel avec accès à l'API. Seuls les projets où vous êtes Maintainer ou Owner sont listés.",
       "gitea": "Utilisez un token d'accès pouvant administrer les hooks des dépôts que vous voulez connecter.",
       "forgejo": "Utilisez un token d'accès pouvant administrer les hooks des dépôts que vous voulez connecter.",
@@ -499,7 +505,13 @@
     "onOpenHint": "Ne déplace que les tickets non démarrés. Les tickets en cours et fermés ne bougent pas.",
     "onOpenNone": "Aucune action",
     "changeState": "Changer l'état…",
-    "noState": "Aucun état."
+    "noState": "Aucun état.",
+    "issueSyncTitle": "Synchronisation des tickets",
+    "issueSyncOnHint": "L'activer importe une fois tous les tickets GitHub ouverts.",
+    "issueSyncOffHint": "La désactiver supprime seulement les liens. Les tickets restent des deux côtés.",
+    "newIssuesToGithub": "Nouveaux tickets vers GitHub",
+    "newIssuesToGithubHint": "Les tickets créés dans ce projet sont aussi créés sur GitHub.",
+    "issueSyncSaved": "Paramètres de synchronisation des tickets enregistrés"
   },
   "importExport": {
     "import": "Importer",

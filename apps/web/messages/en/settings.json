@@ -15,7 +15,9 @@
     "type": "Runs",
     "types": {
       "cron": "On a schedule",
-      "status": "When an issue enters a state"
+      "status": "When an issue enters a state",
+      "synced_issue_created": "When a new GitHub issue arrives",
+      "pull_request_opened": "When a pull request is opened"
     },
     "taskOptional": "Task (optional)",
     "issueTaskPlaceholder": "Write the acceptance criteria into the issue description.",
@@ -82,7 +84,11 @@
     "createAgent": "Create an agent",
     "empty": "No schedules yet",
     "emptyHint": "Pick an agent, a task, and how often it runs.",
-    "deleteMessage": "The schedule <v>{name}</v> and its run history will be removed. This cannot be undone."
+    "deleteMessage": "The schedule <v>{name}</v> and its run history will be removed. This cannot be undone.",
+    "typeHints": {
+      "synced_issue_created": "Runs only for issues newly created on GitHub while the issue sync is on. Not for the first import, and not for issues It's a Plan created on GitHub itself.",
+      "pull_request_opened": "Runs when a pull request that references a synced issue is opened or changed from draft to ready. Not on every push. To start a new review, mention the agent in the issue."
+    }
   },
   "agents": {
     "empty": "No agents yet",
@@ -445,7 +451,7 @@
     "nativeAskTeamManager": "Ask a team owner or manager to connect a provider account.",
     "nativeConnectTitle": "Connect {provider}",
     "nativeTokenHint": {
-      "github": "Use a fine-grained token with Metadata read, Webhooks write, and Pull requests write access for the repositories you want to connect.",
+      "github": "Use a fine-grained token with Metadata read, Webhooks write, Pull requests write, and Issues read and write access for the repositories you want to connect. A classic token needs the scope repo (public_repo for public repositories only) and admin:repo_hook.",
       "gitlab": "Use a personal access token with API access. Only projects where you are a Maintainer or Owner are listed.",
       "gitea": "Use an access token that can administer hooks in the repositories you want to connect.",
       "forgejo": "Use an access token that can administer hooks in the repositories you want to connect.",
@@ -499,7 +505,13 @@
     "onOpenHint": "Only moves issues that haven't been started. In-progress and closed issues stay put.",
     "onOpenNone": "No action",
     "changeState": "Change state…",
-    "noState": "No state."
+    "noState": "No state.",
+    "issueSyncTitle": "Issues sync",
+    "issueSyncOnHint": "Turning this on imports all open GitHub issues once.",
+    "issueSyncOffHint": "Turning this off only removes the links. Issues stay on both sides.",
+    "newIssuesToGithub": "New issues to GitHub",
+    "newIssuesToGithubHint": "Issues created in this project are also created on GitHub.",
+    "issueSyncSaved": "Issue sync settings saved"
   },
   "importExport": {
     "import": "Import",

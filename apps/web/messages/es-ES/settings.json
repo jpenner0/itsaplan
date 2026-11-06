@@ -15,7 +15,9 @@
     "type": "Se ejecuta",
     "types": {
       "cron": "Según una programación",
-      "status": "Cuando un ticket entra en un estado"
+      "status": "Cuando un ticket entra en un estado",
+      "synced_issue_created": "Con un nuevo issue de GitHub",
+      "pull_request_opened": "Al abrirse un pull request"
     },
     "taskOptional": "Tarea (opcional)",
     "issueTaskPlaceholder": "Escribe los criterios de aceptación en la descripción del ticket.",
@@ -82,7 +84,11 @@
     "createAgent": "Crear un agente",
     "empty": "Todavía no hay programaciones",
     "emptyHint": "Elige un agente, una tarea y cada cuánto se ejecuta.",
-    "deleteMessage": "La programación <v>{name}</v> y su historial de ejecuciones se quitarán. No se puede deshacer."
+    "deleteMessage": "La programación <v>{name}</v> y su historial de ejecuciones se quitarán. No se puede deshacer.",
+    "typeHints": {
+      "synced_issue_created": "Se ejecuta solo para issues creados nuevos en GitHub mientras la sincronización de issues está activada. No en la primera importación ni para issues que It's a Plan creó en GitHub.",
+      "pull_request_opened": "Se ejecuta cuando se abre un pull request que referencia un issue sincronizado o pasa de borrador a listo. No en cada push. Para iniciar una nueva revisión, menciona al agente en el issue."
+    }
   },
   "agents": {
     "empty": "Todavía no hay agentes",
@@ -445,7 +451,7 @@
     "nativeAskTeamManager": "Pide a un propietario o a un gestor del equipo que conecte una cuenta de proveedor.",
     "nativeConnectTitle": "Conectar {provider}",
     "nativeTokenHint": {
-      "github": "Usa un token de gran detalle con Metadata en lectura, Webhooks en escritura y Pull requests en escritura para los repositorios que quieras conectar.",
+      "github": "Usa un token de gran detalle con Metadata en lectura, Webhooks en escritura, Pull requests en escritura e Issues en lectura y escritura para los repositorios que quieras conectar. Un token clásico necesita el ámbito repo (public_repo solo para repositorios públicos) y admin:repo_hook.",
       "gitlab": "Usa un token de acceso personal con acceso de API. Solo se listen los proyectos en los que eres Maintainer u Owner.",
       "gitea": "Usa un token de acceso que pueda administrar los hooks en los repositorios que quieras conectar.",
       "forgejo": "Usa un token de acceso que pueda administrar los hooks en los repositorios que quieras conectar.",
@@ -499,7 +505,13 @@
     "onOpenHint": "Solo mueve los tickets que no se han empezado. Los tickets en curso y cerrados se quedan donde están.",
     "onOpenNone": "Ninguna acción",
     "changeState": "Cambiar el estado…",
-    "noState": "Sin estado."
+    "noState": "Sin estado.",
+    "issueSyncTitle": "Sincronización de incidencias",
+    "issueSyncOnHint": "Al activarla se importan una vez todas las incidencias abiertas de GitHub.",
+    "issueSyncOffHint": "Al desactivarla solo se eliminan los vínculos. Las incidencias se mantienen en ambos lados.",
+    "newIssuesToGithub": "Nuevas incidencias a GitHub",
+    "newIssuesToGithubHint": "Las incidencias creadas en este proyecto también se crean en GitHub.",
+    "issueSyncSaved": "Ajustes de sincronización de incidencias guardados"
   },
   "importExport": {
     "import": "Importar",

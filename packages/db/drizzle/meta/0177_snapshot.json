@@ -1,6 +1,6 @@
 {
-  "id": "6b0719b5-289a-481d-aa8c-7f9daec668be",
-  "prevId": "b87b9f9b-5572-43a8-a130-65f8bd497f5c",
+  "id": "35bb6d7c-e8c3-467f-88d1-7397c1f822f9",
+  "prevId": "f7bed09d-b055-43c1-9206-208d77c4cbb3",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -4830,6 +4830,26 @@
           "primaryKey": false,
           "notNull": false
         },
+        "issues_sync_enabled": {
+          "name": "issues_sync_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "new_issues_to_provider": {
+          "name": "new_issues_to_provider",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "issues_watermark": {
+          "name": "issues_watermark",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -4863,6 +4883,28 @@
             }
           ],
           "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "git_managed_repository_issues_sync_uq": {
+          "name": "git_managed_repository_issues_sync_uq",
+          "columns": [
+            {
+              "expression": "connection_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "external_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"git_managed_repository\".\"issues_sync_enabled\"",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -4964,6 +5006,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "bot_user_id": {
+          "name": "bot_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -5009,10 +5057,31 @@
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
+        },
+        "git_provider_connection_bot_user_id_user_id_fk": {
+          "name": "git_provider_connection_bot_user_id_user_id_fk",
+          "tableFrom": "git_provider_connection",
+          "tableTo": "user",
+          "columnsFrom": [
+            "bot_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "git_provider_connection_bot_user_id_unique": {
+          "name": "git_provider_connection_bot_user_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "bot_user_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -6646,6 +6715,110 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.issue_comment_sync_link": {
+      "name": "issue_comment_sync_link",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "activity_id": {
+          "name": "activity_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "issue_sync_link_id": {
+          "name": "issue_sync_link_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "external_id": {
+          "name": "external_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "external_url": {
+          "name": "external_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "external_author_login": {
+          "name": "external_author_login",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "synced_hash": {
+          "name": "synced_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "external_updated_at": {
+          "name": "external_updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "issue_comment_sync_link_activity_id_issue_activity_id_fk": {
+          "name": "issue_comment_sync_link_activity_id_issue_activity_id_fk",
+          "tableFrom": "issue_comment_sync_link",
+          "tableTo": "issue_activity",
+          "columnsFrom": [
+            "activity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "issue_comment_sync_link_issue_sync_link_id_issue_sync_link_id_fk": {
+          "name": "issue_comment_sync_link_issue_sync_link_id_issue_sync_link_id_fk",
+          "tableFrom": "issue_comment_sync_link",
+          "tableTo": "issue_sync_link",
+          "columnsFrom": [
+            "issue_sync_link_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "issue_comment_sync_link_activity_id_unique": {
+          "name": "issue_comment_sync_link_activity_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "activity_id"
+          ]
+        },
+        "issue_comment_sync_link_external_uq": {
+          "name": "issue_comment_sync_link_external_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "issue_sync_link_id",
+            "external_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.issue_cycle": {
       "name": "issue_cycle",
       "schema": "",
@@ -7844,6 +8017,269 @@
           "onUpdate": "no action"
         }
       },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.issue_sync_link": {
+      "name": "issue_sync_link",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "issue_id": {
+          "name": "issue_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "managed_repository_id": {
+          "name": "managed_repository_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "external_id": {
+          "name": "external_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "external_number": {
+          "name": "external_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "external_url": {
+          "name": "external_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "synced_hash": {
+          "name": "synced_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "field_hashes": {
+          "name": "field_hashes",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "external_updated_at": {
+          "name": "external_updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "issue_sync_link_issue_id_issue_id_fk": {
+          "name": "issue_sync_link_issue_id_issue_id_fk",
+          "tableFrom": "issue_sync_link",
+          "tableTo": "issue",
+          "columnsFrom": [
+            "issue_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "issue_sync_link_managed_repository_id_git_managed_repository_id_fk": {
+          "name": "issue_sync_link_managed_repository_id_git_managed_repository_id_fk",
+          "tableFrom": "issue_sync_link",
+          "tableTo": "git_managed_repository",
+          "columnsFrom": [
+            "managed_repository_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "issue_sync_link_issue_id_unique": {
+          "name": "issue_sync_link_issue_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "issue_id"
+          ]
+        },
+        "issue_sync_link_repository_number_uq": {
+          "name": "issue_sync_link_repository_number_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "managed_repository_id",
+            "external_number"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.issue_sync_outbox": {
+      "name": "issue_sync_outbox",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "issue_id": {
+          "name": "issue_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "activity_id": {
+          "name": "activity_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "publish": {
+          "name": "publish",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "connection_id": {
+          "name": "connection_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "repository": {
+          "name": "repository",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "external_id": {
+          "name": "external_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "attempts": {
+          "name": "attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "last_error": {
+          "name": "last_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "next_attempt_at": {
+          "name": "next_attempt_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {
+        "issue_sync_outbox_issue_uq": {
+          "name": "issue_sync_outbox_issue_uq",
+          "columns": [
+            {
+              "expression": "issue_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"issue_sync_outbox\".\"kind\" = 'issue'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "issue_sync_outbox_comment_uq": {
+          "name": "issue_sync_outbox_comment_uq",
+          "columns": [
+            {
+              "expression": "activity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"issue_sync_outbox\".\"kind\" = 'comment'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "issue_sync_outbox_due_idx": {
+          "name": "issue_sync_outbox_due_idx",
+          "columns": [
+            {
+              "expression": "next_attempt_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "issue_sync_outbox_issue_idx": {
+          "name": "issue_sync_outbox_issue_idx",
+          "columns": [
+            {
+              "expression": "issue_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -9165,7 +9601,7 @@
       "checkConstraints": {
         "notification_delivery_channel_check": {
           "name": "notification_delivery_channel_check",
-          "value": "\"notification_delivery\".\"channel\" IN ('email', 'telegram', 'teams')"
+          "value": "\"notification_delivery\".\"channel\" IN ('email', 'telegram')"
         }
       },
       "isRLSEnabled": false
@@ -11870,13 +12306,6 @@
           "notNull": true,
           "default": "'{}'::jsonb"
         },
-        "teams_events": {
-          "name": "teams_events",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::jsonb"
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -12103,216 +12532,6 @@
           "value": "\"user_preference\".\"issue_activity_view\" IN ('flat', 'grouped')"
         }
       },
-      "isRLSEnabled": false
-    },
-    "public.user_teams_bot_account": {
-      "name": "user_teams_bot_account",
-      "schema": "",
-      "columns": {
-        "user_id": {
-          "name": "user_id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "teams_user_id": {
-          "name": "teams_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "display_name": {
-          "name": "display_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "service_url": {
-          "name": "service_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "conversation_id": {
-          "name": "conversation_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "link_code": {
-          "name": "link_code",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "link_code_expires_at": {
-          "name": "link_code_expires_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "linked_at": {
-          "name": "linked_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "broken_at": {
-          "name": "broken_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "last_error": {
-          "name": "last_error",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "user_teams_bot_account_teams_user_id_unique": {
-          "name": "user_teams_bot_account_teams_user_id_unique",
-          "columns": [
-            {
-              "expression": "teams_user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"user_teams_bot_account\".\"teams_user_id\" IS NOT NULL",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "user_teams_bot_account_link_code_unique": {
-          "name": "user_teams_bot_account_link_code_unique",
-          "columns": [
-            {
-              "expression": "link_code",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"user_teams_bot_account\".\"link_code\" IS NOT NULL",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "user_teams_bot_account_user_id_user_id_fk": {
-          "name": "user_teams_bot_account_user_id_user_id_fk",
-          "tableFrom": "user_teams_bot_account",
-          "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.user_teams_webhook": {
-      "name": "user_teams_webhook",
-      "schema": "",
-      "columns": {
-        "user_id": {
-          "name": "user_id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "ciphertext": {
-          "name": "ciphertext",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "iv": {
-          "name": "iv",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "auth_tag": {
-          "name": "auth_tag",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "host": {
-          "name": "host",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "broken_at": {
-          "name": "broken_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "last_error": {
-          "name": "last_error",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "user_teams_webhook_user_id_user_id_fk": {
-          "name": "user_teams_webhook_user_id_user_id_fk",
-          "tableFrom": "user_teams_webhook",
-          "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.user_telegram_account": {

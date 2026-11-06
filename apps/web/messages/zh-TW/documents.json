@@ -189,6 +189,7 @@
     "numberedList": "編號清單",
     "quote": "引用",
     "codeBlock": "程式碼區塊",
+    "mermaidDiagram": "圖表 (Mermaid)",
     "divider": "分隔線",
     "undo": "復原",
     "redo": "取消復原",
@@ -205,6 +206,13 @@
     "copyLink": "複製區塊連結",
     "linkCopied": "已複製連結",
     "copyFailed": "無法複製連結"
+  },
+  "mermaid": {
+    "editCode": "編輯程式碼",
+    "done": "完成",
+    "copyCode": "複製程式碼",
+    "codeCopied": "已複製程式碼",
+    "copyFailed": "無法複製程式碼"
   },
   "sync": {
     "connecting": "正在連線到文件…",

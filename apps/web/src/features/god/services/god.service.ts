@@ -16,6 +16,7 @@ import {
   type InstanceAuthSettingsPatch,
   type InstanceEmailSettingsPatch,
   type InstanceGoogleSettingsPatch,
+  type InstanceGithubSettingsPatch,
   type InstanceOidcSettingsPatch,
   type InstanceTelegramSettingsPatch,
   type InstanceUserKind,
@@ -26,6 +27,8 @@ import {
   testInstanceEmailSettings,
   getInstanceGoogleSettings,
   updateInstanceGoogleSettings,
+  getInstanceGithubSettings,
+  updateInstanceGithubSettings,
   getInstanceOidcSettings,
   updateInstanceOidcSettings,
   getInstanceTelegramSettings,
@@ -126,6 +129,24 @@ export function useUpdateInstanceGoogleSettings() {
     onSuccess: (data) => {
       qc.setQueryData(qk.instanceGoogleSettings, data);
       invalidateSignInMethods(qc);
+    },
+  });
+}
+
+export function useInstanceGithubSettingsQuery() {
+  return useQuery({
+    queryKey: qk.instanceGithubSettings,
+    queryFn: () => getInstanceGithubSettings(),
+  });
+}
+
+export function useUpdateInstanceGithubSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: InstanceGithubSettingsPatch) => updateInstanceGithubSettings(patch),
+    onSuccess: (data) => {
+      qc.setQueryData(qk.instanceGithubSettings, data);
+      void qc.invalidateQueries({ queryKey: qk.authConfig });
     },
   });
 }

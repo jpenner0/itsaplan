@@ -33,7 +33,7 @@ export interface DevelopmentLink {
   id: number;
   provider: GitProviderKey;
   repository: string;
-  kind: 'pull_request' | 'branch';
+  kind: 'pull_request' | 'branch' | 'issue';
   number: number | null;
   title: string;
   url: string | null;
@@ -112,7 +112,7 @@ export async function listIssueDevelopmentLinks(issueId: number): Promise<Develo
     return {
       ...link,
       provider: link.provider as GitProviderKey,
-      kind: link.kind === 'branch' ? 'branch' : 'pull_request',
+      kind: link.kind === 'branch' || link.kind === 'issue' ? link.kind : 'pull_request',
       state: link.state as PullRequestState,
       pipelineStatus: link.pipelineStatus as PipelineStatus | null,
       checkStatus: aggregateChecks(checks),

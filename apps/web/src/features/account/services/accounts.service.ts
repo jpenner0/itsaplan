@@ -30,11 +30,14 @@ export function useLinkedAccountsQuery() {
   });
 }
 
-// Sends the browser to Google and back. The callback returns to this page, so the
-// user lands where they started with the new connection visible.
-export async function connectGoogle(connectFailed: string): Promise<void> {
+// Sends the browser to Google or GitHub and back. The callback returns to this page,
+// so the user lands where they started with the new connection visible.
+export async function connectProvider(
+  provider: 'google' | 'github',
+  connectFailed: string,
+): Promise<void> {
   const { error } = await linkSocial({
-    provider: 'google',
+    provider,
     callbackURL: `${window.location.origin}/account/accounts`,
   });
   if (error) throw new Error(error.message ?? connectFailed);
@@ -44,8 +47,9 @@ export function useDisconnectProvider() {
   const t = useTranslations('account.accounts');
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { providerId: string; accountId: string }) => {
-      const { error } = await unlinkAccount(input);
+    // better-auth unlinks by the id of the account row, not the provider's account id.
+    mutationFn: async (rowId: string) => {
+      const { error } = await unlinkAccount({ accountId: rowId });
       if (error) throw new Error(error.message ?? t('disconnectFailed'));
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.linkedAccounts }),
@@ -57,6 +61,11 @@ export function useDisconnectProvider() {
 // fails at Google.
 export function useGoogleAvailable(): boolean {
   return useAuthConfigQuery().data?.google ?? false;
+}
+
+// Whether a GitHub account can be linked, for the issue sync. Hidden the same way.
+export function useGithubAvailable(): boolean {
+  return useAuthConfigQuery().data?.github ?? false;
 }
 
 // The password credential counts as a sign-in method, so disconnecting the last

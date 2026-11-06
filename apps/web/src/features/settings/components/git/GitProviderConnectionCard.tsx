@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import SettingsCard from '@/components/common/page/SettingsCard';
 import { useDisconnectGitRepository } from '../../services/settings.service';
+import GitRepositoryIssueSync from './GitRepositoryIssueSync';
 import GitRepositoryPickerDialog from './GitRepositoryPickerDialog';
 import { GIT_PROVIDER_CONFIG } from '@/utils/gitProviderConfig';
 
@@ -57,42 +58,51 @@ export default function GitProviderConnectionCard({
             </p>
           ) : (
             connection.repositories.map((repository) => (
-              <div key={repository.id} className="flex items-center gap-3 px-4 py-3">
-                <GitBranch className="size-4 shrink-0 text-muted-foreground" />
-                <div className="min-w-0 flex-1">
-                  <a
-                    href={repository.webUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="block truncate text-sm font-medium hover:underline"
-                  >
-                    {repository.fullName}
-                    <ExternalLink className="ms-1 inline size-3" />
-                  </a>
-                  {repository.lastError && (
-                    <p
-                      className="mt-0.5 truncate text-xs text-destructive"
-                      title={repository.lastError}
+              <div key={repository.id}>
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <GitBranch className="size-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <a
+                      href={repository.webUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block truncate text-sm font-medium hover:underline"
                     >
-                      {repository.lastError}
-                    </p>
-                  )}
+                      {repository.fullName}
+                      <ExternalLink className="ms-1 inline size-3" />
+                    </a>
+                    {repository.lastError && (
+                      <p
+                        className="mt-0.5 truncate text-xs text-destructive"
+                        title={repository.lastError}
+                      >
+                        {repository.lastError}
+                      </p>
+                    )}
+                  </div>
+                  <Badge variant={repository.status === 'connected' ? 'secondary' : 'destructive'}>
+                    {repository.status === 'connected'
+                      ? t('nativeWebhookActive')
+                      : t('nativeWebhookError')}
+                  </Badge>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={t('nativeDisconnectRepository')}
+                    disabled={disconnectRepository.isPending}
+                    onClick={() => void removeRepository(repository.id)}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
                 </div>
-                <Badge variant={repository.status === 'connected' ? 'secondary' : 'destructive'}>
-                  {repository.status === 'connected'
-                    ? t('nativeWebhookActive')
-                    : t('nativeWebhookError')}
-                </Badge>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={t('nativeDisconnectRepository')}
-                  disabled={disconnectRepository.isPending}
-                  onClick={() => void removeRepository(repository.id)}
-                >
-                  <Trash2 className="size-4" />
-                </Button>
+                {connection.provider === 'github' && (
+                  <GitRepositoryIssueSync
+                    projectKey={projectKey}
+                    connectionId={connection.id}
+                    repository={repository}
+                  />
+                )}
               </div>
             ))
           )}

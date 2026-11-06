@@ -15,7 +15,9 @@
     "type": "실행 조건",
     "types": {
       "cron": "정해진 일정에 따라",
-      "status": "이슈가 특정 상태로 변경될 때"
+      "status": "이슈가 특정 상태로 변경될 때",
+      "synced_issue_created": "새 GitHub 이슈가 생길 때",
+      "pull_request_opened": "풀 리퀘스트가 열릴 때"
     },
     "taskOptional": "작업 (선택 사항)",
     "issueTaskPlaceholder": "승인 기준을 이슈 설명에 작성하세요.",
@@ -82,7 +84,11 @@
     "createAgent": "AI 에이전트 생성",
     "empty": "아직 일정이 없습니다",
     "emptyHint": "AI 에이전트와 작업을 선택하고 실행 주기를 설정하세요.",
-    "deleteMessage": "<v>{name}</v> 일정과 실행 기록이 삭제됩니다. 이 작업은 되돌릴 수 없습니다."
+    "deleteMessage": "<v>{name}</v> 일정과 실행 기록이 삭제됩니다. 이 작업은 되돌릴 수 없습니다.",
+    "typeHints": {
+      "synced_issue_created": "이슈 동기화가 켜져 있는 동안 GitHub에서 새로 만들어진 이슈에만 실행됩니다. 첫 가져오기나 It's a Plan이 GitHub에 직접 만든 이슈에는 실행되지 않습니다.",
+      "pull_request_opened": "동기화된 이슈를 참조하는 풀 리퀘스트가 열리거나 초안에서 준비 상태로 바뀔 때 실행됩니다. 푸시할 때마다 실행되지는 않습니다. 새 리뷰를 시작하려면 이슈에서 에이전트를 멘션하세요."
+    }
   },
   "agents": {
     "empty": "아직 AI 에이전트가 없습니다",
@@ -445,7 +451,7 @@
     "nativeAskTeamManager": "팀 소유자 또는 관리자에게 공급자 계정 연결을 요청하세요.",
     "nativeConnectTitle": "{provider} 연결",
     "nativeTokenHint": {
-      "github": "연결할 저장소에 대해 Metadata 읽기, Webhooks 쓰기 및 Pull requests 쓰기 권한이 있는 Fine-grained token을 사용하세요.",
+      "github": "연결할 저장소에 대해 Metadata 읽기, Webhooks 쓰기, Pull requests 쓰기, Issues 읽기 및 쓰기 권한이 있는 Fine-grained token을 사용하세요. 클래식 토큰에는 repo 범위(공개 저장소만이면 public_repo)와 admin:repo_hook 범위가 필요합니다.",
       "gitlab": "API 접근 권한이 있는 Personal Access Token을 사용하세요. Maintainer 또는 Owner 권한이 있는 프로젝트만 표시됩니다.",
       "gitea": "연결할 저장소의 웹훅을 관리할 수 있는 Access Token을 사용하세요.",
       "forgejo": "연결할 저장소의 웹훅을 관리할 수 있는 Access Token을 사용하세요.",
@@ -499,7 +505,13 @@
     "onOpenHint": "아직 시작되지 않은 이슈만 이동합니다. 진행 중이거나 종료된 이슈는 그대로 유지됩니다.",
     "onOpenNone": "동작 없음",
     "changeState": "상태 변경…",
-    "noState": "상태 없음"
+    "noState": "상태 없음",
+    "issueSyncTitle": "이슈 동기화",
+    "issueSyncOnHint": "켜면 열려 있는 모든 GitHub 이슈를 한 번 가져옵니다.",
+    "issueSyncOffHint": "끄면 연결만 제거됩니다. 이슈는 양쪽에 그대로 남습니다.",
+    "newIssuesToGithub": "새 이슈를 GitHub로",
+    "newIssuesToGithubHint": "이 프로젝트에서 만든 이슈는 GitHub에도 만들어집니다.",
+    "issueSyncSaved": "이슈 동기화 설정을 저장했습니다"
   },
   "importExport": {
     "import": "가져오기",

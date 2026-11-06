@@ -2,8 +2,9 @@ import { randomInt } from 'node:crypto';
 import { createWorkspace, db } from '@repo/db';
 import { and, eq, gt, isNull, sql, type SQL } from 'drizzle-orm';
 import { betterAuth, type BetterAuthPlugin } from 'better-auth';
-import { createAuthMiddleware, APIError } from 'better-auth/api';
+import { createAuthMiddleware, APIError, getOAuthState, getSessionFromCtx } from 'better-auth/api';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import type { GithubProfile } from 'better-auth/social-providers';
 import { passkey } from '@better-auth/passkey';
 import { apiKey } from '@better-auth/api-key';
 import { mcp } from '@better-auth/mcp';
@@ -21,7 +22,8 @@ import {
   hasPendingInvite,
   hasExpiredInvite,
   getGoogleConfig,
-  isGoogleUsable,
+  getGithubConfig,
+  isOAuthAppUsable,
   getOidcConfig,
   isOidcUsable,
   isAccountDeactivated,
@@ -274,9 +276,86 @@ async function refreshGoogleOptions(): Promise<boolean> {
     const config = await getGoogleConfig();
     googleOptions.clientId = config.clientId;
     googleOptions.clientSecret = config.clientSecret;
-    return isGoogleUsable(config);
+    return isOAuthAppUsable(config);
   } catch (error) {
     console.error('[auth] could not read the Google credentials:', error);
+    return false;
+  }
+}
+
+// The callback URL to register on the GitHub OAuth app; god mode shows it for copying.
+export const GITHUB_REDIRECT_URI = `${apiPublicUrl}/api/auth/callback/github`;
+
+// GitHub signs people in, and links an identity to a signed-in account for the issue
+// sync. The link flow asks for `read:user` only: GitHub shows no private address, so the
+// profile reports the linked account's own address as verified, and better-auth links
+// only a verified address equal to the account's. Sign-in additionally asks for
+// `user:email` (the sign-in button sends the scope) and takes the primary verified
+// address from /user/emails, so an unverified address never reaches the account match.
+async function githubGet<T>(path: string, accessToken: string): Promise<T | null> {
+  const response = await fetch(`https://api.github.com${path}`, {
+    headers: { authorization: `Bearer ${accessToken}`, 'user-agent': "It's a Plan" },
+  });
+  return response.ok ? ((await response.json()) as T) : null;
+}
+
+async function githubUserInfo(token: { accessToken?: string }) {
+  if (!token.accessToken) return null;
+  const profile = await githubGet<GithubProfile>('/user', token.accessToken);
+  if (!profile) return null;
+  const link = (await getOAuthState())?.link;
+  let email = link?.email;
+  if (!link) {
+    const emails = await githubGet<{ email: string; primary: boolean; verified: boolean }[]>(
+      '/user/emails',
+      token.accessToken,
+    );
+    email = emails?.find((entry) => entry.primary && entry.verified)?.email;
+  }
+  if (!email) return null;
+  return {
+    user: {
+      name: profile.name || profile.login,
+      email,
+      emailVerified: true,
+      image: profile.avatar_url,
+    },
+    data: profile,
+  };
+}
+
+// Same contract as googleOptions: the provider keeps this object by reference.
+const githubOptions = {
+  clientId: '',
+  clientSecret: '',
+  redirectURI: GITHUB_REDIRECT_URI,
+  disableDefaultScope: true,
+  scope: ['read:user'],
+  getUserInfo: githubUserInfo,
+};
+
+const isGithub = (row: { providerId: string }) => row.providerId === 'github';
+
+function accountsOf(userId: string) {
+  return db
+    .select({ id: schema.account.id, providerId: schema.account.providerId })
+    .from(schema.account)
+    .where(eq(schema.account.userId, userId));
+}
+
+function withoutGithubTokens<T extends { providerId?: string }>(account: T): T {
+  if (account.providerId !== 'github') return account;
+  return { ...account, accessToken: null, refreshToken: null, idToken: null };
+}
+
+async function refreshGithubOptions(): Promise<boolean> {
+  try {
+    const config = await getGithubConfig();
+    githubOptions.clientId = config.clientId;
+    githubOptions.clientSecret = config.clientSecret;
+    return isOAuthAppUsable(config);
+  } catch (error) {
+    console.error('[auth] could not read the GitHub credentials:', error);
     return false;
   }
 }
@@ -376,7 +455,7 @@ const PROVIDER_RETURN = /\/(callback|acs)\//;
 async function resolveTrustedProviders(request?: Request): Promise<string[]> {
   if (!request || !PROVIDER_RETURN.test(new URL(request.url).pathname)) return [];
   trustProviderEmails = (await getAuthSettings()).trustProviderEmails;
-  return trustProviderEmails ? ['google', OIDC_PROVIDER_ID] : [];
+  return trustProviderEmails ? ['google', 'github', OIDC_PROVIDER_ID] : [];
 }
 
 // Whether a new account has to confirm its address before it gets a session. An
@@ -634,6 +713,10 @@ function createAuth() {
         await refreshGoogleOptions();
         return googleOptions;
       },
+      github: async () => {
+        await refreshGithubOptions();
+        return githubOptions;
+      },
     },
 
     // A provider address that already has an account signs into it and gains a linked
@@ -734,7 +817,6 @@ function createAuth() {
         if (ctx.path === '/link-social' && provider === OIDC_PROVIDER_ID) {
           throw new APIError('FORBIDDEN', { message: 'Single sign-on cannot be linked' });
         }
-
         // Both halves of an OAuth round trip: starting it and coming back from it. This
         // is where the stored settings are loaded into the provider, so a request never
         // runs on a value the owner has since changed. The OIDC refusal carries a code
@@ -754,6 +836,26 @@ function createAuth() {
             throw new APIError('FORBIDDEN', {
               message: 'Google sign-in is disabled on this instance',
             });
+          }
+          return;
+        }
+        if (provider === 'github') {
+          if (!(await refreshGithubOptions())) {
+            throw new APIError('FORBIDDEN', {
+              code: 'GITHUB_DISABLED',
+              message: 'GitHub is not configured on this instance',
+            });
+          }
+          // The sync maps a member to exactly one GitHub user. better-auth refuses only
+          // the same GitHub user twice, so a second one is refused here.
+          if (ctx.path === '/link-social') {
+            const session = await getSessionFromCtx(ctx);
+            if (session && (await accountsOf(session.user.id)).some(isGithub)) {
+              throw new APIError('CONFLICT', {
+                code: 'GITHUB_ALREADY_LINKED',
+                message: 'A GitHub account is already linked. Disconnect it first.',
+              });
+            }
           }
           return;
         }
@@ -805,6 +907,24 @@ function createAuth() {
     },
 
     databaseHooks: {
+      // The GitHub row only names the identity. Every write to GitHub uses the team's
+      // token, so the user's is not kept.
+      account: {
+        create: {
+          // Checked again where the row is written: two flows started before either
+          // finished both pass the check at the start of /link-social.
+          before: async (account) => {
+            if (isGithub(account) && (await accountsOf(account.userId)).some(isGithub)) {
+              throw new APIError('CONFLICT', {
+                code: 'GITHUB_ALREADY_LINKED',
+                message: 'A GitHub account is already linked. Disconnect it first.',
+              });
+            }
+            return { data: withoutGithubTokens(account) };
+          },
+        },
+        update: { before: async (account) => ({ data: withoutGithubTokens(account) }) },
+      },
       user: {
         create: {
           // Every account creation passes here, whichever method made it, so this is
@@ -1064,6 +1184,9 @@ export {
   setGoogleSettings,
   getGoogleConfig,
   hasConfiguredGoogle,
+  getGithubSettings,
+  setGithubSettings,
+  hasConfiguredGithub,
   getOidcSettings,
   setOidcSettings,
   getOidcConfig,
@@ -1084,9 +1207,9 @@ export type {
   AuthSettings,
   InstanceEmailDto,
   InstanceEmailPatch,
-  InstanceGoogleDto,
-  InstanceGooglePatch,
-  InstanceGoogleConfig,
+  InstanceOAuthAppDto,
+  InstanceOAuthAppPatch,
+  InstanceOAuthAppConfig,
   InstanceOidcDto,
   InstanceOidcPatch,
   InstanceOidcConfig,

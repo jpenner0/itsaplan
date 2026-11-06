@@ -123,6 +123,8 @@ export interface FeedItem {
   createdAt: string;
   // Set once a comment is edited; null while it is in its author's original words.
   editedAt: string | null;
+  // Where a comment written on GitHub came from; null for any other entry.
+  external: { login: string; url: string } | null;
 }
 
 // Opaque keyset cursor returned by the feed endpoint; pass it back to load the

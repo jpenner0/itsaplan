@@ -15,7 +15,9 @@
     "type": "اجراها",
     "types": {
       "cron": "طبق زمان‌بندی",
-      "status": "وقتی تسک وارد یک وضعیت می‌شود"
+      "status": "وقتی تسک وارد یک وضعیت می‌شود",
+      "synced_issue_created": "هنگام ایجاد issue جدید در GitHub",
+      "pull_request_opened": "هنگام باز شدن pull request"
     },
     "taskOptional": "وظیفه (اختیاری)",
     "issueTaskPlaceholder": "معیارهای پذیرش را در توضیحات تسک بنویس.",
@@ -82,7 +84,11 @@
     "createAgent": "ایجاد ایجنت",
     "empty": "هنوز زمان‌بندی‌ای نیست",
     "emptyHint": "یک ایجنت، یک وظیفه و میزان تکرار آن را انتخاب کنید.",
-    "deleteMessage": "زمان‌بندی <v>{name}</v> و تاریخچه اجرای آن حذف می‌شود. این کار قابل بازگشت نیست."
+    "deleteMessage": "زمان‌بندی <v>{name}</v> و تاریخچه اجرای آن حذف می‌شود. این کار قابل بازگشت نیست.",
+    "typeHints": {
+      "synced_issue_created": "فقط برای issueهایی اجرا می‌شود که تازه در GitHub ساخته شده‌اند و همگام‌سازی issue روشن است. نه برای واردسازی اول و نه برای issueهایی که خود It's a Plan در GitHub ساخته است.",
+      "pull_request_opened": "وقتی pull requestی که به issue همگام‌شده ارجاع دارد باز شود یا از پیش‌نویس به آماده تغییر کند اجرا می‌شود. نه با هر push. برای شروع بازبینی جدید، عامل را در issue نام ببرید."
+    }
   },
   "agents": {
     "empty": "هنوز ایجنتی نیست",
@@ -445,7 +451,7 @@
     "nativeAskTeamManager": "از یک مالک یا مدیر تیم بخواهید یک حساب ارائه‌دهنده متصل کند.",
     "nativeConnectTitle": "اتصال {provider}",
     "nativeTokenHint": {
-      "github": "از یک توکن fine-grained با دسترسی Metadata read، Webhooks write و Pull requests write برای مخازنی که می‌خواهید متصل کنید استفاده کنید.",
+      "github": "از یک توکن fine-grained با دسترسی Metadata read، Webhooks write، Pull requests write و Issues read and write برای مخازنی که می‌خواهید متصل کنید استفاده کنید. توکن کلاسیک به scope با نام repo (فقط برای مخازن عمومی public_repo) و admin:repo_hook نیاز دارد.",
       "gitlab": "از یک personal access token با دسترسی API استفاده کنید. فقط پروژه‌هایی که در آن‌ها Maintainer یا Owner هستید فهرست می‌شوند.",
       "gitea": "از یک access token استفاده کنید که بتواند هوک‌ها را در مخازنی که می‌خواهید متصل کنید مدیریت کند.",
       "forgejo": "از یک access token استفاده کنید که بتواند هوک‌ها را در مخازنی که می‌خواهید متصل کنید مدیریت کند.",
@@ -499,7 +505,13 @@
     "onOpenHint": "فقط تسک‌هایی را جابه‌جا می‌کند که شروع نشده‌اند. تسک‌های در حال انجام و بسته‌شده تغییر نمی‌کنند.",
     "onOpenNone": "بدون اقدام",
     "changeState": "تغییر وضعیت…",
-    "noState": "بدون وضعیت."
+    "noState": "بدون وضعیت.",
+    "issueSyncTitle": "همگام‌سازی مسائل",
+    "issueSyncOnHint": "با روشن کردن آن، همه مسائل باز GitHub یک بار وارد می‌شوند.",
+    "issueSyncOffHint": "با خاموش کردن فقط پیوندها حذف می‌شوند. مسائل در هر دو طرف می‌مانند.",
+    "newIssuesToGithub": "مسائل جدید به GitHub",
+    "newIssuesToGithubHint": "مسائلی که در این پروژه ساخته می‌شوند در GitHub هم ساخته می‌شوند.",
+    "issueSyncSaved": "تنظیمات همگام‌سازی مسائل ذخیره شد"
   },
   "importExport": {
     "import": "ورود",

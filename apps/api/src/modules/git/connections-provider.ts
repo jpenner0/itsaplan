@@ -179,12 +179,19 @@ export function providerErrorMessage(
   return `${label} request failed with status ${status}.`;
 }
 
-async function providerRequest(
+// `tolerate` lists extra statuses the caller handles itself instead of getting an error.
+export async function providerRequest(
   input: ProviderConnectionInput,
   path: string,
-  init: RequestInit & { allowMissing?: boolean } = {},
+  init: RequestInit & {
+    allowMissing?: boolean;
+    tolerate?: number[];
+    accept?: string;
+    maxBytes?: number;
+  } = {},
 ): Promise<Response> {
   const headers = providerHeaders(input.provider, input.token);
+  if (init.accept) headers.set('accept', init.accept);
   if (init.body !== undefined) headers.set('content-type', 'application/json');
   let response: Response;
   try {
@@ -193,6 +200,8 @@ async function providerRequest(
       headers,
       body: init.body as string | undefined,
       timeoutMs: 15_000,
+      maxBytes: init.maxBytes,
+      truncateBody: init.maxBytes !== undefined,
     });
   } catch (err) {
     if (err instanceof HttpError) throw err;
@@ -202,7 +211,7 @@ async function providerRequest(
     );
   }
   const missing = response.status === 404 && (init.method === 'DELETE' || init.allowMissing);
-  if (!response.ok && !missing) {
+  if (!response.ok && !missing && !init.tolerate?.includes(response.status)) {
     const body = record(
       await response
         .clone()
@@ -417,7 +426,7 @@ export async function getProviderRepository(
   return repository;
 }
 
-function githubRepoPath(fullName: string): string {
+export function githubRepoPath(fullName: string): string {
   const parts = fullName.split('/');
   if (parts.length !== 2 || parts.some((part) => !part))
     throw new HttpError(400, 'Invalid repository name');
@@ -812,7 +821,7 @@ function providerWebhookApi(
     body: (create) => ({
       ...(create ? { name: 'web' } : {}),
       active: true,
-      events: ['pull_request', 'check_run', 'create', 'delete'],
+      events: ['pull_request', 'check_run', 'create', 'delete', 'issues', 'issue_comment'],
       config: { url: payloadUrl, content_type: 'json', insecure_ssl: '0', secret },
     }),
   };
@@ -871,6 +880,36 @@ export async function deleteProviderWebhook(
             : githubRepoPath(repository.fullName)
         }/hooks/${encodeURIComponent(webhookExternalId)}`;
   await providerRequest(input, path, { method: 'DELETE' });
+}
+
+export interface ProviderPullRequestDiff {
+  diff: string;
+  truncated: boolean;
+}
+
+// Reads at most `maxBytes` of the unified diff. One byte more is requested to tell a
+// diff of exactly that size from a longer one.
+export async function getProviderPullRequestDiff(
+  input: ProviderConnectionInput,
+  repository: ProviderRepository,
+  number: number,
+  maxBytes: number,
+): Promise<ProviderPullRequestDiff> {
+  if (input.provider !== 'github')
+    throw new HttpError(400, 'Reading a pull request diff supports GitHub only');
+  const response = await providerRequest(
+    input,
+    `${githubRepoPath(repository.fullName)}/pulls/${number}`,
+    { accept: 'application/vnd.github.diff', maxBytes: maxBytes + 1, tolerate: [406] },
+  );
+  // GitHub answers 406 when a diff exceeds its own size limit.
+  if (response.status === 406)
+    throw new HttpError(400, 'GitHub does not return a diff for a pull request this large');
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  const truncated = bytes.length > maxBytes;
+  // `stream: true` drops a multi-byte character cut at the limit instead of emitting U+FFFD.
+  const diff = new TextDecoder().decode(bytes.subarray(0, maxBytes), { stream: truncated });
+  return { diff, truncated };
 }
 
 export async function createPullRequestComment(

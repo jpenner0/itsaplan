@@ -15,7 +15,9 @@
     "type": "Çalışma kuralı",
     "types": {
       "cron": "Bir zaman çizelgesine göre",
-      "status": "Bir iş belirli bir duruma girdiğinde"
+      "status": "Bir iş belirli bir duruma girdiğinde",
+      "synced_issue_created": "Yeni bir GitHub issue'su geldiğinde",
+      "pull_request_opened": "Bir pull request açıldığında"
     },
     "taskOptional": "Görev (isteğe bağlı)",
     "issueTaskPlaceholder": "Kabul kriterlerini işin açıklamasına yazın.",
@@ -82,7 +84,11 @@
     "createAgent": "Ajan oluştur",
     "empty": "Henüz zamanlama yok",
     "emptyHint": "Bir ajan, bir görev ve ne sıklıkla çalışacağını seçin.",
-    "deleteMessage": "<v>{name}</v> zamanlaması ve çalışma geçmişi kaldırılacaktır. Bu işlem geri alınamaz."
+    "deleteMessage": "<v>{name}</v> zamanlaması ve çalışma geçmişi kaldırılacaktır. Bu işlem geri alınamaz.",
+    "typeHints": {
+      "synced_issue_created": "Yalnızca issue senkronizasyonu açıkken GitHub'da yeni oluşturulan issue'lar için çalışır. İlk içe aktarma için ve It's a Plan'in GitHub'da kendisinin oluşturduğu issue'lar için çalışmaz.",
+      "pull_request_opened": "Senkronize edilmiş bir issue'ya başvuran bir pull request açıldığında veya taslaktan hazıra alındığında çalışır. Her push'ta değil. Yeni bir inceleme başlatmak için issue'da ajandan bahsedin."
+    }
   },
   "agents": {
     "empty": "Henüz ajan yok",
@@ -445,7 +451,7 @@
     "nativeAskTeamManager": "Sağlayıcı hesabı bağlaması için bir takım sahibine veya yöneticisine danışın.",
     "nativeConnectTitle": "{provider} bağla",
     "nativeTokenHint": {
-      "github": "Bağlamak istediğiniz depolar için Metadata (read), Webhooks (write) ve Pull requests (write) izinlerine sahip ayrıntılı (fine-grained) bir belirteç kullanın.",
+      "github": "Bağlamak istediğiniz depolar için Metadata (read), Webhooks (write), Pull requests (write) ve Issues (read and write) izinlerine sahip ayrıntılı (fine-grained) bir belirteç kullanın. Klasik belirteç için repo kapsamı (yalnızca herkese açık depolar için public_repo) ve admin:repo_hook gerekir.",
       "gitlab": "API erişimine sahip bir kişisel erişim belirteci kullanın. Yalnızca Maintainer veya Owner olduğunuz projeler listelenir.",
       "gitea": "Bağlamak istediğiniz depolardaki kancaları (hooks) yönetebilen bir erişim belirteci kullanın.",
       "forgejo": "Bağlamak istediğiniz depolardaki kancaları yönetebilen bir erişim belirteci kullanın.",
@@ -499,7 +505,13 @@
     "onOpenHint": "Yalnızca henüz başlanmamış işleri taşır. Devam eden ve kapalı işler yerinde kalır.",
     "onOpenNone": "İşlem yapma",
     "changeState": "Durumu değiştir…",
-    "noState": "Durum yok."
+    "noState": "Durum yok.",
+    "issueSyncTitle": "Sorun senkronizasyonu",
+    "issueSyncOnHint": "Açıldığında GitHub'daki tüm açık sorunlar bir kez içe aktarılır.",
+    "issueSyncOffHint": "Kapatıldığında yalnızca bağlantılar kaldırılır. Sorunlar her iki tarafta da kalır.",
+    "newIssuesToGithub": "Yeni sorunlar GitHub'a",
+    "newIssuesToGithubHint": "Bu projede oluşturulan sorunlar GitHub'da da oluşturulur.",
+    "issueSyncSaved": "Sorun senkronizasyonu ayarları kaydedildi"
   },
   "importExport": {
     "import": "İçe Aktar",

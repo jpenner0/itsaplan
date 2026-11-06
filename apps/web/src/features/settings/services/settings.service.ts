@@ -38,6 +38,7 @@ import {
   listAvailableGitRepositories,
   connectGitRepositories,
   disconnectGitRepository,
+  updateGitIssueSync,
 } from '@/lib/api/endpoints/git';
 import {
   type CreateImportJobInput,
@@ -452,4 +453,16 @@ export function useUpdateIssueTemplate(projectKey: string) {
 
 export function useDeleteIssueTemplate(projectKey: string) {
   return useProjectMutation(projectKey, (id: number) => deleteIssueTemplate(projectKey, id));
+}
+
+export function useUpdateGitIssueSync(projectKey: string, connectionId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      repositoryId: number;
+      patch: { issuesSyncEnabled?: boolean; newIssuesToProvider?: boolean };
+    }) => updateGitIssueSync(projectKey, connectionId, input.repositoryId, input.patch),
+    meta: { suppressErrorToast: true },
+    onSettled: () => qc.invalidateQueries({ queryKey: qk.gitConnections(projectKey) }),
+  });
 }

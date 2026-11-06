@@ -177,6 +177,7 @@
     "todoList": "Yapılacaklar listesi",
     "quote": "Alıntı",
     "codeBlock": "Kod bloğu",
+    "mermaidDiagram": "Diyagram (Mermaid)",
     "divider": "Ayırıcı",
     "table": "Tablo",
     "image": "Görsel",
@@ -205,6 +206,13 @@
     "copyLink": "Blok bağlantısını kopyala",
     "linkCopied": "Bağlantı kopyalandı",
     "copyFailed": "Bağlantı kopyalanamadı"
+  },
+  "mermaid": {
+    "editCode": "Kodu düzenle",
+    "done": "Bitti",
+    "copyCode": "Kodu kopyala",
+    "codeCopied": "Kod kopyalandı",
+    "copyFailed": "Kod kopyalanamadı"
   },
   "sync": {
     "connecting": "Belgeye bağlanılıyor…",

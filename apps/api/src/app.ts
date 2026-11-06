@@ -7,6 +7,7 @@ import {
   trustedOrigins,
   getAuthSettings,
   hasConfiguredGoogle,
+  hasConfiguredGithub,
   hasConfiguredOidc,
   getOidcLabel,
 } from '@repo/auth';
@@ -334,6 +335,7 @@ export const app = new Elysia()
         // it off while no provider below is usable, so this is never false alone.
         emailPassword: settings.emailPassword,
         google: await hasConfiguredGoogle(),
+        github: await hasConfiguredGithub(),
         oidc: await hasConfiguredOidc(),
         // Names the operator's own identity provider, so the button shows it as
         // given. Empty falls back to a translated default.

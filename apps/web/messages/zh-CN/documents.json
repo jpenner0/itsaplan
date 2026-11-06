@@ -189,6 +189,7 @@
     "numberedList": "编号列表",
     "quote": "引用",
     "codeBlock": "代码块",
+    "mermaidDiagram": "图表 (Mermaid)",
     "divider": "分隔线",
     "undo": "撤销",
     "redo": "重做",
@@ -205,6 +206,13 @@
     "copyLink": "Copy link to block",
     "linkCopied": "Link copied",
     "copyFailed": "Could not copy the link"
+  },
+  "mermaid": {
+    "editCode": "编辑代码",
+    "done": "完成",
+    "copyCode": "复制代码",
+    "codeCopied": "代码已复制",
+    "copyFailed": "无法复制代码"
   },
   "sync": {
     "connecting": "Connecting to the document…",

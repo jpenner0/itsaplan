@@ -19,6 +19,7 @@ interface Hook {
   id: number;
   url: string;
   secret: string;
+  events?: string[];
 }
 
 function fakeProvider(provider: FakeProvider) {
@@ -33,7 +34,7 @@ function fakeProvider(provider: FakeProvider) {
   const read = (body: Record<string, unknown>) => {
     if (provider === 'gitlab') return { url: body.url as string, secret: body.token as string };
     const config = body.config as Record<string, string>;
-    return { url: config.url!, secret: config.secret! };
+    return { url: config.url!, secret: config.secret!, events: body.events as string[] };
   };
 
   const server = Bun.serve({
@@ -168,9 +169,28 @@ describe('Managed repository webhooks', () => {
     const regenerated = await asOwner.projects({ projectKey: 'MKT' }).settings.git.secret.post();
 
     expect(regenerated.data!.payloadUrl).toStartWith('https://hooks.example.com/webhooks/git/');
-    expect([...fake.hooks.values()]).toEqual([
+    expect([...fake.hooks.values()]).toMatchObject([
       { id: 1, url: regenerated.data!.payloadUrl, secret: regenerated.data!.secret },
     ]);
+  });
+
+  it('subscribes a new GitHub hook to issue and issue comment events', async () => {
+    fake = fakeProvider('github');
+    await setup('github', fake);
+
+    expect(fake.hooks.get(1)!.events).toEqual(
+      expect.arrayContaining(['pull_request', 'issues', 'issue_comment']),
+    );
+  });
+
+  it('adds the issue events to an existing GitHub hook when it is reconciled', async () => {
+    fake = fakeProvider('github');
+    const { asOwner, teamId } = await setup('github', fake);
+    fake.hooks.get(1)!.events = ['pull_request', 'check_run', 'create', 'delete'];
+
+    await saveToken(asOwner, teamId, 'github', fake.baseUrl);
+
+    expect(fake.hooks.get(1)!.events).toEqual(expect.arrayContaining(['issues', 'issue_comment']));
   });
 
   it('creates the hook again when the stored one is gone', async () => {
@@ -180,7 +200,7 @@ describe('Managed repository webhooks', () => {
 
     const regenerated = await asOwner.projects({ projectKey: 'MKT' }).settings.git.secret.post();
 
-    expect([...fake.hooks.values()]).toEqual([
+    expect([...fake.hooks.values()]).toMatchObject([
       { id: 2, url: regenerated.data!.payloadUrl, secret: regenerated.data!.secret },
     ]);
     const connections = await asOwner

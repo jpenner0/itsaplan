@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link2, Pencil, Reply, Trash2 } from 'lucide-react';
+import { ExternalLink, Link2, Pencil, Reply, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { FeedItem } from '@/lib/api/endpoints/activity';
 import Avatar from '@/components/common/Avatar';
@@ -71,6 +71,18 @@ export default function CommentItem({
       <div className="flex items-center gap-2.5">
         <Avatar name={author} image={image} className="size-6 shrink-0 text-[10px]" />
         <span className="truncate text-[13px] font-semibold">{author}</span>
+        {item.external && (
+          <a
+            href={item.external.url}
+            target="_blank"
+            rel="noreferrer"
+            dir="ltr"
+            className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground hover:underline"
+          >
+            {t('viaGithub', { login: item.external.login })}
+            <ExternalLink className="size-3" />
+          </a>
+        )}
         <span className="shrink-0 text-xs text-muted-foreground">
           · {relativeTime(item.createdAt)}
           {item.editedAt && ` · ${t('edited')}`}
