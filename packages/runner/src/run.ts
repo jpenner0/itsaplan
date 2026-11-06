@@ -1,7 +1,8 @@
 import { AnswerStream, UsageReader } from './agui';
-import { RequestError, type Client, type Run } from './client';
+import { RequestError, type Client, type Run, type RunRepository } from './client';
 import type { RunnerConfig } from './config';
-import { execute } from './execute';
+import { execute, type Outcome } from './execute';
+import { discardClone, prepareClone, pushWork, repositoryPrompt, type Clone } from './repository';
 
 export async function runTask(config: RunnerConfig, client: Client, run: Run) {
   let offset = 0;
@@ -27,12 +28,18 @@ export async function runTask(config: RunnerConfig, client: Client, run: Run) {
   const timer = setInterval(() => {
     void stream.flush().catch(() => {});
   }, 500);
+  let clone: Clone | undefined;
   try {
-    const outcome = await execute(
+    const repository = run.repository ?? undefined;
+    if (repository) clone = await prepareClone(repository);
+    let outcome = await execute(
       config,
       {
         prompt: run.prompt,
-        systemPrompt: run.systemPrompt,
+        systemPrompt: repository
+          ? `${run.systemPrompt}${repositoryPrompt(repository)}`
+          : run.systemPrompt,
+        cwd: clone?.dir,
         env: {
           ITSAPLAN_RUN_ID: String(run.id),
           ITSAPLAN_TRIGGER: run.trigger,
@@ -50,6 +57,10 @@ export async function runTask(config: RunnerConfig, client: Client, run: Run) {
     );
     clearInterval(timer);
     usage.end();
+    let branch: string | undefined;
+    if (repository && clone && outcome.status === 'success') {
+      ({ outcome, branch } = await pushOutcome(clone, repository, run, outcome));
+    }
     try {
       if (outcome.status === 'success') await stream.finish(outcome.output);
       else await stream.fail(outcome.error ?? 'The command failed', outcome.output);
@@ -69,6 +80,7 @@ export async function runTask(config: RunnerConfig, client: Client, run: Run) {
     const output = config.outputFormat === 'text' ? outcome.output : stream.answer();
     await client.report(run.id, {
       ...outcome,
+      ...(branch && { branch }),
       output,
       ...(run.traceEvents && { attempt: run.attempts }),
       usage: usage.value(),
@@ -76,6 +88,27 @@ export async function runTask(config: RunnerConfig, client: Client, run: Run) {
     return outcome;
   } finally {
     clearInterval(timer);
+    if (clone) await discardClone(clone.dir);
+  }
+}
+
+// A push that fails turns the run into a failed one, with the git error as its reason.
+async function pushOutcome(
+  clone: Clone,
+  repository: RunRepository,
+  run: Run,
+  outcome: Outcome,
+): Promise<{ outcome: Outcome; branch?: string }> {
+  try {
+    const pushed = await pushWork(
+      clone,
+      repository,
+      `${run.issueIdentifier ?? 'Run'}: agent changes`,
+    );
+    return { outcome, ...(pushed && { branch: repository.branch }) };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { outcome: { status: 'failed', output: outcome.output, error: message } };
   }
 }
 

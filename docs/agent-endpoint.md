@@ -54,10 +54,16 @@ The body of an `agent.run` request:
     "systemPrompt": "The project, the people, and the agent's instructions",
     "attempts": 1,
     "issueId": 678,
-    "issueIdentifier": "MKT-42"
+    "issueIdentifier": "MKT-42",
+    "repository": null
   }
 }
 ```
+
+`repository` is set when a delegated issue is synced with a GitHub repository:
+`{ "url": "https://github.com/acme/site.git", "baseBranch": "main", "branch": "mkt-42-fix-login" }`.
+Clone `url`, create `branch` from `baseBranch` (or continue it when it exists), do the work, and
+push `branch`. Then report it as `branch` in the result.
 
 `apiUrl` is the `API_URL` of the instance, or `null` if `API_URL` is not set. An
 `agent.chat` request has `message` instead of `run`:
@@ -122,10 +128,13 @@ Call the API at `apiUrl`. Put the agent's API key in the `x-api-key` header:
 | Route                                    | Body                                                     |
 | ---------------------------------------- | -------------------------------------------------------- |
 | `POST /agent-runs/:runId/heartbeat`      | none                                                     |
-| `POST /agent-runs/:runId/result`         | `{ "status": "success" \| "failed", "output", "error" }` |
+| `POST /agent-runs/:runId/result`         | `{ "status": "success" \| "failed", "output", "error", "branch" }` |
 | `POST /agent-chats/:messageId/events`    | `{ "events": [AG-UI events], "sessionId" }`              |
 | `POST /agent-chats/:messageId/heartbeat` | none                                                     |
 | `POST /agent-chats/:messageId/result`    | `{ "status": "success" \| "failed", "error" }`           |
+
+`branch` is the branch of `repository` that you pushed. The instance opens the pull request from
+it with the team's token, and fails the run when it cannot. Any other branch name is refused.
 
 A chat answer is a sequence of AG-UI events. Send a `TEXT_MESSAGE_CONTENT` event with a
 `delta` for each part of the text. Send the tool call events for each tool that the agent
