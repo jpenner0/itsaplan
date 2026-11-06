@@ -1,6 +1,6 @@
 {
   "name": "desktop",
-  "version": "1.10.0",
+  "version": "1.0.0",
   "productName": "It's a Plan",
   "private": true,
   "main": "dist/main.js",
