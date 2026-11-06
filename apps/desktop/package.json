@@ -1,0 +1,23 @@
+{
+  "name": "desktop",
+  "version": "1.10.0",
+  "productName": "It's a Plan",
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "bun build src/main.ts --outfile dist/main.js --target node --format cjs --external electron && cp src/connect.html dist/",
+    "electron": "bun run build && electron .",
+    "package": "bun run build && electron-builder",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@types/bun": "latest",
+    "electron": "^45.2.3",
+    "electron-builder": "^26.0.0",
+    "eslint": "^9.39.0",
+    "typescript": "^6.0.3"
+  }
+}

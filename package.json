@@ -35,6 +35,9 @@
     "auth:generate": "bun --filter='@repo/auth' run auth:generate",
     "prepare": "lefthook install || true"
   },
+  "trustedDependencies": [
+    "electron"
+  ],
   "workspaces": [
     "apps/*",
     "packages/*"
