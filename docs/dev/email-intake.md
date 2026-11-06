@@ -150,7 +150,7 @@ An email that answers an accepted one is never posted by itself (#80). A human d
   with "via email from Name <address>", and has quoted earlier messages and the signature cut off
   (`stripReply`). Attachments within the storage limits become attachments of the issue.
 - **Fallback.** When the issue was deleted, the item is triaged like a new email.
-- `processMailReplies`, the api loop that posted replies, is removed.
+- #80 removes `processMailReplies`, the api loop that posts replies today.
 
 ## Security notes
 
@@ -169,8 +169,9 @@ An email that answers an accepted one is never posted by itself (#80). A human d
   (see Triage). Accept and add as comment run with the rights of the acting member, who sees the
   draft before it is created. `withoutMentions` breaks every `@handle` in the text of an email
   added as a comment, because a comment can start a run of an agent that has write tools.
-- **Replies are matched by header, not by sender.** Anyone who knows the `Message-ID` of an
-  accepted email can make a reply appear as a suggestion on its issue. Only a member's decision
+- **Replies are matched by header, not by sender.** (Replies as a suggestion is specified in #80, not
+  implemented yet; today `processMailReplies` posts the comment.) Anyone who knows the `Message-ID` of an
+  accepted email can make a reply appear as a suggestion on its issue. With #80, only a member's decision
   turns it into a comment, and the comment names the sender.
 - The IMAP host is checked on save and on every connection. `SSRF_ALLOWED_HOSTS` exempts a host.
 - The mailbox credential is stored encrypted, decrypted only in the worker (`mail-imap.ts`) and

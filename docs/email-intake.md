@@ -96,6 +96,8 @@ the sender, the `Message-ID` and the issue are kept, to match replies.
 
 ## Replies
 
+> Replies as a suggestion is specified in #80, not implemented yet; today processMailReplies posts the comment.
+
 When the sender answers an email that became an issue, the Mail inbox shows the answer with
 **Add as comment** already filled in for that issue and skips the agent. Nothing is posted until a
 team member confirms. The comment is written by that member and starts with "via email from Name
