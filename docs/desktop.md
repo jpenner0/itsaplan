@@ -67,7 +67,7 @@ account.
 | Sign in with GitHub                            | Works. A redirect to GitHub and back in the same window sets the session cookie.                                                                   |
 | Link a GitHub account (profile)                | Works. `linkSocial` redirects, so the flow stays in the window.                                                                                    |
 | GitHub issue sync, agent triggers, PR tools    | Works. Settings forms, a webhook and server-side calls. No popup and no redirect.                                                                   |
-| Microsoft 365 mailbox (email intake)           | Works. The mailbox form takes an app registration, and the api fetches the token. There is no browser sign-in.                                      |
+| Microsoft 365 mailbox (email intake)           | Works. The team mailbox form takes an app registration, and the api fetches the token. There is no browser sign-in.                                      |
 | Microsoft Teams notifications and bot          | Works. A pasted webhook URL, no sign-in flow.                                                                                                      |
 | Markdown folder import                         | Works. The folder and ZIP pickers are file inputs and open the system dialog. A drop on the zone reads the files. A drop elsewhere does not navigate, because `file:` navigation is blocked. |
 | HTML and Markdown export, other downloads      | Works. A download from a blob link opens the system save dialog.                                                                                   |
