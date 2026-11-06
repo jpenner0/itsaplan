@@ -2847,18 +2847,25 @@ export const documentComment = pgTable(
   (t) => [index('document_comment_document_idx').on(t.documentId, t.createdAt)],
 );
 
-// A user's IMAP mailbox for the email intake. Only its owner reads or edits it. The sign-in
-// is stored encrypted like team_notification_setting: `ciphertext`/`iv`/`auth_tag` hold a
-// JSON blob (a password, or the Microsoft 365 app credentials), `redacted` mirrors it with
-// every secret as a boolean for the settings UI.
-export const mailbox = pgTable(
-  'mailbox',
+// The IMAP mailbox of a team for the email intake. Only INBOX is read. The sign-in is stored
+// encrypted like team_notification_setting: `ciphertext`/`iv`/`auth_tag` hold a JSON blob (a
+// password, or the Microsoft 365 app credentials), `redacted` mirrors it with every secret as
+// a boolean for the settings UI. The team pays for the AI and only its projects are suggested;
+// the agent is the internal agent of the team that triages the mail.
+// `uid_validity` and `last_uid` are the watermark: mail at or below `last_uid` is never read
+// again. A mailbox with `status = 'paused'` is skipped until it is reconnected.
+// `allowed_senders` holds full addresses or domains.
+export const teamMailbox = pgTable(
+  'team_mailbox',
   {
     id: serial('id').primaryKey(),
-    userId: text('user_id')
+    teamId: integer('team_id')
       .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
-    label: text('label').notNull(),
+      .unique()
+      .references(() => team.id, { onDelete: 'cascade' }),
+    agentId: integer('agent_id')
+      .notNull()
+      .references(() => aiAgent.id, { onDelete: 'cascade' }),
     host: text('host').notNull(),
     port: integer('port').notNull().default(993),
     // true: TLS from the first byte (993). false: STARTTLS.
@@ -2869,34 +2876,11 @@ export const mailbox = pgTable(
     iv: text('iv').notNull(),
     authTag: text('auth_tag').notNull(),
     redacted: jsonb('redacted').notNull().default({}),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [
-    index('mailbox_user_idx').on(t.userId),
-    check('mailbox_auth_check', sql`${t.auth} IN ('password', 'microsoft365')`),
-  ],
-);
-
-// One folder of a mailbox that is read. The team pays for the AI and only its projects are
-// suggested; the agent is the internal agent of that team that triages the folder.
-// `uid_validity` and `last_uid` are the watermark: mail at or below `last_uid` is never read
-// again. A folder with `status = 'paused'` is skipped until the user reconnects it.
-export const mailboxFolder = pgTable(
-  'mailbox_folder',
-  {
-    id: serial('id').primaryKey(),
-    mailboxId: integer('mailbox_id')
+    allowedSenders: text('allowed_senders')
+      .array()
       .notNull()
-      .references(() => mailbox.id, { onDelete: 'cascade' }),
-    name: text('name').notNull(),
-    teamId: integer('team_id')
-      .notNull()
-      .references(() => team.id, { onDelete: 'cascade' }),
-    agentId: integer('agent_id')
-      .notNull()
-      .references(() => aiAgent.id, { onDelete: 'cascade' }),
-    // Null until the first poll sets the watermark to the highest UID of the folder.
+      .default(sql`'{}'::text[]`),
+    // Null until the first poll sets the watermark to the highest UID of INBOX.
     uidValidity: bigint('uid_validity', { mode: 'number' }),
     lastUid: bigint('last_uid', { mode: 'number' }),
     status: text('status').notNull().default('active'),
@@ -2905,11 +2889,12 @@ export const mailboxFolder = pgTable(
     nextPollAt: timestamp('next_poll_at', { withTimezone: true }).notNull().defaultNow(),
     lastPolledAt: timestamp('last_polled_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    unique().on(t.mailboxId, t.name),
-    index('mailbox_folder_due_idx').on(t.status, t.nextPollAt),
-    check('mailbox_folder_status_check', sql`${t.status} IN ('active', 'paused')`),
+    index('team_mailbox_due_idx').on(t.status, t.nextPollAt),
+    check('team_mailbox_auth_check', sql`${t.auth} IN ('password', 'microsoft365')`),
+    check('team_mailbox_status_check', sql`${t.status} IN ('active', 'paused')`),
   ],
 );
 
@@ -2939,9 +2924,9 @@ export const intakeItem = pgTable(
   'intake_item',
   {
     id: serial('id').primaryKey(),
-    folderId: integer('folder_id')
+    teamMailboxId: integer('team_mailbox_id')
       .notNull()
-      .references(() => mailboxFolder.id, { onDelete: 'cascade' }),
+      .references(() => teamMailbox.id, { onDelete: 'cascade' }),
     messageId: text('message_id').notNull(),
     inReplyTo: text('in_reply_to'),
     references: text('references')
@@ -2970,7 +2955,7 @@ export const intakeItem = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    unique().on(t.folderId, t.messageId),
+    unique().on(t.teamMailboxId, t.messageId),
     index('intake_item_reply_idx')
       .on(t.id)
       .where(sql`${t.replyToIssueId} IS NOT NULL AND ${t.status} = 'new'`),
