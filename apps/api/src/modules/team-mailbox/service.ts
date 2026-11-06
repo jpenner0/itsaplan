@@ -2,7 +2,7 @@ import { aiAgent, db, readMailboxSecret, teamMailbox, user, type MailboxSecret }
 import { encryptSecret } from '@repo/crypto';
 import { resolveHostForConnect, UrlNotAllowedError } from '@repo/net';
 import { and, eq } from 'drizzle-orm';
-import { HttpError } from '#shared/lib';
+import { HttpError, rethrowDuplicate } from '#shared/lib';
 import type { Static } from 'elysia';
 import type { TeamMailboxCreateBody, TeamMailboxUpdateBody } from './model';
 
@@ -124,10 +124,7 @@ export async function createTeamMailbox(teamId: number, body: CreateBody) {
       allowedSenders,
     });
   } catch (err) {
-    if ((err as { code?: string }).code === '23505') {
-      throw new HttpError(409, 'This team already has a mailbox');
-    }
-    throw err;
+    rethrowDuplicate(err, 'mailbox for this team');
   }
   return getTeamMailbox(teamId);
 }
@@ -147,7 +144,10 @@ export async function updateTeamMailbox(teamId: number, body: UpdateBody) {
   const auth = body.auth ?? (row.auth as 'password' | 'microsoft365');
   const current = auth === row.auth ? readMailboxSecret(row) : null;
   const { secret, redacted } = secretOf(auth, body, current);
-  const replaced = Boolean(body.password || body.clientSecret || body.tenantId || body.clientId);
+  const replaced =
+    auth === 'password'
+      ? Boolean(body.password)
+      : Boolean(body.tenantId || body.clientId || body.clientSecret);
   await db
     .update(teamMailbox)
     .set({

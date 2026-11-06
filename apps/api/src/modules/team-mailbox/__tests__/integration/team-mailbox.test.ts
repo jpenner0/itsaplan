@@ -187,4 +187,26 @@ describe('team mailbox', () => {
     expect((await asOwner.teams({ teamId }).mailbox.get()).status).toBe(404);
     expect((await asOwner.teams({ teamId }).mailbox.delete()).status).toBe(404);
   });
+
+  it('does not restart a paused mailbox for a field of the other sign-in mode', async () => {
+    const { asOwner, teamId, body } = await setup();
+    await asOwner.teams({ teamId }).mailbox.post(body);
+    await db.update(teamMailbox).set({ status: 'paused' });
+    const res = await asOwner.teams({ teamId }).mailbox.patch({ clientSecret: 'ignored' });
+    expect(res.data?.status).toBe('paused');
+  });
+
+  it('switches the sign-in mode and needs the new credentials', async () => {
+    const { asOwner, teamId, body } = await setup();
+    await asOwner.teams({ teamId }).mailbox.post(body);
+    expect((await asOwner.teams({ teamId }).mailbox.patch({ auth: 'microsoft365' })).status).toBe(
+      400,
+    );
+    const res = await asOwner
+      .teams({ teamId })
+      .mailbox.patch({ auth: 'microsoft365', tenantId: 't', clientId: 'c', clientSecret: 's' });
+    expect(res.data).toMatchObject({ auth: 'microsoft365', tenantId: 't', hasSecret: true });
+    const [row] = await db.select().from(teamMailbox);
+    expect(readMailboxSecret(row!).password).toBeUndefined();
+  });
 });
