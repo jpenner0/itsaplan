@@ -11,6 +11,7 @@ import {
   getGoogleSettings,
   setGoogleSettings,
   hasConfiguredGoogle,
+  hasConfiguredGithub,
   getGithubSettings,
   setGithubSettings,
   getOidcSettings,
@@ -135,15 +136,17 @@ import {
 // Whether any single sign-on provider can run right now. Password sign-in may only
 // be turned off while one can.
 async function hasSsoProvider(): Promise<boolean> {
-  return (await hasConfiguredOidc()) || (await hasConfiguredGoogle());
+  return (
+    (await hasConfiguredOidc()) || (await hasConfiguredGoogle()) || (await hasConfiguredGithub())
+  );
 }
 
 async function assertUsableSignInMethod(
   nextProviderUsable: boolean,
-  otherProviderUsable: boolean,
+  otherProvidersUsable: boolean[],
 ): Promise<void> {
   const auth = await getAuthSettings();
-  if (!auth.emailPassword && !nextProviderUsable && !otherProviderUsable) {
+  if (!auth.emailPassword && !nextProviderUsable && !otherProvidersUsable.some(Boolean)) {
     throw new HttpError(400, 'Enable password sign-in or another single sign-on provider first');
   }
 }
@@ -291,10 +294,10 @@ export const godRoutes = new Elysia({ name: 'god', detail: { tags: ['God'] } })
       if (enabled && (clientId.length === 0 || !hasClientSecret)) {
         throw new HttpError(400, 'Add the Google client ID and secret first');
       }
-      await assertUsableSignInMethod(
-        enabled && clientId.length > 0 && hasClientSecret,
+      await assertUsableSignInMethod(enabled && clientId.length > 0 && hasClientSecret, [
         await hasConfiguredOidc(),
-      );
+        await hasConfiguredGithub(),
+      ]);
       const next = await setGoogleSettings(body);
       return { ...next, redirectUri: GOOGLE_REDIRECT_URI };
     },
@@ -314,7 +317,7 @@ export const godRoutes = new Elysia({ name: 'god', detail: { tags: ['God'] } })
     {
       response: { 200: GithubSettingsResponse, ...errors(401, 403) },
       detail: {
-        summary: 'Get GitHub account linking settings',
+        summary: 'Get GitHub sign-in settings',
         description: 'Get the GitHub OAuth app credentials (the client secret redacted).',
       },
     },
@@ -330,6 +333,10 @@ export const godRoutes = new Elysia({ name: 'god', detail: { tags: ['God'] } })
       if (enabled && (clientId.length === 0 || !hasClientSecret)) {
         throw new HttpError(400, 'Add the GitHub client ID and secret first');
       }
+      await assertUsableSignInMethod(enabled && clientId.length > 0 && hasClientSecret, [
+        await hasConfiguredOidc(),
+        await hasConfiguredGoogle(),
+      ]);
       const next = await setGithubSettings(body);
       return { ...next, redirectUri: GITHUB_REDIRECT_URI };
     },
@@ -337,9 +344,9 @@ export const godRoutes = new Elysia({ name: 'god', detail: { tags: ['God'] } })
       body: GithubSettingsBody,
       response: { 200: GithubSettingsResponse, ...errors(400, 401, 403) },
       detail: {
-        summary: 'Update GitHub account linking settings',
+        summary: 'Update GitHub sign-in settings',
         description:
-          'Update the GitHub OAuth app credentials and whether members may link a GitHub account.',
+          'Update the GitHub OAuth app credentials and whether GitHub sign-in and account linking are offered.',
       },
     },
   )
@@ -371,7 +378,7 @@ export const godRoutes = new Elysia({ name: 'god', detail: { tags: ['God'] } })
       }
       await assertUsableSignInMethod(
         enabled && discoveryUrl.length > 0 && clientId.length > 0 && hasClientSecret,
-        await hasConfiguredGoogle(),
+        [await hasConfiguredGoogle(), await hasConfiguredGithub()],
       );
       const next = await setOidcSettings(body);
       return { ...next, redirectUri: OIDC_REDIRECT_URI };

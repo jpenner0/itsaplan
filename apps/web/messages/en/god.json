@@ -330,7 +330,7 @@
     "googleConfigured": "An address without an account gets one; an address that already has a confirmed account signs into it.",
     "googleMissing": "Add the client ID and secret first.",
     "github": "GitHub",
-    "githubConfigured": "Members can link their GitHub account in their profile, so the GitHub issue sync can match GitHub users to members. GitHub is not a sign-in method.",
+    "githubConfigured": "An address without an account gets one; an address that already has a confirmed account signs into it.",
     "githubMissing": "Add the client ID and secret of a GitHub OAuth app first.",
     "clientId": "Client ID",
     "clientSecret": "Client secret",

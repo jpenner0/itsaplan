@@ -330,7 +330,7 @@
     "googleConfigured": "Alamat tanpa akun akan dibuatkan akun; alamat yang sudah memiliki akun terkonfirmasi akan masuk ke akun tersebut.",
     "googleMissing": "Tambahkan client ID dan client secret terlebih dahulu.",
     "github": "GitHub",
-    "githubConfigured": "Anggota dapat menautkan akun GitHub mereka di profil, agar sinkronisasi issue GitHub mencocokkan pengguna GitHub dengan anggota. GitHub bukan metode masuk.",
+    "githubConfigured": "Alamat tanpa akun akan dibuatkan akun; alamat yang sudah memiliki akun terkonfirmasi akan masuk ke akun tersebut.",
     "githubMissing": "Tambahkan dulu client ID dan secret dari aplikasi OAuth GitHub.",
     "clientId": "Client ID",
     "clientSecret": "Client secret",
