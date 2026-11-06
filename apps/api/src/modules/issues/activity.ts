@@ -2,6 +2,7 @@ import {
   db,
   issue,
   issueActivity,
+  issueCommentSyncLink,
   user,
   projectColumn,
   issueType,
@@ -23,6 +24,7 @@ import {
   notifyTextMentions,
 } from '#modules/notifications/service';
 import { listStatusTimeline } from './status-history';
+import { pushIssueSync } from '#modules/issue-sync/outbound';
 
 // Issue timeline: comments and change-log activity in one table (issue_activity).
 // kind selects which columns a row uses. The author is the session user
@@ -47,6 +49,8 @@ export interface FeedItemRow {
   createdAt: string;
   // Set once a comment is edited; null while it is in its author's original words.
   editedAt: string | null;
+  // Where a comment written on the synced provider came from; null for any other entry.
+  external: { login: string; url: string } | null;
 }
 
 // Opaque page cursor: the (created_at, id) of the last returned item. id breaks
@@ -88,7 +92,27 @@ function mapFeedItem(row: {
     payload: row.payload,
     createdAt: iso(row.createdAt),
     editedAt: row.editedAt ? iso(row.editedAt) : null,
+    external: null,
   };
+}
+
+// Fills `external` on the comments that were written on the provider.
+async function withExternalOrigin(items: FeedItemRow[]): Promise<FeedItemRow[]> {
+  const ids = items.filter((item) => item.kind === 'comment').map((item) => item.id);
+  if (ids.length === 0) return items;
+  const rows = await db
+    .select({
+      activityId: issueCommentSyncLink.activityId,
+      login: issueCommentSyncLink.externalAuthorLogin,
+      url: issueCommentSyncLink.externalUrl,
+    })
+    .from(issueCommentSyncLink)
+    .where(inArray(issueCommentSyncLink.activityId, ids));
+  const origins = new Map(rows.flatMap((r) => (r.login ? [[r.activityId, r] as const] : [])));
+  return items.map((item) => {
+    const origin = origins.get(item.id);
+    return origin ? { ...item, external: { login: origin.login!, url: origin.url } } : item;
+  });
 }
 
 export type FeedFilter = 'comments' | 'history' | 'worklog';
@@ -164,7 +188,7 @@ export async function listFeed(issueId: number, opts: FeedPageOptions = {}): Pro
   const items = page.map(mapFeedItem);
   const replies = await listReplies(items.map((item) => item.id));
   return {
-    items: [...items, ...replies],
+    items: await withExternalOrigin([...items, ...replies]),
     nextCursor: hasMore && last ? { ts: last.cursorTs, id: last.id } : null,
   };
 }
@@ -244,7 +268,7 @@ export async function listFeedRange(
       ),
     )
     .orderBy(issueActivity.createdAt, issueActivity.id);
-  return rows.map(mapFeedItem);
+  return withExternalOrigin(rows.map(mapFeedItem));
 }
 
 // One stretch of the grouped feed: the status the issue was in, and the entries of
@@ -369,6 +393,7 @@ export async function createComment(input: {
     await enqueueMentionRuns(projectId, comment, mentioned.agentUserIds);
     await notifyComment(projectId, comment, mentioned);
   }
+  pushIssueSync(input.issueId);
 
   return comment;
 }
@@ -399,12 +424,14 @@ export async function getCommentRef(
 // comment, scoped to what the edit changed: a change-log entry, the comment.updated
 // webhook, and the mentions the edit newly adds (agents get a run, members a
 // notification); a handle the comment already named is not told again. Who may
-// change whose is settled by the route guard.
+// change whose is settled by the route guard. `mentions: false` is for an author outside
+// the team, whose mentions reach nobody, as in createComment.
 export async function updateComment(
   commentId: number,
   body: string,
   actorUserId: string | null,
   projectId: number,
+  { mentions = true }: { mentions?: boolean } = {},
 ): Promise<FeedItemRow> {
   const [before] = await db
     .select()
@@ -422,7 +449,7 @@ export async function updateComment(
   await recordActivity(comment.issueId, [{ action: 'comment_edited' }], actorUserId);
   await emitCommentEvent(projectId, 'comment.updated', comment, actorUserId);
 
-  const added = addedMentionHandles(before.body ?? '', body);
+  const added = mentions ? addedMentionHandles(before.body ?? '', body) : [];
   if (added.length > 0) {
     const mentioned = await resolveMentionHandles(projectId, added);
     if (mentioned.agentUserIds.length > 0)
@@ -431,6 +458,7 @@ export async function updateComment(
       await enqueueMentionRuns(projectId, { ...comment, replyToId: null }, mentioned.agentUserIds);
     await notifyEditedCommentMentions(projectId, comment, mentioned);
   }
+  pushIssueSync(comment.issueId);
   return comment;
 }
 
@@ -450,6 +478,7 @@ export async function deleteComment(
   await db.delete(issueActivity).where(eq(issueActivity.id, commentId));
   await recordActivity(before.issueId as number, [{ action: 'comment_deleted' }], actorUserId);
   await emitCommentEvent(projectId, 'comment.deleted', mapFeedItem(before), actorUserId);
+  pushIssueSync(before.issueId as number);
   return true;
 }
 

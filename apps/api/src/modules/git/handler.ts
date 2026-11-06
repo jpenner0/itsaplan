@@ -17,10 +17,17 @@ import {
   upsertBranchLinks,
   upsertPullRequestLinks,
 } from './development';
-import type { GitEvent, GitProviderKey, PullRequestEvent } from './providers';
+import type {
+  GitEvent,
+  GitProviderKey,
+  IssueCommentEvent,
+  IssueEvent,
+  PullRequestEvent,
+} from './providers';
 import { columnStateTypes, firstCompletedColumnId, type GitSettings } from './service';
 import { postPullRequestLinkback } from './connections-service';
 import { issueWebPath } from '#modules/teams/ref';
+import { queuePullRequestReviews, resolveGithubIssueRefs } from './synced-issues';
 
 // Stores normalized repository events and applies pull request automation:
 // - a pull request merged into the repository's default branch moves the issues
@@ -61,7 +68,8 @@ export async function handleGitEvent(
   settings: GitSettings,
   providerKey: GitProviderKey,
   providerLabel: string,
-  event: GitEvent,
+  // Issue events are stored by queueIssueSyncEvent.
+  event: Exclude<GitEvent, IssueEvent | IssueCommentEvent>,
 ): Promise<PullRequestOutcome | 'branch' | 'pipeline' | 'check'> {
   if (event.kind === 'check') {
     await updateCheckLinks(project.id, providerKey, event);
@@ -89,12 +97,15 @@ export async function handleGitEvent(
   await updatePullRequestLinks(project.id, providerKey, event);
   const magic = parseMagicWords(`${event.title}\n${event.body}`);
   const skipped = new Set(magic.skipped.map(refId));
-  const branchRefs = parseIssueIdentifiers(event.sourceBranch ?? '').filter(
+  // GitHub's `#42` references never close on merge, also after "Fixes": GitHub closes
+  // its issue itself, and the issue sync moves the issue here.
+  const githubRefs = providerKey === 'github' ? await resolveGithubIssueRefs(project, event) : [];
+  const linkOnlyRefs = [...parseIssueIdentifiers(event.sourceBranch ?? ''), ...githubRefs].filter(
     (ref) => !skipped.has(refId(ref)),
   );
   const refs: ParsedMagicWords = {
     closes: magic.closes,
-    references: uniqueRefs([...magic.references, ...branchRefs]).filter(
+    references: uniqueRefs([...magic.references, ...linkOnlyRefs]).filter(
       (ref) => !magic.closes.some((closing) => refId(closing) === refId(ref)),
     ),
     skipped: magic.skipped,
@@ -150,7 +161,13 @@ export async function handleGitEvent(
       // not make a verified webhook fail or repeat its issue automation.
     }
   }
-  return handlePullRequestEvent(project, settings, providerLabel, event, refs);
+  const outcome = await handlePullRequestEvent(project, settings, providerLabel, event, refs);
+  await queuePullRequestReviews(
+    providerKey,
+    event,
+    uniqueIssues.map((item) => item.id),
+  );
+  return outcome;
 }
 
 export async function handlePullRequestEvent(

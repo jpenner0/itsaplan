@@ -168,10 +168,14 @@ const RECENT_DELIVERIES_CAP = 50;
 // ring buffer. Returns false when the id is already in the buffer (a replay or a
 // redelivery), in which case the caller must not act on it again. Check and
 // append are one UPDATE, so two concurrent claims of the same id cannot both
-// win.
-export async function claimGitDelivery(projectId: number, deliveryId: string): Promise<boolean> {
+// win. `executor` is a transaction the claim has to commit with.
+export async function claimGitDelivery(
+  projectId: number,
+  deliveryId: string,
+  executor: Pick<typeof db, 'update'> = db,
+): Promise<boolean> {
   const recent = sql`COALESCE(${projectSetting.value}->'recentDeliveries', '[]'::jsonb)`;
-  const claimed = await db
+  const claimed = await executor
     .update(projectSetting)
     .set({
       value: sql`jsonb_set(${projectSetting.value}, '{recentDeliveries}', (

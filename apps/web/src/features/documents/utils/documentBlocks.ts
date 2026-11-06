@@ -5,8 +5,10 @@ import { uuid } from '@/utils/uuid';
 
 export function documentBlockRange(editor: Editor, position: number) {
   const doc = editor.state.doc;
-  const resolved = doc.resolve(Math.max(0, Math.min(position, doc.content.size)));
-  const from = resolved.depth ? resolved.before(1) : position;
+  // The block menu can render with a position from before the document shrank.
+  const clamped = Math.max(0, Math.min(position, doc.content.size));
+  const resolved = doc.resolve(clamped);
+  const from = resolved.depth ? resolved.before(1) : clamped;
   const node = doc.nodeAt(from);
   if (!node) return null;
   let to = from + node.nodeSize;

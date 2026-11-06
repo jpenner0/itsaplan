@@ -11,6 +11,7 @@ import AuthMessagePanel from '../AuthMessagePanel';
 import AuthRegisterProviders from '../AuthRegisterProviders';
 import {
   sendPasswordResetEmail,
+  signInWithGithub,
   signInWithGoogle,
   signInWithOidc,
 } from '../../services/auth.service';
@@ -66,6 +67,7 @@ export default function AuthForgotPasswordForm() {
             pending={pending}
             onOidc={() => run(signInWithOidc, { redirect: false })}
             onGoogle={() => run(signInWithGoogle, { redirect: false })}
+            onGithub={() => run(signInWithGithub, { redirect: false })}
           />
 
           {error && <FieldError>{error}</FieldError>}

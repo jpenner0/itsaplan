@@ -177,6 +177,7 @@
     "todoList": "할 일 목록",
     "quote": "인용",
     "codeBlock": "코드 블록",
+    "mermaidDiagram": "다이어그램 (Mermaid)",
     "divider": "구분선",
     "table": "테이블",
     "image": "이미지",
@@ -205,6 +206,13 @@
     "copyLink": "블록 링크 복사",
     "linkCopied": "링크 복사됨",
     "copyFailed": "링크를 복사할 수 없습니다."
+  },
+  "mermaid": {
+    "editCode": "코드 편집",
+    "done": "완료",
+    "copyCode": "코드 복사",
+    "codeCopied": "코드를 복사했습니다",
+    "copyFailed": "코드를 복사할 수 없습니다"
   },
   "sync": {
     "connecting": "문서에 연결 중…",

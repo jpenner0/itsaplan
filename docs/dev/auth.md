@@ -48,8 +48,9 @@ The mail From address falls back to env (`EMAIL_FROM`, then `NOTIFICATIONS_EMAIL
 - `app_setting` key `auth` → `{ registration, requireEmailVerification, magicLink,
   emailPassword, trustProviderEmails, personalWorkspaces, inviteTtlDays, inviteSearch,
   allowedEmailDomains }`.
-- `app_secret` keys `auth.email`, `auth.google`, `auth.oidc` and `auth.scim` → the mail
-  provider, Google, the OIDC provider and the instance's SCIM token, set in god mode.
+- `app_secret` keys `auth.email`, `auth.google`, `auth.github`, `auth.oidc` and `auth.scim` →
+  the mail provider, Google, the GitHub OAuth app, the OIDC provider and the instance's SCIM
+  token, set in god mode.
 - `app_secret` key `workspace.<id>.scim` → a workspace's SCIM token, set by the workspace owner.
   Those routes answer 403 unless a build turns per-workspace SCIM on.
 
@@ -179,7 +180,7 @@ The setting is read per request. `emailAndPassword.enabled` cannot do this job: 
 it only on `/sign-up/email` and `/sign-in/email`, so `/sign-in/username`, password reset and the
 magic link would stay open. `disabledPaths` is a static array.
 
-The api refuses to turn it off while neither Google nor OIDC is usable, and refuses to make the
+The api refuses to turn it off while none of Google, GitHub and OIDC is usable, and refuses to make the
 last usable provider unusable while it is off (`assertUsableSignInMethod`). Usable means the
 provider is enabled with its credentials stored, plus a discovery URL for OIDC. Neither check
 contacts the provider, so a wrong secret or a discovery URL that does not answer passes it, and
@@ -211,11 +212,49 @@ Otherwise the callback redirects with `account_not_linked`. The `trustProviderEm
 setting drops both conditions: `resolveTrustedProviders` then names Google and the OIDC provider,
 and `requireLocalEmailVerified` reads false.
 
+## GitHub sign-in and account link
+
+GitHub signs people in and signs them up, set up like Google. It also links an identity to a
+signed-in account for the GitHub issue sync: the result is an `account` row with
+`providerId = 'github'` and `accountId` = the numeric GitHub user id. The sync maps GitHub users
+to members through these rows and reads the login itself.
+Setup for users is in `docs/github-issue-sync.md`, the sync itself in
+`docs/dev/github-issue-sync.md`.
+
+The credentials are stored like Google's (`app_secret` key `auth.github`, set in god mode), and
+`socialProviders.github` returns the module-level `githubOptions` object, which
+`refreshGithubOptions()` reloads in `hooks.before` on `/sign-in/social`, `/link-social` and
+`/callback/github`. Redirect URI: `${API_URL}/api/auth/callback/github`; god mode shows it. A
+disabled GitHub answers 403 `GITHUB_DISABLED`. The public config reports `github` and the login,
+register, invite and password-reset screens show "Continue with GitHub" only while it is usable.
+Like the other providers it counts as a single sign-on provider when god mode checks that password
+sign-in may be turned off.
+
+`githubUserInfo` serves both flows:
+
+- Linking asks for `read:user` only. GitHub shows no private address with that scope, so the
+  profile reports the linked account's own address (`link.email` of the OAuth state) as verified.
+  better-auth links only a verified address equal to the account's.
+- Signing in asks for `read:user user:email`: the sign-in button sends the extra scope. The
+  profile address is the primary verified entry of `/user/emails`. Without one, or without the
+  scope, the callback gets no user and redirects with `unable_to_get_user_info`.
+
+A person who signs in with an address that already has an account gains a linked row under the
+same rules as Google. `resolveTrustedProviders` names GitHub next to Google and the OIDC provider
+when `trustProviderEmails` is on. Otherwise only a confirmed local account is linked.
+The registration gate applies to a GitHub sign-up like to a Google one.
+
+`databaseHooks.account` drops the OAuth tokens of a GitHub row: every write to GitHub uses the
+team's token.
+
+`hooks.before` refuses `/link-social` for GitHub with 409 `GITHUB_ALREADY_LINKED` while the
+account has a GitHub row. The sync maps a member to one GitHub user.
+
 ## Registration gate
 
 `assertRegistrationAllowed` runs in two places. `hooks.before` runs it on `/sign-up/email`, and
 `databaseHooks.user.create.before` runs it for every account better-auth creates, which is what
-applies closed/invite-only to a Google, OIDC or magic-link sign-up. SCIM accounts and agent bot
+applies closed/invite-only to a Google, GitHub, OIDC or magic-link sign-up. SCIM accounts and agent bot
 users are written with a direct insert and never reach it.
 
 It refuses with 403 and `REGISTRATION_CLOSED` on a closed instance, `EMAIL_DOMAIN_NOT_ALLOWED` when

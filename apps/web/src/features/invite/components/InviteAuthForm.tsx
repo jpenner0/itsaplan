@@ -19,6 +19,7 @@ import AuthLoginAlternatives from '@/features/auth/components/login/AuthLoginAlt
 import { useRedirectError } from '@/features/auth/hooks/useRedirectError';
 import { useRefusalMessage } from '@/hooks/useRefusalMessage';
 import {
+  signInWithGithub,
   signInWithGoogle,
   signInWithOidc,
   signInWithPasskey,
@@ -191,6 +192,7 @@ export default function InviteAuthForm({
           email={email}
           onOidc={() => void signInOtherwise(() => signInWithOidc(returnTo))}
           onGoogle={() => void signInOtherwise(() => signInWithGoogle(returnTo))}
+          onGithub={() => void signInOtherwise(() => signInWithGithub(returnTo))}
           onPasskey={() => void signInOtherwise(signInWithPasskey, tAuth('passkey'))}
         />
 
