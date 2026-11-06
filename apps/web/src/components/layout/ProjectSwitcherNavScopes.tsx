@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Clock, EyeOff } from 'lucide-react';
+import { EyeOff } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { Team } from '@/lib/api/endpoints/teams';
 import { cn } from '@/lib/utils';
@@ -12,7 +12,7 @@ export default function ProjectSwitcherNavScopes({
   onScopeChange,
 }: {
   teams: Team[];
-  scope: ProjectSwitcherScope;
+  scope: ProjectSwitcherScope | undefined;
   onScopeChange: (scope: ProjectSwitcherScope) => void;
 }) {
   const t = useTranslations('nav.projectPicker');
@@ -41,7 +41,6 @@ export default function ProjectSwitcherNavScopes({
 
   return (
     <div className="ms-5 mb-1.5 flex flex-col gap-0.5 border-s ps-2">
-      {item('recent', t('recent'), <Clock />)}
       {teams.map((team) => item(team.id, team.name))}
       {item('hidden', t('hidden'), <EyeOff />)}
     </div>

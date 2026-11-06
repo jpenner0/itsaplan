@@ -25,7 +25,7 @@ export default function ProjectSwitcherNav({
   workspace?: WorkspaceSummary;
   teams: Team[];
   currentTeam?: Team;
-  scope: ProjectSwitcherScope;
+  scope: ProjectSwitcherScope | undefined;
   onScopeChange: (scope: ProjectSwitcherScope) => void;
   onPickWorkspace: (workspaceId: number) => void;
   onClose: () => void;

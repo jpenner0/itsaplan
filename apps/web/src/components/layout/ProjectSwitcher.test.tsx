@@ -368,17 +368,6 @@ describe('ProjectSwitcher', () => {
     assert.equal(document.querySelector('[data-value="project-1"]'), null);
   });
 
-  it('remembers the open project and asks for it among the recent ones', async () => {
-    await render(
-      false,
-      projects.map((project) => ({ ...project, isFavorite: false })),
-    );
-    assert.equal(localStorage.getItem('project-switcher:anonymous:recent'), '[1]');
-    assert.ok(searches.some((params) => params.get('ids') === '1'));
-    assert.ok(document.querySelector('[data-value="project-1"]'));
-    assert.equal(document.querySelector('[data-value="project-2"]'), null);
-  });
-
   it('searches on the server once typing pauses', async () => {
     await render(false);
     const input = element('[data-slot="command-input"]') as HTMLInputElement;
