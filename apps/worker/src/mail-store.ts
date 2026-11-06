@@ -95,10 +95,7 @@ export async function markFailed(
 // Stores the attachments within the instance upload limits in the object store and only
 // lists the rest. The key is not project scoped: the project is unknown until a member
 // accepts the item.
-async function storeAttachments(
-  folderIdValue: number,
-  mail: ParsedMail,
-): Promise<IntakeAttachment[]> {
+async function storeAttachments(folderId: number, mail: ParsedMail): Promise<IntakeAttachment[]> {
   const limits = await getStorageSettings();
   const out: IntakeAttachment[] = [];
   for (const a of mail.attachments) {
@@ -110,7 +107,7 @@ async function storeAttachments(
       const name = safeAttachmentFilename(a.filename)
         .replace(/[^\w.-]+/g, '_')
         .slice(-100);
-      s3Key = `intake/${folderIdValue}/${randomUUID()}-${name}`;
+      s3Key = `intake/${folderId}/${randomUUID()}-${name}`;
       await putObject(s3Key, a.content, a.contentType);
     }
     out.push({
@@ -125,14 +122,14 @@ async function storeAttachments(
 
 // The issue an email answers: the issue of an accepted email, or of an earlier reply, of the same
 // mailbox owner whose Message-ID is in In-Reply-To or References. Null when it answers none.
-async function findRepliedIssue(folderIdValue: number, mail: ParsedMail): Promise<number | null> {
+async function findRepliedIssue(folderId: number, mail: ParsedMail): Promise<number | null> {
   const ids = [...(mail.inReplyTo ? [mail.inReplyTo] : []), ...mail.references];
   if (ids.length === 0) return null;
   const [owner] = await db
     .select({ userId: mailbox.userId })
     .from(mailboxFolder)
     .innerJoin(mailbox, eq(mailbox.id, mailboxFolder.mailboxId))
-    .where(eq(mailboxFolder.id, folderIdValue));
+    .where(eq(mailboxFolder.id, folderId));
   if (!owner) return null;
   const [row] = await db
     .select({ issueId: intakeItem.issueId })
@@ -156,21 +153,21 @@ async function findRepliedIssue(folderIdValue: number, mail: ParsedMail): Promis
 // the new item's id and, for an answer to an accepted email, the issue it is to be posted on;
 // null for a duplicate.
 export async function storeMail(
-  folderIdValue: number,
+  folderId: number,
   mail: ParsedMail,
 ): Promise<{ id: number; replyToIssueId: number | null } | null> {
   const [exists] = await db
     .select({ id: intakeItem.id })
     .from(intakeItem)
-    .where(and(eq(intakeItem.folderId, folderIdValue), eq(intakeItem.messageId, mail.messageId)));
+    .where(and(eq(intakeItem.folderId, folderId), eq(intakeItem.messageId, mail.messageId)));
   if (exists) return null;
-  const replyToIssueId = await findRepliedIssue(folderIdValue, mail);
-  const attachments = await storeAttachments(folderIdValue, mail);
+  const replyToIssueId = await findRepliedIssue(folderId, mail);
+  const attachments = await storeAttachments(folderId, mail);
   const [row] = await db
     .insert(intakeItem)
     .values({
       replyToIssueId,
-      folderId: folderIdValue,
+      folderId,
       messageId: mail.messageId,
       inReplyTo: mail.inReplyTo,
       references: mail.references,
@@ -212,11 +209,11 @@ export async function deleteExpiredRejected(): Promise<number> {
 // Queues the triage of a new item as a run of the folder's agent. The api executes it. The
 // run needs a project it works in: the first active project of the folder's team the agent
 // is a member of. Without one the item stays in the inbox with no draft and "Check again".
-export async function queueTriage(itemId: number, folderIdValue: number): Promise<void> {
+export async function queueTriage(itemId: number, folderId: number): Promise<void> {
   const [folder] = await db
     .select({ teamId: mailboxFolder.teamId, agentId: mailboxFolder.agentId })
     .from(mailboxFolder)
-    .where(eq(mailboxFolder.id, folderIdValue));
+    .where(eq(mailboxFolder.id, folderId));
   if (!folder) return;
   const [target] = await db
     .select({ projectId: project.id })

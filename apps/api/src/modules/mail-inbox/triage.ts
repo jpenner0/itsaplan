@@ -1,6 +1,7 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import {
+  agentRun,
   aiAgent,
   db,
   intakeItem,
@@ -310,4 +311,27 @@ export async function applyTriage(itemId: number, text: string): Promise<void> {
     .update(intakeItem)
     .set({ classification: answer.classification as Classification, draft })
     .where(and(eq(intakeItem.id, itemId), eq(intakeItem.status, 'new')));
+}
+
+// Queues a triage run of the folder's agent for an email, in the first project the agent may
+// suggest. Returns false when there is none.
+export async function queueTriageRun(
+  itemId: number,
+  folder: { agentId: number; teamId: number },
+  ownerUserId: string,
+): Promise<boolean> {
+  const [agent] = await db
+    .select({ userId: aiAgent.userId })
+    .from(aiAgent)
+    .where(eq(aiAgent.id, folder.agentId));
+  const projects = agent ? await candidateProjects(folder.teamId, agent.userId, ownerUserId) : [];
+  if (projects.length === 0) return false;
+  await db.insert(agentRun).values({
+    agentId: folder.agentId,
+    projectId: projects[0]!.id,
+    trigger: 'mail_triage',
+    intakeItemId: itemId,
+    prompt: '',
+  });
+  return true;
 }

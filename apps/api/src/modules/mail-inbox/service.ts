@@ -1,6 +1,5 @@
 import {
   agentRun,
-  aiAgent,
   db,
   intakeItem,
   label,
@@ -17,7 +16,7 @@ import { createComment } from '#modules/issues/activity';
 import { createIssue, getIssue, getIssues, updateIssue } from '#modules/issues/service';
 import { getProjectById } from '#modules/projects/service';
 import { moveAttachments } from './attachments';
-import { candidateProjects } from './triage';
+import { queueTriageRun } from './triage';
 
 // The Mail inbox: the drafts of the emails fetched from the user's own mailboxes. Every query
 // is scoped to the mailbox owner, so another user's email reads as missing.
@@ -100,19 +99,16 @@ export async function listInbox(userId: string) {
         .orderBy(asc(agentRun.id))
     : [];
   const triage = new Map(runs.map((r) => [r.itemId, r.status]));
+  const draftProjectIds = [
+    ...new Set(rows.flatMap((r) => (r.item.draft ? [r.item.draft.projectId] : []))),
+  ];
   const draftProjects = new Map(
-    (
-      await db
-        .select({ id: project.id, key: project.key, name: project.name })
-        .from(project)
-        .where(
-          inArray(
-            project.id,
-            [
-              ...new Set(rows.flatMap((r) => (r.item.draft ? [r.item.draft.projectId] : []))),
-            ].concat(-1),
-          ),
-        )
+    (draftProjectIds.length
+      ? await db
+          .select({ id: project.id, key: project.key, name: project.name })
+          .from(project)
+          .where(inArray(project.id, draftProjectIds))
+      : []
     ).map((p) => [p.id, p]),
   );
   const dupIds = rows.flatMap((r) =>
@@ -137,13 +133,7 @@ export async function listInbox(userId: string) {
         'bug' | 'feature' | 'question' | 'no_ticket' | 'spam' | null,
       folderName,
       teamId,
-      triage: !status
-        ? ('none' as const)
-        : status === 'pending'
-          ? ('pending' as const)
-          : status === 'success'
-            ? ('done' as const)
-            : ('failed' as const),
+      triage: triageState(status),
       draft: toDraft(item.draft, draftProjects, dups),
     };
   });
@@ -151,6 +141,19 @@ export async function listInbox(userId: string) {
     items: dtos.filter((d) => !d.classification || !SORTED_OUT.includes(d.classification)),
     sortedOut: dtos.filter((d) => d.classification && SORTED_OUT.includes(d.classification)),
   };
+}
+
+function triageState(runStatus: string | undefined): 'none' | 'pending' | 'done' | 'failed' {
+  switch (runStatus) {
+    case undefined:
+      return 'none';
+    case 'pending':
+      return 'pending';
+    case 'success':
+      return 'done';
+    default:
+      return 'failed';
+  }
 }
 
 function toDraft(
@@ -353,14 +356,6 @@ export async function commentOnIssue(userId: string, itemId: number, issueId: nu
 export async function retriage(userId: string, itemId: number): Promise<void> {
   const owned = await ownedItem(userId, itemId);
   assertOpen(owned.item);
-  const [agent] = await db
-    .select({ userId: aiAgent.userId })
-    .from(aiAgent)
-    .where(eq(aiAgent.id, owned.agentId));
-  const projects = agent ? await candidateProjects(owned.teamId, agent.userId, userId) : [];
-  if (projects.length === 0) {
-    throw new HttpError(400, 'The agent works in no project where you can create issues');
-  }
   const [pending] = await db
     .select({ id: agentRun.id })
     .from(agentRun)
@@ -372,11 +367,11 @@ export async function retriage(userId: string, itemId: number): Promise<void> {
       ),
     );
   if (pending) throw new HttpError(409, 'The check is already running');
-  await db.insert(agentRun).values({
-    agentId: owned.agentId,
-    projectId: projects[0]!.id,
-    trigger: 'mail_triage',
-    intakeItemId: itemId,
-    prompt: '',
-  });
+  const queued = await queueTriageRun(
+    itemId,
+    { agentId: owned.agentId, teamId: owned.teamId },
+    userId,
+  );
+  if (!queued)
+    throw new HttpError(400, 'The agent works in no project where you can create issues');
 }

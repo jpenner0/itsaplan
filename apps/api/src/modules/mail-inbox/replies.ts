@@ -1,10 +1,10 @@
-import { agentRun, aiAgent, db, intakeItem, mailbox, mailboxFolder } from '@repo/db';
+import { db, intakeItem, mailbox, mailboxFolder } from '@repo/db';
 import { and, asc, eq, isNotNull } from 'drizzle-orm';
 import { checkPermission, assertProjectWritable } from '#shared/access';
 import { createComment } from '#modules/issues/activity';
 import { getIssue } from '#modules/issues/service';
 import { moveAttachments } from './attachments';
-import { candidateProjects } from './triage';
+import { queueTriageRun } from './triage';
 
 // Replies in a thread become issue comments. The worker marks an email that answers an
 // accepted one (`reply_to_issue_id`); this posts it, with no triage and no AI. It runs in the
@@ -83,19 +83,7 @@ async function postReply(item: Item, ownerUserId: string): Promise<boolean> {
 // is gone.
 async function fallBackToTriage(item: Item, ownerUserId: string, agentId: number, teamId: number) {
   await db.update(intakeItem).set({ replyToIssueId: null }).where(eq(intakeItem.id, item.id));
-  const [agent] = await db
-    .select({ userId: aiAgent.userId })
-    .from(aiAgent)
-    .where(eq(aiAgent.id, agentId));
-  const projects = agent ? await candidateProjects(teamId, agent.userId, ownerUserId) : [];
-  if (projects.length === 0) return;
-  await db.insert(agentRun).values({
-    agentId,
-    projectId: projects[0]!.id,
-    trigger: 'mail_triage',
-    intakeItemId: item.id,
-    prompt: '',
-  });
+  await queueTriageRun(item.id, { agentId, teamId }, ownerUserId);
 }
 
 // Posts the pending replies. Each is claimed by clearing its marker in one conditional update,
