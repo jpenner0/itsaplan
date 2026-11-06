@@ -189,6 +189,7 @@
     "numberedList": "Нумерований список",
     "quote": "Цитата",
     "codeBlock": "Блок коду",
+    "mermaidDiagram": "Діаграма (Mermaid)",
     "divider": "Роздільник",
     "undo": "Скасувати",
     "redo": "Повторити",
@@ -205,6 +206,13 @@
     "copyLink": "Copy link to block",
     "linkCopied": "Link copied",
     "copyFailed": "Could not copy the link"
+  },
+  "mermaid": {
+    "editCode": "Редагувати код",
+    "done": "Готово",
+    "copyCode": "Копіювати код",
+    "codeCopied": "Код скопійовано",
+    "copyFailed": "Не вдалося скопіювати код"
   },
   "sync": {
     "connecting": "Connecting to the document…",
@@ -252,5 +260,23 @@
     "retry": "Retry",
     "noResolved": "No resolved discussions.",
     "empty": "Select text to start a discussion."
-  }
+  },
+  "importMarkdown": "Імпорт Markdown",
+  "importDescription": "Імпортуйте папку з файлами Markdown як сторінки. Кожна папка стає батьківською сторінкою.",
+  "importSubpagesDescription": "Імпортуйте папку з файлами Markdown як підсторінки цієї сторінки. Кожна папка стає батьківською сторінкою.",
+  "importDrop": "Перетягніть сюди папку або ZIP-файл чи виберіть їх.",
+  "importChooseFolder": "Вибрати папку",
+  "importChooseZip": "Вибрати ZIP",
+  "importReading": "Читання файлів…",
+  "importReadFailed": "Не вдалося прочитати файли.",
+  "importAction": "Імпортувати",
+  "importing": "Імпорт…",
+  "importDone": "Імпортовано сторінок: {count}",
+  "importSummary": "Сторінок: {pages} · Вкладень: {assets}",
+  "importNothing": "Немає сторінок Markdown для імпорту.",
+  "importSkipped": "Пропущено файлів: {count}",
+  "importZipTooLarge": "ZIP-файл більший за 50 МБ.",
+  "importTooManyPages": "У папці {count} сторінок. Ліміт — 500.",
+  "importPageTooLong": "{path} довший за 250 000 символів.",
+  "importInvalidUtf8": "{path} не в припустимому кодуванні UTF-8."
 }

@@ -177,6 +177,7 @@
     "todoList": "To-do list",
     "quote": "Quote",
     "codeBlock": "Code block",
+    "mermaidDiagram": "Diagram (Mermaid)",
     "divider": "Divider",
     "table": "Table",
     "image": "Image",
@@ -205,6 +206,13 @@
     "copyLink": "Copy link to block",
     "linkCopied": "Link copied",
     "copyFailed": "Could not copy the link"
+  },
+  "mermaid": {
+    "editCode": "Edit code",
+    "done": "Done",
+    "copyCode": "Copy code",
+    "codeCopied": "Code copied",
+    "copyFailed": "Could not copy the code"
   },
   "sync": {
     "connecting": "Connecting to the document…",
@@ -252,5 +260,23 @@
     "retry": "Retry",
     "noResolved": "No resolved discussions.",
     "empty": "Select text to start a discussion."
-  }
+  },
+  "importMarkdown": "Import Markdown",
+  "importDescription": "Import a folder of Markdown files as pages. Each folder becomes a parent page.",
+  "importSubpagesDescription": "Import a folder of Markdown files as subpages of this page. Each folder becomes a parent page.",
+  "importDrop": "Drop a folder or a ZIP file here, or choose one.",
+  "importChooseFolder": "Choose folder",
+  "importChooseZip": "Choose ZIP",
+  "importReading": "Reading files…",
+  "importReadFailed": "The files could not be read.",
+  "importAction": "Import",
+  "importing": "Importing…",
+  "importDone": "Imported pages: {count}",
+  "importSummary": "Pages: {pages} · Assets: {assets}",
+  "importNothing": "There are no Markdown pages to import.",
+  "importSkipped": "Skipped files: {count}",
+  "importZipTooLarge": "The ZIP file is larger than 50 MB.",
+  "importTooManyPages": "The folder has {count} pages. The limit is 500.",
+  "importPageTooLong": "{path} is longer than 250,000 characters.",
+  "importInvalidUtf8": "{path} is not valid UTF-8."
 }

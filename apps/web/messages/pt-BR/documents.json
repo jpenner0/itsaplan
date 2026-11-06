@@ -177,6 +177,7 @@
     "todoList": "Lista de tarefas",
     "quote": "Citação",
     "codeBlock": "Bloco de código",
+    "mermaidDiagram": "Diagrama (Mermaid)",
     "divider": "Divisor",
     "table": "Tabela",
     "image": "Imagem",
@@ -203,6 +204,13 @@
     "copyLink": "Copy link to block",
     "linkCopied": "Link copied",
     "copyFailed": "Could not copy the link"
+  },
+  "mermaid": {
+    "editCode": "Editar código",
+    "done": "Concluído",
+    "copyCode": "Copiar código",
+    "codeCopied": "Código copiado",
+    "copyFailed": "Não foi possível copiar o código"
   },
   "sync": {
     "connecting": "Connecting to the document…",
@@ -252,5 +260,23 @@
   },
   "selectionActions": "Selection actions",
   "recentAndFavorites": "Recent and favorites",
-  "searching": "Searching documents…"
+  "searching": "Searching documents…",
+  "importMarkdown": "Importar Markdown",
+  "importDescription": "Importe uma pasta de arquivos Markdown como páginas. Cada pasta vira uma página principal.",
+  "importSubpagesDescription": "Importe uma pasta de arquivos Markdown como subpáginas desta página. Cada pasta vira uma página principal.",
+  "importDrop": "Solte aqui uma pasta ou um arquivo ZIP, ou escolha um.",
+  "importChooseFolder": "Escolher pasta",
+  "importChooseZip": "Escolher ZIP",
+  "importReading": "Lendo arquivos…",
+  "importReadFailed": "Não foi possível ler os arquivos.",
+  "importAction": "Importar",
+  "importing": "Importando…",
+  "importDone": "Páginas importadas: {count}",
+  "importSummary": "Páginas: {pages} · Recursos: {assets}",
+  "importNothing": "Não há páginas Markdown para importar.",
+  "importSkipped": "Arquivos ignorados: {count}",
+  "importZipTooLarge": "O arquivo ZIP tem mais de 50 MB.",
+  "importTooManyPages": "A pasta tem {count} páginas. O limite é 500.",
+  "importPageTooLong": "{path} tem mais de 250.000 caracteres.",
+  "importInvalidUtf8": "{path} não é UTF-8 válido."
 }

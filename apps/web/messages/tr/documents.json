@@ -177,6 +177,7 @@
     "todoList": "Yapılacaklar listesi",
     "quote": "Alıntı",
     "codeBlock": "Kod bloğu",
+    "mermaidDiagram": "Diyagram (Mermaid)",
     "divider": "Ayırıcı",
     "table": "Tablo",
     "image": "Görsel",
@@ -205,6 +206,13 @@
     "copyLink": "Blok bağlantısını kopyala",
     "linkCopied": "Bağlantı kopyalandı",
     "copyFailed": "Bağlantı kopyalanamadı"
+  },
+  "mermaid": {
+    "editCode": "Kodu düzenle",
+    "done": "Bitti",
+    "copyCode": "Kodu kopyala",
+    "codeCopied": "Kod kopyalandı",
+    "copyFailed": "Kod kopyalanamadı"
   },
   "sync": {
     "connecting": "Belgeye bağlanılıyor…",
@@ -252,5 +260,23 @@
     "retry": "Tekrar dene",
     "noResolved": "Çözülmüş tartışma yok.",
     "empty": "Bir tartışma başlatmak için metin seçin."
-  }
+  },
+  "importMarkdown": "Markdown içe aktar",
+  "importDescription": "Markdown dosyalarından oluşan bir klasörü sayfa olarak içe aktarın. Her klasör bir üst sayfa olur.",
+  "importSubpagesDescription": "Markdown dosyalarından oluşan bir klasörü bu sayfanın alt sayfaları olarak içe aktarın. Her klasör bir üst sayfa olur.",
+  "importDrop": "Bir klasörü veya ZIP dosyasını buraya bırakın ya da seçin.",
+  "importChooseFolder": "Klasör seç",
+  "importChooseZip": "ZIP seç",
+  "importReading": "Dosyalar okunuyor…",
+  "importReadFailed": "Dosyalar okunamadı.",
+  "importAction": "İçe aktar",
+  "importing": "İçe aktarılıyor…",
+  "importDone": "İçe aktarılan sayfalar: {count}",
+  "importSummary": "Sayfalar: {pages} · Varlıklar: {assets}",
+  "importNothing": "İçe aktarılacak Markdown sayfası yok.",
+  "importSkipped": "Atlanan dosyalar: {count}",
+  "importZipTooLarge": "ZIP dosyası 50 MB'den büyük.",
+  "importTooManyPages": "Klasörde {count} sayfa var. Sınır 500.",
+  "importPageTooLong": "{path} 250.000 karakterden uzun.",
+  "importInvalidUtf8": "{path} geçerli UTF-8 değil."
 }

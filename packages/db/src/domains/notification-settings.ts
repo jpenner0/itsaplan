@@ -15,6 +15,12 @@ interface TelegramConfig {
   botToken: string; // secret
 }
 
+// Teams needs no team credentials: each member brings their own webhook. The team only
+// decides whether its projects deliver to Teams at all.
+interface TeamsConfig {
+  enabled: boolean;
+}
+
 // The stored, decrypted config. Secret fields carry the plaintext value; read only
 // by the sender, never returned over HTTP.
 export interface NotificationConfig {
@@ -28,6 +34,7 @@ export interface NotificationConfig {
   // EMAIL_FROM, then to the SMTP username.
   from: string;
   telegram: TelegramConfig;
+  teams: TeamsConfig;
 }
 
 export function defaultNotificationConfig(): NotificationConfig {
@@ -47,6 +54,7 @@ export function defaultNotificationConfig(): NotificationConfig {
     resend: { enabled: false, apiKey: '' },
     from: '',
     telegram: { enabled: false, botToken: '' },
+    teams: { enabled: false },
   };
 }
 

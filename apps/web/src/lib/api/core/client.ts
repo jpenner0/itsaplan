@@ -90,8 +90,14 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 // Multipart upload. Cannot go through request(), which forces a JSON Content-Type:
 // the browser must set the multipart boundary itself, so no headers are set here.
-export async function uploadFile<T>(path: string, method: 'POST' | 'PUT', file: File): Promise<T> {
+export async function uploadFile<T>(
+  path: string,
+  method: 'POST' | 'PUT',
+  file: File,
+  fields: Record<string, string> = {},
+): Promise<T> {
   const form = new FormData();
+  for (const [name, value] of Object.entries(fields)) form.append(name, value);
   form.append('file', file);
   const res = await fetch(`${API_URL}${path}`, { method, credentials: 'include', body: form });
   if (!res.ok) throw await apiFailure(res);

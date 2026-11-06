@@ -286,24 +286,37 @@ async function refreshGoogleOptions(): Promise<boolean> {
 // The callback URL to register on the GitHub OAuth app; god mode shows it for copying.
 export const GITHUB_REDIRECT_URI = `${apiPublicUrl}/api/auth/callback/github`;
 
-// GitHub links an identity to the signed-in account and never signs anyone in or up:
-// the issue sync maps GitHub users to members through these `account` rows. The
-// profile is read only while the OAuth state carries the link that /link-social
-// wrote, so a sign-in callback gets no user and fails. The linked account's own
-// address is reported as verified: with `read:user` GitHub shows no private
-// address, and better-auth links only a verified address equal to the account's.
-async function githubLinkUserInfo(token: { accessToken?: string }) {
-  const link = (await getOAuthState())?.link;
-  if (!link || !token.accessToken) return null;
-  const response = await fetch('https://api.github.com/user', {
-    headers: { authorization: `Bearer ${token.accessToken}`, 'user-agent': "It's a Plan" },
+// GitHub signs people in, and links an identity to a signed-in account for the issue
+// sync. The link flow asks for `read:user` only: GitHub shows no private address, so the
+// profile reports the linked account's own address as verified, and better-auth links
+// only a verified address equal to the account's. Sign-in additionally asks for
+// `user:email` (the sign-in button sends the scope) and takes the primary verified
+// address from /user/emails, so an unverified address never reaches the account match.
+async function githubGet<T>(path: string, accessToken: string): Promise<T | null> {
+  const response = await fetch(`https://api.github.com${path}`, {
+    headers: { authorization: `Bearer ${accessToken}`, 'user-agent': "It's a Plan" },
   });
-  if (!response.ok) return null;
-  const profile = (await response.json()) as GithubProfile;
+  return response.ok ? ((await response.json()) as T) : null;
+}
+
+async function githubUserInfo(token: { accessToken?: string }) {
+  if (!token.accessToken) return null;
+  const profile = await githubGet<GithubProfile>('/user', token.accessToken);
+  if (!profile) return null;
+  const link = (await getOAuthState())?.link;
+  let email = link?.email;
+  if (!link) {
+    const emails = await githubGet<{ email: string; primary: boolean; verified: boolean }[]>(
+      '/user/emails',
+      token.accessToken,
+    );
+    email = emails?.find((entry) => entry.primary && entry.verified)?.email;
+  }
+  if (!email) return null;
   return {
     user: {
       name: profile.name || profile.login,
-      email: link.email,
+      email,
       emailVerified: true,
       image: profile.avatar_url,
     },
@@ -318,8 +331,7 @@ const githubOptions = {
   redirectURI: GITHUB_REDIRECT_URI,
   disableDefaultScope: true,
   scope: ['read:user'],
-  disableSignUp: true,
-  getUserInfo: githubLinkUserInfo,
+  getUserInfo: githubUserInfo,
 };
 
 const isGithub = (row: { providerId: string }) => row.providerId === 'github';
@@ -443,7 +455,7 @@ const PROVIDER_RETURN = /\/(callback|acs)\//;
 async function resolveTrustedProviders(request?: Request): Promise<string[]> {
   if (!request || !PROVIDER_RETURN.test(new URL(request.url).pathname)) return [];
   trustProviderEmails = (await getAuthSettings()).trustProviderEmails;
-  return trustProviderEmails ? ['google', OIDC_PROVIDER_ID] : [];
+  return trustProviderEmails ? ['google', 'github', OIDC_PROVIDER_ID] : [];
 }
 
 // Whether a new account has to confirm its address before it gets a session. An
@@ -805,14 +817,6 @@ function createAuth() {
         if (ctx.path === '/link-social' && provider === OIDC_PROVIDER_ID) {
           throw new APIError('FORBIDDEN', { message: 'Single sign-on cannot be linked' });
         }
-        // GitHub is linked from the profile and is no way in (githubLinkUserInfo).
-        if (ctx.path === '/sign-in/social' && provider === 'github') {
-          throw new APIError('FORBIDDEN', {
-            code: 'GITHUB_SIGN_IN_DISABLED',
-            message: 'GitHub can only be linked to a signed-in account',
-          });
-        }
-
         // Both halves of an OAuth round trip: starting it and coming back from it. This
         // is where the stored settings are loaded into the provider, so a request never
         // runs on a value the owner has since changed. The OIDC refusal carries a code
@@ -852,24 +856,6 @@ function createAuth() {
                 message: 'A GitHub account is already linked. Disconnect it first.',
               });
             }
-          }
-          return;
-        }
-
-        // better-auth keeps the last account row, but a GitHub row is no way in, so the
-        // last row a person can sign in with is kept here.
-        if (ctx.path === '/unlink-account') {
-          const session = await getSessionFromCtx(ctx);
-          if (!session) return;
-          const rowId = (ctx.body as { accountId?: string } | undefined)?.accountId;
-          const rows = await accountsOf(session.user.id);
-          const target = rows.find((row) => row.id === rowId);
-          const othersToSignIn = rows.filter((row) => row.id !== rowId && !isGithub(row));
-          if (target && !isGithub(target) && othersToSignIn.length === 0) {
-            throw new APIError('BAD_REQUEST', {
-              code: 'FAILED_TO_UNLINK_LAST_ACCOUNT',
-              message: 'This is the last way to sign in to the account',
-            });
           }
           return;
         }

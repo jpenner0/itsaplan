@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
-import type { NotificationPreferences } from '@/lib/api/endpoints/notificationPreferences';
+import type { NotificationPreferencesView } from '@/lib/api/endpoints/notificationPreferences';
 import type { NotificationEventToggles } from '@/lib/api/endpoints/notificationSettings';
 import { useUpdateNotificationPreferences } from '../services/settings.service';
 import { eventsEqual } from '../utils/notificationEvents';
@@ -13,6 +13,9 @@ export interface NotificationPreferencesForm {
   setEmailEvents: (v: NotificationEventToggles) => void;
   telegramEvents: NotificationEventToggles;
   setTelegramEvents: (v: NotificationEventToggles) => void;
+  teamsEvents: NotificationEventToggles;
+  setTeamsEvents: (v: NotificationEventToggles) => void;
+  teamsEnabled: boolean;
   dirty: boolean;
   saving: boolean;
   save: () => Promise<void>;
@@ -22,7 +25,7 @@ export interface NotificationPreferencesForm {
 // header Save button and the body checkboxes, so it lives in a hook.
 export function useNotificationPreferencesForm(
   projectKey: string,
-  initial: NotificationPreferences,
+  initial: NotificationPreferencesView,
 ): NotificationPreferencesForm {
   const t = useTranslations('settings.notifications');
   const update = useUpdateNotificationPreferences(projectKey);
@@ -30,13 +33,15 @@ export function useNotificationPreferencesForm(
   const [telegramEvents, setTelegramEvents] = useState<NotificationEventToggles>(
     initial.telegramEvents,
   );
+  const [teamsEvents, setTeamsEvents] = useState<NotificationEventToggles>(initial.teamsEvents);
 
   const dirty =
     !eventsEqual(emailEvents, initial.emailEvents) ||
-    !eventsEqual(telegramEvents, initial.telegramEvents);
+    !eventsEqual(telegramEvents, initial.telegramEvents) ||
+    !eventsEqual(teamsEvents, initial.teamsEvents);
 
   async function save() {
-    await update.mutateAsync({ emailEvents, telegramEvents });
+    await update.mutateAsync({ emailEvents, telegramEvents, teamsEvents });
     toast.success(t('preferencesSaved'));
   }
 
@@ -45,6 +50,9 @@ export function useNotificationPreferencesForm(
     setEmailEvents,
     telegramEvents,
     setTelegramEvents,
+    teamsEvents,
+    setTeamsEvents,
+    teamsEnabled: initial.teamsEnabled,
     dirty,
     saving: update.isPending,
     save,

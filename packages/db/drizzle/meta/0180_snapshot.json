@@ -1,5 +1,5 @@
 {
-  "id": "2090c38d-fba0-4a20-837c-35adf448ea6a",
+  "id": "1b1a6539-1101-4a64-bc4a-6aafb9443fdd",
   "prevId": "cc8c9073-d875-412f-a492-33e9f0c39dfa",
   "version": "7",
   "dialect": "postgresql",
@@ -2549,12 +2549,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "intake_item_id": {
-          "name": "intake_item_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "prompt": {
           "name": "prompt",
           "type": "text",
@@ -2639,22 +2633,6 @@
         }
       },
       "indexes": {
-        "agent_run_intake_item_idx": {
-          "name": "agent_run_intake_item_idx",
-          "columns": [
-            {
-              "expression": "intake_item_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"agent_run\".\"intake_item_id\" IS NOT NULL",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "agent_run_schedule_fire_uq": {
           "name": "agent_run_schedule_fire_uq",
           "columns": [
@@ -2857,19 +2835,6 @@
           ],
           "onDelete": "set null",
           "onUpdate": "no action"
-        },
-        "agent_run_intake_item_id_intake_item_id_fk": {
-          "name": "agent_run_intake_item_id_intake_item_id_fk",
-          "tableFrom": "agent_run",
-          "tableTo": "intake_item",
-          "columnsFrom": [
-            "intake_item_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2882,7 +2847,7 @@
         },
         "agent_run_trigger_check": {
           "name": "agent_run_trigger_check",
-          "value": "\"agent_run\".\"trigger\" IN ('mention', 'delegation', 'field', 'schedule', 'manual', 'status', 'event', 'mail_triage')"
+          "value": "\"agent_run\".\"trigger\" IN ('mention', 'delegation', 'field', 'schedule', 'manual', 'status', 'event')"
         }
       },
       "isRLSEnabled": false
@@ -5776,211 +5741,6 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.intake_item": {
-      "name": "intake_item",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "folder_id": {
-          "name": "folder_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "message_id": {
-          "name": "message_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "in_reply_to": {
-          "name": "in_reply_to",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "references": {
-          "name": "references",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::text[]"
-        },
-        "from_name": {
-          "name": "from_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "from_address": {
-          "name": "from_address",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "subject": {
-          "name": "subject",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "sent_at": {
-          "name": "sent_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "body": {
-          "name": "body",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "attachments": {
-          "name": "attachments",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[]'::jsonb"
-        },
-        "classification": {
-          "name": "classification",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "draft": {
-          "name": "draft",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'new'"
-        },
-        "issue_id": {
-          "name": "issue_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reply_to_issue_id": {
-          "name": "reply_to_issue_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "decided_at": {
-          "name": "decided_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "intake_item_reply_idx": {
-          "name": "intake_item_reply_idx",
-          "columns": [
-            {
-              "expression": "id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"intake_item\".\"reply_to_issue_id\" IS NOT NULL AND \"intake_item\".\"status\" = 'new'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "intake_item_message_idx": {
-          "name": "intake_item_message_idx",
-          "columns": [
-            {
-              "expression": "message_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "intake_item_folder_id_mailbox_folder_id_fk": {
-          "name": "intake_item_folder_id_mailbox_folder_id_fk",
-          "tableFrom": "intake_item",
-          "tableTo": "mailbox_folder",
-          "columnsFrom": [
-            "folder_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "intake_item_issue_id_issue_id_fk": {
-          "name": "intake_item_issue_id_issue_id_fk",
-          "tableFrom": "intake_item",
-          "tableTo": "issue",
-          "columnsFrom": [
-            "issue_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "intake_item_folder_id_message_id_unique": {
-          "name": "intake_item_folder_id_message_id_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "folder_id",
-            "message_id"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {
-        "intake_item_status_check": {
-          "name": "intake_item_status_check",
-          "value": "\"intake_item\".\"status\" IN ('new', 'accepted', 'rejected')"
-        },
-        "intake_item_classification_check": {
-          "name": "intake_item_classification_check",
-          "value": "\"intake_item\".\"classification\" IN ('bug', 'feature', 'question', 'no_ticket', 'spam')"
-        }
-      },
       "isRLSEnabled": false
     },
     "public.integration_credential": {
@@ -9274,315 +9034,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.mailbox": {
-      "name": "mailbox",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "label": {
-          "name": "label",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "host": {
-          "name": "host",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "port": {
-          "name": "port",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 993
-        },
-        "secure": {
-          "name": "secure",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "auth": {
-          "name": "auth",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'password'"
-        },
-        "username": {
-          "name": "username",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "ciphertext": {
-          "name": "ciphertext",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "iv": {
-          "name": "iv",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "auth_tag": {
-          "name": "auth_tag",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "redacted": {
-          "name": "redacted",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::jsonb"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "mailbox_user_idx": {
-          "name": "mailbox_user_idx",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "mailbox_user_id_user_id_fk": {
-          "name": "mailbox_user_id_user_id_fk",
-          "tableFrom": "mailbox",
-          "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "mailbox_auth_check": {
-          "name": "mailbox_auth_check",
-          "value": "\"mailbox\".\"auth\" IN ('password', 'microsoft365')"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.mailbox_folder": {
-      "name": "mailbox_folder",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "mailbox_id": {
-          "name": "mailbox_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "team_id": {
-          "name": "team_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "agent_id": {
-          "name": "agent_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "uid_validity": {
-          "name": "uid_validity",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "last_uid": {
-          "name": "last_uid",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'active'"
-        },
-        "failures": {
-          "name": "failures",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "last_error": {
-          "name": "last_error",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "next_poll_at": {
-          "name": "next_poll_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "last_polled_at": {
-          "name": "last_polled_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "mailbox_folder_due_idx": {
-          "name": "mailbox_folder_due_idx",
-          "columns": [
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "next_poll_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "mailbox_folder_mailbox_id_mailbox_id_fk": {
-          "name": "mailbox_folder_mailbox_id_mailbox_id_fk",
-          "tableFrom": "mailbox_folder",
-          "tableTo": "mailbox",
-          "columnsFrom": [
-            "mailbox_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "mailbox_folder_team_id_team_id_fk": {
-          "name": "mailbox_folder_team_id_team_id_fk",
-          "tableFrom": "mailbox_folder",
-          "tableTo": "team",
-          "columnsFrom": [
-            "team_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "mailbox_folder_agent_id_ai_agent_id_fk": {
-          "name": "mailbox_folder_agent_id_ai_agent_id_fk",
-          "tableFrom": "mailbox_folder",
-          "tableTo": "ai_agent",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "mailbox_folder_mailbox_id_name_unique": {
-          "name": "mailbox_folder_mailbox_id_name_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "mailbox_id",
-            "name"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {
-        "mailbox_folder_status_check": {
-          "name": "mailbox_folder_status_check",
-          "value": "\"mailbox_folder\".\"status\" IN ('active', 'paused')"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.model_price": {
       "name": "model_price",
       "schema": "",
@@ -10265,7 +9716,7 @@
       "checkConstraints": {
         "notification_delivery_channel_check": {
           "name": "notification_delivery_channel_check",
-          "value": "\"notification_delivery\".\"channel\" IN ('email', 'telegram')"
+          "value": "\"notification_delivery\".\"channel\" IN ('email', 'telegram', 'teams')"
         }
       },
       "isRLSEnabled": false
@@ -12970,6 +12421,13 @@
           "notNull": true,
           "default": "'{}'::jsonb"
         },
+        "teams_events": {
+          "name": "teams_events",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -13196,6 +12654,216 @@
           "value": "\"user_preference\".\"issue_activity_view\" IN ('flat', 'grouped')"
         }
       },
+      "isRLSEnabled": false
+    },
+    "public.user_teams_bot_account": {
+      "name": "user_teams_bot_account",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "teams_user_id": {
+          "name": "teams_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "service_url": {
+          "name": "service_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "conversation_id": {
+          "name": "conversation_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "link_code": {
+          "name": "link_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "link_code_expires_at": {
+          "name": "link_code_expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "linked_at": {
+          "name": "linked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "broken_at": {
+          "name": "broken_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_error": {
+          "name": "last_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "user_teams_bot_account_teams_user_id_unique": {
+          "name": "user_teams_bot_account_teams_user_id_unique",
+          "columns": [
+            {
+              "expression": "teams_user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"user_teams_bot_account\".\"teams_user_id\" IS NOT NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "user_teams_bot_account_link_code_unique": {
+          "name": "user_teams_bot_account_link_code_unique",
+          "columns": [
+            {
+              "expression": "link_code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"user_teams_bot_account\".\"link_code\" IS NOT NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "user_teams_bot_account_user_id_user_id_fk": {
+          "name": "user_teams_bot_account_user_id_user_id_fk",
+          "tableFrom": "user_teams_bot_account",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.user_teams_webhook": {
+      "name": "user_teams_webhook",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "ciphertext": {
+          "name": "ciphertext",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "iv": {
+          "name": "iv",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "auth_tag": {
+          "name": "auth_tag",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "host": {
+          "name": "host",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "broken_at": {
+          "name": "broken_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_error": {
+          "name": "last_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "user_teams_webhook_user_id_user_id_fk": {
+          "name": "user_teams_webhook_user_id_user_id_fk",
+          "tableFrom": "user_teams_webhook",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.user_telegram_account": {

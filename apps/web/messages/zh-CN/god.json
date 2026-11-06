@@ -330,7 +330,7 @@
     "googleConfigured": "邮箱没有对应账户时会创建账户；已有已验证账户时会直接登录。",
     "googleMissing": "请先填写客户端 ID 和客户端密钥。",
     "github": "GitHub",
-    "githubConfigured": "成员可以在个人资料中关联自己的 GitHub 账号，以便 GitHub 议题同步将 GitHub 用户与成员对应起来。GitHub 不是登录方式。",
+    "githubConfigured": "邮箱没有对应账户时会创建账户；已有已验证账户时会直接登录。",
     "githubMissing": "请先添加 GitHub OAuth 应用的客户端 ID 和密钥。",
     "clientId": "客户端 ID",
     "clientSecret": "客户端密钥",

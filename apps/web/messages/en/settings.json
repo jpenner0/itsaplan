@@ -109,7 +109,12 @@
     "telegramAccount": "Telegram account",
     "telegramAccountHint": "Telegram notifications go to the account connected to your profile, for every project you are in.",
     "noTelegramAccount": "No Telegram account connected",
-    "preferencesSaved": "Notification preferences saved"
+    "preferencesSaved": "Notification preferences saved",
+    "teams": "Teams",
+    "teamsAccount": "Microsoft Teams webhook",
+    "teamsAccountHint": "Teams notifications go to the Workflows webhook saved in your account settings, for every project you are in.",
+    "noTeamsWebhook": "No Teams webhook connected",
+    "teamsBroken": "Connection broken. Save the URL again."
   },
   "transfer": {
     "actions": {

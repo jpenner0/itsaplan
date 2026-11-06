@@ -334,6 +334,8 @@ export const qk = {
   // The signed-in user's connected external accounts (accounts page): the linked
   // Telegram account, and the auth providers better-auth reports.
   telegramAccount: ['telegramAccount'] as const,
+  teamsWebhook: ['teamsWebhook'] as const,
+  teamsBotAccount: ['teamsBotAccount'] as const,
   linkedAccounts: ['linkedAccounts'] as const,
   // The instance sign-in policy, including which social providers are configured.
   authConfig: ['authConfig'] as const,

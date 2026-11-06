@@ -27,6 +27,13 @@ export {
   type NotificationConfig,
 } from './domains/notification-settings';
 export {
+  getUsableTeamsUserIds,
+  markTeamsBotBroken,
+  markTeamsWebhookBroken,
+  readTeamsBotConversation,
+  readTeamsWebhookUrl,
+} from './domains/teams-webhook';
+export {
   STORAGE_SETTING_KEY,
   MB,
   DEFAULT_ATTACHMENT_MIME_TYPES,

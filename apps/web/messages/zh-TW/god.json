@@ -330,7 +330,7 @@
     "googleConfigured": "電子郵件沒有對應帳號時會建立帳號；已有已驗證帳號時會直接登入。",
     "googleMissing": "請先填寫用戶端 ID 和用戶端金鑰。",
     "github": "GitHub",
-    "githubConfigured": "成員可以在個人資料中連結自己的 GitHub 帳號，讓 GitHub 議題同步將 GitHub 使用者對應到成員。GitHub 不是登入方式。",
+    "githubConfigured": "電子郵件沒有對應帳號時會建立帳號；已有已驗證帳號時會直接登入。",
     "githubMissing": "請先新增 GitHub OAuth 應用程式的用戶端 ID 和密鑰。",
     "clientId": "用戶端 ID",
     "clientSecret": "用戶端金鑰",

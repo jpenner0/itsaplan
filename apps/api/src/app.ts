@@ -19,6 +19,7 @@ import { planner } from './planner';
 import { mountMcp } from './mcp/mount';
 import { setMcpApp } from './mcp/app-ref';
 import { gitWebhookRoutes } from './modules/git/webhook';
+import { teamsBotMessageRoutes } from './modules/teams-bot/messages';
 import { scimRoutes } from './modules/scim';
 import { currentUserRoutes } from './modules/current-user';
 import { EmbedSitesSchema } from './modules/settings/model';
@@ -201,6 +202,14 @@ export const app = new Elysia()
             description: "The session user's linked Telegram account",
           },
           {
+            name: 'Microsoft Teams',
+            description: "The session user's Microsoft Teams webhook and bot link",
+          },
+          {
+            name: 'Microsoft Teams',
+            description: "The session user's Microsoft Teams Workflows webhook",
+          },
+          {
             name: 'Analytics',
             description: 'Project metrics: stats, pulse, throughput, breakdowns, activity',
           },
@@ -327,7 +336,6 @@ export const app = new Elysia()
         // it off while no provider below is usable, so this is never false alone.
         emailPassword: settings.emailPassword,
         google: await hasConfiguredGoogle(),
-        // GitHub is linked from the profile, never offered on the sign-in screen.
         github: await hasConfiguredGithub(),
         oidc: await hasConfiguredOidc(),
         // Names the operator's own identity provider, so the button shows it as
@@ -369,6 +377,7 @@ export const app = new Elysia()
   })
   // Inbound repository webhook receiver (authenticated by its per-project secret).
   .use(gitWebhookRoutes)
+  .use(teamsBotMessageRoutes)
   // SCIM 2.0 provisioning (authenticated by the instance SCIM bearer token). Mounted
   // here rather than under the planner: the planner's session guard would answer 401
   // before the bearer check runs, and its error handler emits a body SCIM does not

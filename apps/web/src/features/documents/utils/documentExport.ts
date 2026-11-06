@@ -1,6 +1,7 @@
 import { marked } from 'marked';
 import DOMPurify from 'isomorphic-dompurify';
 import JSZip from 'jszip';
+import { renderMermaid } from '@/lib/mermaid';
 import { transliterate } from '@/utils/transliterate';
 
 export type DocumentExportFormat = 'markdown' | 'html';
@@ -57,6 +58,31 @@ function escapeHtml(value: string): string {
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;');
+}
+
+const MERMAID_BLOCK = /<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/g;
+
+function decodeHtmlText(value: string): string {
+  return value
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>')
+    .replaceAll('&quot;', '"')
+    .replaceAll('&#39;', "'")
+    .replaceAll('&amp;', '&');
+}
+
+// Runs after sanitizing, which would strip the svg. The svg only comes from `renderMermaid`,
+// and a block that fails to render stays a code block.
+async function embedMermaidDiagrams(html: string): Promise<string> {
+  const blocks = [...html.matchAll(MERMAID_BLOCK)];
+  const results = await Promise.all(
+    blocks.map((block) => renderMermaid(decodeHtmlText(block[1] ?? ''), 'default')),
+  );
+  let index = 0;
+  return html.replace(MERMAID_BLOCK, (block) => {
+    const result = results[index++];
+    return result && 'svg' in result ? result.svg : block;
+  });
 }
 
 export function documentExportFilename(title: string, extension: DocumentExportFormat): string {
@@ -117,8 +143,9 @@ export async function createPortableDocumentExport({
       const dataUrl = `data:${inlineContentType};base64,${bytesToBase64(asset.bytes)}`;
       for (const reference of asset.references) replacements.set(reference, dataUrl);
     }
+    const html = await embedMermaidDiagrams(replaceExportReferences(body, replacements));
     return {
-      blob: new Blob([replaceExportReferences(body, replacements)], {
+      blob: new Blob([html], {
         type: 'text/html;charset=utf-8',
       }),
       filename: documentExportFilename(title, 'html'),

@@ -96,7 +96,20 @@
     "telegramConnectedLabel": "Bağlı",
     "loadFailed": "Bağlı hesaplar yüklenemedi.",
     "connectFailed": "Google hesabı bağlanamadı.",
-    "disconnectFailed": "Bu hesabın bağlantısı kesilemedi."
+    "disconnectFailed": "Bu hesabın bağlantısı kesilemedi.",
+    "teamsConnected": "Microsoft Teams connected",
+    "teamsDisconnected": "Microsoft Teams disconnected",
+    "teamsDescription": "Receive notifications in a Teams chat or channel through a Workflows webhook.",
+    "teamsBroken": "Connection broken: {error}. Save the URL again.",
+    "teamsSave": "Save",
+    "teamsHelp": "How to create the webhook in Teams",
+    "teamsBotName": "Microsoft Teams bot",
+    "teamsBotDescription": "Receive notifications as direct messages from the bot.",
+    "teamsBotConnected": "Teams bot connected",
+    "teamsBotDisconnected": "Teams bot disconnected",
+    "teamsBotBroken": "The bot can no longer reach your chat. Connect again.",
+    "teamsBotSteps": "Open a chat with the bot in Teams and send this message:",
+    "teamsBotOpenChat": "Open the chat in Teams"
   },
   "preferences": {
     "label": "Tercihler",

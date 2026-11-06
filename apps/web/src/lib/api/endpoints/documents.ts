@@ -268,6 +268,20 @@ export const uploadDocumentAsset = (projectKey: string, documentId: number, file
     file,
   ).then(withDocumentAssetUrl);
 
+export interface MarkdownImportResult {
+  pages: ProjectDocumentSummary[];
+  createdCount: number;
+  skipped: string[];
+}
+
+export const importMarkdownDocuments = (projectKey: string, file: File, parentId: number | null) =>
+  uploadFile<MarkdownImportResult>(
+    `/projects/${projectKey}/documents/import`,
+    'POST',
+    file,
+    parentId === null ? {} : { parentId: String(parentId) },
+  );
+
 export const deleteDocumentAsset = (projectKey: string, documentId: number, publicId: string) =>
   request<void>(
     `/projects/${projectKey}/documents/${documentId}/assets/${encodeURIComponent(publicId)}`,

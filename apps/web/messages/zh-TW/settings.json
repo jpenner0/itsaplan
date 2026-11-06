@@ -109,7 +109,12 @@
     "telegramAccount": "Telegram 帳號",
     "telegramAccountHint": "你參與的每個專案都會將 Telegram 通知傳送到已關聯帳號。",
     "noTelegramAccount": "未關聯 Telegram 帳號",
-    "preferencesSaved": "通知偏好已儲存"
+    "preferencesSaved": "通知偏好已儲存",
+    "teams": "Teams",
+    "teamsAccount": "Microsoft Teams webhook",
+    "teamsAccountHint": "Teams notifications go to the Workflows webhook saved in your account settings, for every project you are in.",
+    "noTeamsWebhook": "No Teams webhook connected",
+    "teamsBroken": "Connection broken. Save the URL again."
   },
   "transfer": {
     "actions": {

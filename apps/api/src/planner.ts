@@ -52,6 +52,8 @@ import { mailboxRoutes } from './modules/mailboxes';
 import { mailInboxRoutes } from './modules/mail-inbox';
 import { connectedAppRoutes } from './modules/connected-apps';
 import { telegramRoutes } from './modules/telegram';
+import { teamsWebhookRoutes } from './modules/teams-webhook';
+import { teamsBotRoutes } from './modules/teams-bot';
 import { syncRoutes } from './modules/sync';
 import { linkPreviewRoutes } from './modules/link-previews';
 
@@ -123,6 +125,8 @@ export const planner = new Elysia({ name: 'planner' })
   .use(mailInboxRoutes)
   .use(connectedAppRoutes)
   .use(telegramRoutes)
+  .use(teamsWebhookRoutes)
+  .use(teamsBotRoutes)
   .use(syncRoutes)
   .use(linkPreviewRoutes)
   .use(settingsRoutes)

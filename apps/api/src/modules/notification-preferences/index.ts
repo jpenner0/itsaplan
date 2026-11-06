@@ -3,7 +3,8 @@ import { guards } from '#shared/guards';
 import { authContext } from '#shared/auth-context';
 import { requireUser } from '#shared/access';
 import { accessErrors, commonErrors } from '#shared/responses';
-import { NotificationPreferenceBody } from './model';
+import { NotificationPreferenceBody, NotificationPreferenceResponse } from './model';
+import { readRedactedSettings } from '#modules/notification-settings/service';
 import { getPreferences, setPreferences } from './service';
 
 // A member's own notification preferences for a project: which issue events they want
@@ -21,10 +22,13 @@ export const notificationPreferenceRoutes = new Elysia({
 
   .get(
     '/projects/:projectKey/notification-preferences',
-    ({ project, user }) => getPreferences(requireUser(user).id, project.id),
+    async ({ project, user }) => ({
+      ...(await getPreferences(requireUser(user).id, project.id)),
+      teamsEnabled: (await readRedactedSettings(project.teamId)).teams.enabled,
+    }),
     {
       projectMember: true,
-      response: { 200: NotificationPreferenceBody, ...accessErrors },
+      response: { 200: NotificationPreferenceResponse, ...accessErrors },
       detail: {
         summary: 'Get notification preferences',
         description: "Get the current user's notification preferences for a project.",

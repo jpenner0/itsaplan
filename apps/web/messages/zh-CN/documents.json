@@ -189,6 +189,7 @@
     "numberedList": "编号列表",
     "quote": "引用",
     "codeBlock": "代码块",
+    "mermaidDiagram": "图表 (Mermaid)",
     "divider": "分隔线",
     "undo": "撤销",
     "redo": "重做",
@@ -205,6 +206,13 @@
     "copyLink": "Copy link to block",
     "linkCopied": "Link copied",
     "copyFailed": "Could not copy the link"
+  },
+  "mermaid": {
+    "editCode": "编辑代码",
+    "done": "完成",
+    "copyCode": "复制代码",
+    "codeCopied": "代码已复制",
+    "copyFailed": "无法复制代码"
   },
   "sync": {
     "connecting": "Connecting to the document…",
@@ -252,5 +260,23 @@
     "retry": "Retry",
     "noResolved": "No resolved discussions.",
     "empty": "Select text to start a discussion."
-  }
+  },
+  "importMarkdown": "导入 Markdown",
+  "importDescription": "将包含 Markdown 文件的文件夹导入为页面。每个文件夹成为一个父页面。",
+  "importSubpagesDescription": "将包含 Markdown 文件的文件夹导入为此页面的子页面。每个文件夹成为一个父页面。",
+  "importDrop": "将文件夹或 ZIP 文件拖到此处，或选择一个。",
+  "importChooseFolder": "选择文件夹",
+  "importChooseZip": "选择 ZIP",
+  "importReading": "正在读取文件…",
+  "importReadFailed": "无法读取文件。",
+  "importAction": "导入",
+  "importing": "正在导入…",
+  "importDone": "已导入页面：{count}",
+  "importSummary": "页面：{pages} · 资源：{assets}",
+  "importNothing": "没有可导入的 Markdown 页面。",
+  "importSkipped": "已跳过的文件：{count}",
+  "importZipTooLarge": "ZIP 文件超过 50 MB。",
+  "importTooManyPages": "文件夹包含 {count} 个页面，上限为 500。",
+  "importPageTooLong": "{path} 超过 250,000 个字符。",
+  "importInvalidUtf8": "{path} 不是有效的 UTF-8。"
 }

@@ -36,11 +36,11 @@ import {
   storeAttachmentObject,
 } from '#modules/attachments/storage';
 
-type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+export type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-const DOCUMENT_TREE_LOCK_NAMESPACE = 1_145_390_931;
+export const DOCUMENT_TREE_LOCK_NAMESPACE = 1_145_390_931;
 
-async function lockDocumentActor(executor: Executor, userId: string): Promise<void> {
+export async function lockDocumentActor(executor: Executor, userId: string): Promise<void> {
   const rows = await executor.execute(
     sql`select id from "user" where id = ${userId} for key share`,
   );
@@ -141,7 +141,7 @@ function mapDocument(row: typeof projectDocument.$inferSelect, isFavorite = fals
   };
 }
 
-function summaryOf(
+export function summaryOf(
   row: typeof projectDocument.$inferSelect,
   isFavorite = false,
 ): DocumentSummaryRow {
@@ -477,7 +477,7 @@ async function visibleDocumentParentId(
   return parent?.id ?? null;
 }
 
-async function assertValidParent(
+export async function assertValidParent(
   executor: Executor,
   projectId: number,
   documentId: number | null,
@@ -509,7 +509,7 @@ async function assertValidParent(
   }
 }
 
-async function nextPosition(
+export async function nextPosition(
   executor: Executor,
   projectId: number,
   parentId: number | null,
@@ -1018,7 +1018,7 @@ export function assertValidDocumentContentJson(
   assertDocumentJsonNode(value, 0, { value: 0 });
 }
 
-function assertValidMetadata(value: Record<string, unknown> | undefined): void {
+export function assertValidMetadata(value: Record<string, unknown> | undefined): void {
   if (value === undefined) return;
   if (!isRecord(value)) throw new HttpError(400, 'metadata must be an object.');
   assertJsonByteSize(value, MAX_DOCUMENT_METADATA_BYTES, 'metadata');

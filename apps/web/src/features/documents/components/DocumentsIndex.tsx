@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useDocumentNavigation } from '@/hooks/useDocumentNavigation';
 import {
   ArrowDown,
@@ -8,6 +8,7 @@ import {
   ArrowUpDown,
   BookOpenText,
   Check,
+  FolderInput,
   LoaderCircle,
   Plus,
   RefreshCw,
@@ -33,6 +34,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useMoveDocument, useSetDocumentFavorite } from '../services/documents.service';
 import { DOCUMENT_LIST_TABS, type DocumentListTab } from '../utils/documentList';
+import DocumentMarkdownImportDialog from './DocumentMarkdownImportDialog';
 import DocumentTree, { type DocumentSort } from './DocumentTree';
 
 const SORTS = [
@@ -106,6 +108,7 @@ export default function DocumentsIndex({
     setPreferences((p) => ({ ...p, range }));
   const scrollRef = useRef<HTMLDivElement>(null);
   const uploadInput = useRef<HTMLInputElement>(null);
+  const [importOpen, setImportOpen] = useState(false);
   const restored = useRef(false);
   const lastScroll = useRef(preferences.scroll);
   useEffect(() => {
@@ -203,6 +206,17 @@ export default function DocumentsIndex({
               >
                 <Upload />
                 <span className="hidden sm:inline">{t('uploadMarkdown')}</span>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 px-2.5 shadow-none"
+                disabled={creating}
+                onClick={() => setImportOpen(true)}
+              >
+                <FolderInput />
+                <span className="hidden sm:inline">{t('importMarkdown')}</span>
               </Button>
               <Button
                 type="button"
@@ -415,6 +429,14 @@ export default function DocumentsIndex({
           )}
         </div>
       </div>
+      {canCreate && (
+        <DocumentMarkdownImportDialog
+          open={importOpen}
+          projectKey={projectKey}
+          parentId={null}
+          onOpenChange={setImportOpen}
+        />
+      )}
     </main>
   );
 }

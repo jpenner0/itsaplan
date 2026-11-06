@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import { beforeEach, describe, it } from 'node:test';
 import JSZip from 'jszip';
 import {
   createPortableDocumentExport,
@@ -10,6 +10,21 @@ import {
   MAX_DOCUMENT_EXPORT_ASSETS,
   MAX_DOCUMENT_EXPORT_BYTES,
 } from './documentExport';
+
+// The web app has no Bun types, so the module is imported by a name tsc does not resolve.
+const bunTest = 'bun:test';
+const { mock } = await import(bunTest);
+
+let rendered: { source: string; theme: string }[];
+let nextId = 0;
+
+mock.module('@/lib/mermaid', () => ({
+  renderMermaid: async (source: string, theme: string) => {
+    if (source.includes('invalid')) return { error: 'Parse error' };
+    rendered.push({ source, theme });
+    return { svg: `<svg id="mermaid-${++nextId}"></svg>` };
+  },
+}));
 
 const protectedAsset =
   '/protected-media/projects/SEKTA/documents/42/assets/123e4567-e89b-12d3-a456-426614174000/raw';
@@ -231,5 +246,62 @@ describe('document export', () => {
       }),
       DocumentExportLimitError,
     );
+  });
+
+  describe('Mermaid diagrams', () => {
+    const exportHtml = async (content: string, richHtml?: string) => {
+      const { blob } = await createPortableDocumentExport({
+        title: 'Guide',
+        content,
+        richHtml,
+        format: 'html',
+        documentId: 42,
+        baseUrl: 'https://plan.example.com',
+        fetchImpl: async () => {
+          throw new Error('unexpected fetch');
+        },
+      });
+      return blob.text();
+    };
+
+    beforeEach(() => {
+      rendered = [];
+    });
+
+    it('embeds a rendered diagram from Markdown content in the light theme', async () => {
+      const html = await exportHtml('Before\n\n```mermaid\ngraph TD; A-->B\n```\n');
+      assert.match(html, /<svg id="mermaid-\d+"/);
+      assert.equal(html.includes('language-mermaid'), false);
+      assert.deepEqual(
+        rendered.map((call) => call.theme),
+        ['default'],
+      );
+    });
+
+    it('embeds a rendered diagram from editor HTML', async () => {
+      const html = await exportHtml(
+        'Fallback',
+        '<p>Intro</p><pre><code class="language-mermaid">graph TD; A--&gt;B</code></pre>',
+      );
+      assert.match(html, /<svg id="mermaid-\d+"/);
+      assert.equal(html.includes('<pre>'), false);
+    });
+
+    it('decodes the escaped code before rendering', async () => {
+      await exportHtml('```mermaid\ngraph TD; A[a & b]-->B[<c>]\n```\n');
+      assert.equal(rendered[0]?.source.trim(), 'graph TD; A[a & b]-->B[<c>]');
+    });
+
+    it('keeps a diagram that fails to render as a code block', async () => {
+      const html = await exportHtml('```mermaid\ninvalid <b>\n```\n');
+      assert.match(html, /<pre><code class="language-mermaid">invalid &lt;b&gt;/);
+      assert.equal(html.includes('<svg'), false);
+    });
+
+    it('keeps the Mermaid code block in the Markdown export', () => {
+      const content = '```mermaid\ngraph TD; A-->B\n```';
+      assert.equal(documentExportBody('Guide', content, 'markdown'), `# Guide\n\n${content}`);
+      assert.equal(rendered.length, 0);
+    });
   });
 });

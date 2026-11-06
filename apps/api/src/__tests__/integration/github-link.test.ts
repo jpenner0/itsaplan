@@ -5,8 +5,9 @@ import { app, authedApi } from '#tests/helpers/app';
 import { signUpTestUser } from '#tests/helpers/auth';
 import { resetDb } from '#tests/helpers/db';
 
-// GitHub links an identity to a signed-in account for the issue sync and is never a
-// way in. GitHub's endpoints are fixed, so they are answered here.
+// GitHub signs people in and links an identity to a signed-in account for the issue
+// sync. GitHub's endpoints are fixed, so they are answered here.
+let emails = [{ email: 'octo@github.example', primary: true, verified: true }];
 const realFetch = globalThis.fetch;
 function answerGithub() {
   globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
@@ -29,6 +30,7 @@ function answerGithub() {
         avatar_url: 'https://avatars.example/4242',
       });
     }
+    if (url === 'https://api.github.com/user/emails') return Response.json(emails);
     return realFetch(input, init);
   }) as typeof fetch;
 }
@@ -88,6 +90,7 @@ describe('GitHub account link', () => {
   beforeEach(resetDb);
   afterEach(() => {
     globalThis.fetch = realFetch;
+    emails = [{ email: 'octo@github.example', primary: true, verified: true }];
   });
 
   it('links the GitHub user id to the signed-in account and keeps no token', async () => {
@@ -192,43 +195,6 @@ describe('GitHub account link', () => {
     expect((await rowsOf(god.userId)).filter((r) => r.providerId === 'github')).toHaveLength(1);
   });
 
-  it('refuses to unlink the last way to sign in while GitHub is linked', async () => {
-    const god = await signUpTestUser({ name: 'Root' });
-    await configureGithub(god.cookie);
-    await linkGithub(god.cookie);
-    const password = (await rowsOf(god.userId)).find((r) => r.providerId === 'credential')!;
-
-    const res = await post('/unlink-account', { accountId: password.id }, god.cookie);
-
-    expect(res.status).toBe(400);
-    expect(await res.json()).toMatchObject({ code: 'FAILED_TO_UNLINK_LAST_ACCOUNT' });
-    expect(await rowsOf(god.userId)).toHaveLength(2);
-  });
-
-  it('unlinks a sign-in method while another one is left', async () => {
-    const god = await signUpTestUser({ name: 'Root' });
-    await configureGithub(god.cookie);
-    await linkGithub(god.cookie);
-    // A Google sign-in needs Google's round trip; the row is what the rule reads.
-    await db.insert(account).values({
-      id: 'google-row',
-      accountId: 'google-sub',
-      providerId: 'google',
-      userId: god.userId,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-    const password = (await rowsOf(god.userId)).find((r) => r.providerId === 'credential')!;
-
-    const res = await post('/unlink-account', { accountId: password.id }, god.cookie);
-
-    expect(res.status).toBe(200);
-    expect((await rowsOf(god.userId)).map((r) => r.providerId).sort()).toEqual([
-      'github',
-      'google',
-    ]);
-  });
-
   it('unlinks GitHub', async () => {
     const god = await signUpTestUser({ name: 'Root' });
     await configureGithub(god.cookie);
@@ -241,9 +207,72 @@ describe('GitHub account link', () => {
     expect((await rowsOf(god.userId)).map((r) => r.providerId)).toEqual(['credential']);
   });
 
-  it('refuses a sign-in or sign-up with GitHub', async () => {
+  // The browser of the person signing in, as the round trip makes it.
+  async function signInWithGithub() {
+    answerGithub();
+    const start = await post('/sign-in/social', {
+      provider: 'github',
+      scopes: ['user:email'],
+      callbackURL: 'http://localhost:3001/',
+      errorCallbackURL: 'http://localhost:3001/login',
+    });
+    expect(start.status).toBe(200);
+    const authorize = new URL(((await start.json()) as { url: string }).url);
+    const callback = await app.handle(
+      new Request(
+        `http://localhost/api/auth/callback/github?code=code-1&state=${authorize.searchParams.get('state')}`,
+        { headers: { cookie: cookiesOf(start) } },
+      ),
+    );
+    return { authorize, callback };
+  }
+
+  it('signs a new person in with the primary verified address', async () => {
     const god = await signUpTestUser({ name: 'Root' });
     await configureGithub(god.cookie);
+    emails = [
+      { email: 'other@github.example', primary: false, verified: true },
+      { email: 'octo@github.example', primary: true, verified: true },
+    ];
+
+    const { authorize, callback } = await signInWithGithub();
+
+    expect(authorize.searchParams.get('scope')).toBe('read:user user:email');
+    expect(callback.status).toBe(302);
+    expect(callback.headers.get('location')).toBe('http://localhost:3001/');
+    expect(cookiesOf(callback)).toContain('session_token');
+    const [row] = await db.select().from(account).where(eq(account.providerId, 'github'));
+    expect(row).toMatchObject({ accountId: '4242', accessToken: null });
+  });
+
+  it('refuses a sign-in when GitHub reports no verified primary address', async () => {
+    const god = await signUpTestUser({ name: 'Root' });
+    await configureGithub(god.cookie);
+    emails = [{ email: 'octo@github.example', primary: true, verified: false }];
+
+    const { callback } = await signInWithGithub();
+
+    expect(callback.headers.get('location')).toContain('error=');
+    expect(await db.select().from(account).where(eq(account.providerId, 'github'))).toHaveLength(0);
+  });
+
+  // Anyone could have registered the address with a password before its owner arrived,
+  // so a GitHub address does not take over an unconfirmed account.
+  it('does not sign into an unconfirmed account that has the same address', async () => {
+    const god = await signUpTestUser({ name: 'Root' });
+    await configureGithub(god.cookie);
+    const member = await signUpTestUser({ email: 'octo@github.example' });
+
+    const { callback } = await signInWithGithub();
+
+    expect(callback.headers.get('location')).toContain('error=');
+    expect(cookiesOf(callback)).not.toContain('session_token');
+    expect((await rowsOf(member.userId)).map((r) => r.providerId)).toEqual(['credential']);
+  });
+
+  it('refuses to sign in while GitHub is turned off', async () => {
+    const god = await signUpTestUser({ name: 'Root' });
+    await configureGithub(god.cookie, false);
 
     const res = await post('/sign-in/social', {
       provider: 'github',
@@ -251,7 +280,7 @@ describe('GitHub account link', () => {
     });
 
     expect(res.status).toBe(403);
-    expect(await res.json()).toMatchObject({ code: 'GITHUB_SIGN_IN_DISABLED' });
+    expect(await res.json()).toMatchObject({ code: 'GITHUB_DISABLED' });
   });
 
   it('refuses a link while GitHub is turned off', async () => {
