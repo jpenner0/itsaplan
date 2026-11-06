@@ -21,7 +21,7 @@ import { createIssue, getIssue, getIssues, updateIssue } from '#modules/issues/s
 import { getProjectById } from '#modules/projects/service';
 import { listTeams } from '#modules/teams/service';
 import { moveAttachments } from './attachments';
-import { withoutMentions } from './replies';
+import { stripReply, withoutMentions } from './replies';
 import { queueTriageRun } from './triage';
 
 // The Mail inbox: the drafts of the emails fetched by the mailboxes of the teams the user
@@ -57,13 +57,8 @@ function assertOpen(item: Item): void {
   if (item.status !== 'new') throw new HttpError(409, 'This email was already decided');
 }
 
-// A new email that is not a reply waiting to be posted as a comment.
 const openIn = (teamIds: number[]) =>
-  and(
-    inArray(teamMailbox.teamId, teamIds),
-    eq(intakeItem.status, 'new'),
-    isNull(intakeItem.replyToIssueId),
-  );
+  and(inArray(teamMailbox.teamId, teamIds), eq(intakeItem.status, 'new'));
 
 // Not sorted out: the sender is allowed and the agent did not call it spam or no ticket.
 const isTriaged = and(
@@ -91,7 +86,7 @@ export async function listInbox(userId: string) {
   const teamIds = await memberTeamIds(userId);
   if (teamIds.length === 0) return { items: [], sortedOut: [] };
   const rows = await db
-    .select({ item: intakeItem, teamId: teamMailbox.teamId })
+    .select({ item: intakeItem, teamId: teamMailbox.teamId, agentId: teamMailbox.agentId })
     .from(intakeItem)
     .innerJoin(teamMailbox, eq(teamMailbox.id, intakeItem.teamMailboxId))
     .where(openIn(teamIds))
@@ -121,8 +116,18 @@ export async function listInbox(userId: string) {
   const dupIds = rows.flatMap((r) =>
     r.item.draft?.duplicateIssueId ? [r.item.draft.duplicateIssueId] : [],
   );
-  const dups = new Map((await getIssues(dupIds)).map((i) => [i.id, i]));
+  const replyIds = rows.flatMap((r) => (r.item.replyToIssueId ? [r.item.replyToIssueId] : []));
+  const dups = new Map((await getIssues([...dupIds, ...replyIds])).map((i) => [i.id, i]));
+  const live = rows.filter((r) => !r.item.replyToIssueId || dups.has(r.item.replyToIssueId));
+  // The issue of a reply was deleted after the email was stored: the email is triaged like a
+  // new one.
+  for (const r of rows.filter((r) => !live.includes(r))) {
+    await db.update(intakeItem).set({ replyToIssueId: null }).where(eq(intakeItem.id, r.item.id));
+    r.item.replyToIssueId = null;
+    await queueTriageRun(r.item.id, { agentId: r.agentId, teamId: r.teamId });
+  }
   const dtos = rows.map(({ item, teamId }) => {
+    const replied = item.replyToIssueId ? dups.get(item.replyToIssueId) : undefined;
     const status = triage.get(item.id);
     return {
       id: item.id,
@@ -139,6 +144,9 @@ export async function listInbox(userId: string) {
       classification: item.classification as
         'bug' | 'feature' | 'question' | 'no_ticket' | 'spam' | null,
       teamId,
+      replyTo: replied
+        ? { id: replied.id, identifier: replied.identifier, title: replied.title }
+        : null,
       triage: triageState(status),
       draft: toDraft(item.draft, draftProjects, dups),
     };
@@ -251,6 +259,7 @@ async function decide(
     .set({
       status,
       issueId,
+      replyToIssueId: null,
       decidedAt: new Date(),
       ...(status === 'accepted' ? { body: '', attachments: [], draft: null } : {}),
     })
@@ -350,7 +359,11 @@ export async function commentOnIssue(userId: string, itemId: number, issueId: nu
       body: [
         `via email from ${from}`,
         '',
-        withoutMentions(owned.item.body),
+        withoutMentions(
+          owned.item.replyToIssueId
+            ? stripReply(owned.item.body) || owned.item.body
+            : owned.item.body,
+        ),
         ...(notes.length ? ['', ...notes] : []),
       ].join('\n'),
     });
@@ -379,6 +392,7 @@ export async function retriage(userId: string, itemId: number): Promise<void> {
       ),
     );
   if (pending) throw new HttpError(409, 'The check is already running');
+  await db.update(intakeItem).set({ replyToIssueId: null }).where(eq(intakeItem.id, itemId));
   const queued = await queueTriageRun(itemId, { agentId: owned.agentId, teamId: owned.teamId });
   if (!queued) throw new HttpError(400, 'The agent works in no project of the team');
 }

@@ -12,6 +12,7 @@
   "notChecked": "This email was not checked yet.",
   "checkAgain": "Check again",
   "duplicateOf": "Possible duplicate of {identifier}: {title}",
+  "replyTo": "Reply to {identifier}: {title}",
   "addAsComment": "Add as comment to {identifier}",
   "project": "Project",
   "priority": "Priority",

@@ -124,38 +124,36 @@ count of open drafts. The page polls every 30 seconds; the worker writes no revi
 
 ## Replies
 
-An email that answers an accepted one never goes through triage.
+An email that answers an accepted one is not triaged. It is suggested as a comment, and a member
+decides.
 
 - **Matching.** When the worker stores an email, `findRepliedIssue` (`mail-store.ts`) looks for a
   stored `Message-ID` of an accepted item in `In-Reply-To` or `References`. Accepted items include
   earlier replies and emails added as a comment, so a long thread keeps matching. Only items of
-  the same mailbox owner match. A match sets `reply_to_issue_id` on the new item and queues no
-  triage run. Subjects are not compared.
-- **Posting.** `processMailReplies` (`modules/mail-inbox/replies.ts`) runs in its own api loop
-  every 5 seconds. It claims an item with a conditional update, so replicas never post one twice.
-  It checks that the issue exists, that the mailbox owner has `work_items` `edit` in its project
-  and that the project is writable, then inserts a normal comment as the owner. The comment is a
-  normal insert, so the revision triggers refresh the issue (`docs/dev/revision-engine.md`). The
-  comment starts with `via email from Name <address>`. `stripReply` cuts quoted lines, the quoted
-  earlier message (English and German headers, Outlook headers) and the signature. HTML was
-  converted to Markdown when the email was stored.
+  the same mailbox match. A match sets `reply_to_issue_id` on the new item and queues no triage
+  run. Subjects are not compared. An email from a sender that is not allowed is never matched.
+- **Suggestion.** The item stays `new` in the Mail inbox with no draft. The inbox DTO has
+  `replyTo` (the issue), and the item shows "Add as comment" for that issue. Nothing creates a
+  comment without that action: "Add as comment" (`commentOnIssue` in `service.ts`) checks the
+  member's `work_items` `edit` right, and posts the comment as the member. For a reply it first
+  runs `stripReply` (`replies.ts`), which cuts quoted lines, the quoted earlier message (English
+  and German headers, Outlook headers) and the signature. HTML was converted to Markdown when the
+  email was stored. The comment starts with `via email from Name <address>`.
 - **Attachments** within the storage limits become attachments of the issue; a file that was only
   listed is named under the comment.
 - **Closed issues** get the comment and stay closed.
-- **Fallback.** An issue that was deleted, an owner who can no longer comment, or any error while
-  posting clears `reply_to_issue_id` and queues the triage, so the email appears in the Mail inbox
-  like a new one. Nothing is retried in a loop.
-- After posting, the item is `accepted` with the issue; its body and attachments are deleted.
+- **Fallback.** When the inbox lists a reply whose issue was deleted, it clears `reply_to_issue_id`
+  and queues the triage, so the email is handled like a new one. "Check again" also clears
+  `reply_to_issue_id`.
+- Adding as a comment or accepting clears `reply_to_issue_id`. An accepted item loses its body
+  and attachments.
 
 ## Security notes
 
 - The email text comes from outside senders. Triage gives the agent two read tools only (see
-  Triage). A reply is posted with no human check, and a comment can start a run of an agent that
-  has write tools, so `withoutMentions` breaks every `@handle` in the text of a reply and of an
-  email added as a comment.
+  Triage). A comment can start a run of an agent that has write tools, so `withoutMentions`
+  breaks every `@handle` in the text of an email added as a comment.
 - A reply is matched by header, not by sender. Anyone who knows the `Message-ID` of an accepted
-  email and can send to the mailbox can add a comment to its issue as the mailbox owner. The
-  comment names the sender ("via email from …"). Treat the mailbox as an input that senders reach.
+  email and can send to the mailbox gets that issue suggested for "Add as comment". Only a member
+  adds the comment, as themselves, and it names the sender ("via email from …").
 - The IMAP host is checked on save and on every connection. `SSRF_ALLOWED_HOSTS` exempts a host.
-- A claimed reply that the api cannot post is not retried: it is triaged instead. A crash between
-  the claim and the post leaves the item `accepted` without a comment.

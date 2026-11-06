@@ -26,6 +26,7 @@ export interface MailItem {
   attachments: { filename: string; sizeBytes: number; stored: boolean }[];
   classification: Classification | null;
   teamId: number;
+  replyTo: { id: number; identifier: string; title: string } | null;
   triage: 'none' | 'pending' | 'done' | 'failed';
   draft: MailDraft | null;
 }
