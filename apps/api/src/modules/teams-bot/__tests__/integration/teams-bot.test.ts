@@ -5,6 +5,7 @@ import * as realBot from '@repo/net/teams-bot';
 import { app, authedApi, createProject, ownWorkspaceId, type Api } from '#tests/helpers/app';
 import { signUpTestUser } from '#tests/helpers/auth';
 import { resetDb } from '#tests/helpers/db';
+import { createRole } from '#tests/helpers/roles';
 
 // Microsoft offers no test tenant. The signing keys are a local pair and the replies the
 // bot sends are recorded. The token checks, the linking and the queueing are real.
@@ -222,7 +223,7 @@ describe('teams bot commands', () => {
   const WEB = 'https://plan.example.com';
   let api: Api;
   let me: { userId: string };
-  let columns: { id: number; stateType: string }[];
+  let columns: { id: number; name: string; stateType: string }[];
 
   async function ask(text: string, over: Record<string, unknown> = {}) {
     replies.length = 0;
@@ -368,5 +369,167 @@ describe('teams bot commands', () => {
     expect(reply).not.toContain('Design task');
 
     expect(await ask('show @design/mkt-1')).toContain('Design task');
+  });
+
+  describe('write commands', () => {
+    const getIssue = async (id: number) => (await api.issues({ issueId: id }).get()).data!;
+
+    async function linkSecondUser(permissions: unknown) {
+      const other = await signUpTestUser();
+      const asOther = authedApi(other.cookie);
+      const invite = await api
+        .projects({ projectKey: 'MKT' })
+        .invites.post({ email: other.email, role: 'member' });
+      await asOther.invites({ token: invite.data!.token }).accept.post();
+      const role = await createRole(api, 'MKT', { name: 'Limited', permissions });
+      await api
+        .projects({ projectKey: 'MKT' })
+        .members({ userId: other.userId })
+        .patch({ role: 'member', roleId: role.data!.id });
+      const { code } = await startLink(asOther);
+      const from = { id: '29:teams-user-2', name: 'Second' };
+      await post(
+        activity(`link ${code}`, {
+          from,
+          conversation: { id: 'a:conv-2', conversationType: 'personal' },
+        }),
+        await token(),
+      );
+      return {
+        other,
+        ask: (text: string) =>
+          ask(text, { from, conversation: { id: 'a:conv-2', conversationType: 'personal' } }),
+      };
+    }
+
+    it('new creates an issue in the first column and replies with id and link', async () => {
+      const reply = await ask('new @mkt  Write the   launch post');
+      const issues = (await api.projects({ projectKey: 'MKT' }).issues.get()).data!;
+      const created = issues.find((i) => i.title === 'Write the launch post')!;
+      expect(created.columnId).toBe(columns[0].id);
+      expect(reply).toContain(`Created ${created.identifier} Write the launch post`);
+      expect(reply).toContain(`${WEB}/`);
+      expect(reply).toContain(`/issue/${created.identifier}`);
+    });
+
+    it('new shows its usage and refuses an unknown project or a long title', async () => {
+      expect(await ask('new')).toContain('Usage: new @KEY <title>');
+      expect(await ask('new @MKT')).toContain('Usage: new @KEY <title>');
+      expect(await ask('new MKT title')).toContain('Usage: new @KEY <title>');
+      expect(await ask('new @NOPE title')).toBe('Not found.');
+      expect(await ask(`new @MKT ${'x'.repeat(501)}`)).toContain('longer than 500');
+      expect((await api.projects({ projectKey: 'MKT' }).issues.get()).data).toHaveLength(0);
+    });
+
+    it('done moves the issue to the completed column', async () => {
+      const issue = await addIssue(api, 'MKT', 'Ship it');
+      const reply = await ask(`done ${issue.identifier}`);
+      expect(reply).toContain(`${issue.identifier} Ship it`);
+      expect((await getIssue(issue.id)).columnId).toBe(
+        columns.find((c) => c.stateType === 'completed')!.id,
+      );
+    });
+
+    it('done refuses when the project has no completed column', async () => {
+      const issue = await addIssue(api, 'MKT', 'Ship it');
+      for (const c of columns.filter((c) => c.stateType === 'completed')) {
+        await api
+          .projects({ projectKey: 'MKT' })
+          .columns({ columnId: c.id })
+          .delete({ mode: 'delete' });
+      }
+      expect(await ask(`done ${issue.identifier}`)).toContain('no column of the type completed');
+      expect((await getIssue(issue.id)).columnId).toBe(columns[0].id);
+    });
+
+    it('status moves the issue by column name, case-insensitive', async () => {
+      const issue = await addIssue(api, 'MKT', 'Work');
+      const target = columns[1];
+      const reply = await ask(`status ${issue.identifier} ${target.name.toUpperCase()}`);
+      expect(reply).toContain(`Moved to ${target.name}`);
+      expect((await getIssue(issue.id)).columnId).toBe(target.id);
+    });
+
+    it('status lists the columns for an unknown name and changes nothing', async () => {
+      const issue = await addIssue(api, 'MKT', 'Work');
+      const reply = await ask(`status ${issue.identifier} Nowhere`);
+      expect(reply).toContain('Unknown column. Columns: ');
+      for (const c of columns) expect(reply).toContain(c.name);
+      expect((await getIssue(issue.id)).columnId).toBe(columns[0].id);
+      expect(await ask(`status ${issue.identifier}`)).toContain('Usage: status');
+    });
+
+    it('comment adds a comment written by me', async () => {
+      const issue = await addIssue(api, 'MKT', 'Talk');
+      const reply = await ask(`comment ${issue.identifier} Looks good to me`);
+      expect(reply).toContain(`Comment added to ${issue.identifier}`);
+      const feed = (await api.issues({ issueId: issue.id }).feed.get({ query: {} })).data!;
+      expect(JSON.stringify(feed)).toContain('Looks good to me');
+      expect(await ask(`comment ${issue.identifier}`)).toContain('Usage: comment');
+    });
+
+    it('assign sets me or a project member by email', async () => {
+      const issue = await addIssue(api, 'MKT', 'Own it');
+      expect(await ask(`assign ${issue.identifier} ME`)).toContain('Assigned to ME');
+      expect((await getIssue(issue.id)).assigneeUserId).toBe(me.userId);
+
+      const mate = await signUpTestUser();
+      const invite = await api
+        .projects({ projectKey: 'MKT' })
+        .invites.post({ email: mate.email, role: 'member' });
+      await authedApi(mate.cookie).invites({ token: invite.data!.token }).accept.post();
+      await ask(`assign ${issue.identifier} ${mate.email.toUpperCase()}`);
+      expect((await getIssue(issue.id)).assigneeUserId).toBe(mate.userId);
+    });
+
+    it('assign refuses an assignee outside the project and an unknown address', async () => {
+      const issue = await addIssue(api, 'MKT', 'Own it');
+      const outsider = await signUpTestUser();
+      expect(await ask(`assign ${issue.identifier} ${outsider.email}`)).toContain(
+        'is not a member of MKT',
+      );
+      expect(await ask(`assign ${issue.identifier} nobody@example.com`)).toContain(
+        'is not a member of MKT',
+      );
+      expect((await getIssue(issue.id)).assigneeUserId).toBeNull();
+      expect(await ask(`assign ${issue.identifier}`)).toContain('Usage: assign');
+    });
+
+    it('answers not found to a missing issue and a user without write access', async () => {
+      const issue = await addIssue(api, 'MKT', 'Locked');
+      const reader = await linkSecondUser({ work_items: { read: true } });
+      for (const text of [
+        `done ${issue.identifier}`,
+        `status ${issue.identifier} ${columns[1] ? columns[1].name : ''}`,
+        `comment ${issue.identifier} hi`,
+        `assign ${issue.identifier} me`,
+        'new @MKT Nope',
+      ]) {
+        expect(await reader.ask(text)).toBe('Not found.');
+      }
+      const after = await getIssue(issue.id);
+      expect(after).toMatchObject({ columnId: columns[0].id, assigneeUserId: null });
+      expect((await api.projects({ projectKey: 'MKT' }).issues.get()).data).toHaveLength(1);
+      expect(await ask('done MKT-9999')).toBe('Not found.');
+    });
+
+    it('lists the matches for an ambiguous key and changes nothing', async () => {
+      const mkt = await addIssue(api, 'MKT', 'Mkt task');
+      const team = await api.teams.post({
+        name: 'Design',
+        slug: 'design',
+        workspaceId: await ownWorkspaceId(api),
+      });
+      await api.teams({ teamId: team.data!.id }).projects.post({ key: 'MKT', name: 'Design site' });
+      const designView = await api.projects({ projectKey: 'design.MKT' }).get();
+      await api
+        .projects({ projectKey: 'design.MKT' })
+        .issues.post({ columnId: designView.data!.columns[0].id, title: 'Design task' });
+
+      expect(await ask('new @MKT Another')).toContain('Several projects match');
+      expect(await ask('done MKT-1')).toContain('@design/MKT-1');
+      expect((await getIssue(mkt.id)).columnId).toBe(columns[0].id);
+      expect(await ask('done @design/MKT-1')).toContain('Design task');
+    });
   });
 });

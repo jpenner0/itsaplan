@@ -8,11 +8,12 @@ import { HttpError, pgErrorCode } from '#shared/lib';
 import { botFrameworkKeys } from './jwks';
 import { parseCommand } from './commands';
 import { myIssues, searchIssues, showIssue } from './read-commands';
+import { assignIssue, commentIssue, doneIssue, newIssue, statusIssue } from './write-commands';
 
 // The Microsoft Teams bot and the account links it creates. Linking mirrors Telegram:
 // the api mints a one-time code, the user sends `link <code>` to the bot in a personal
 // chat, and the bot endpoint stores the conversation the notifications are sent to.
-// A linked member also reads issues with `my`, `search` and `show`, as themselves.
+// A linked member also reads and changes issues with the commands in HELP, as themselves.
 
 const LINK_CODE_TTL_MINUTES = 15;
 
@@ -21,6 +22,11 @@ const HELP =
   'my: your open issues\n\n' +
   'search <text>: find issues by title\n\n' +
   'show <id>: details of an issue, for example show MKT-42\n\n' +
+  'new @KEY <title>: create an issue, for example new @MKT Write the launch post\n\n' +
+  'done <id>: move an issue to the completed column\n\n' +
+  'status <id> <column>: move an issue to a column, for example status MKT-42 In Progress\n\n' +
+  'comment <id> <text>: add a comment\n\n' +
+  'assign <id> me|<email>: assign an issue to yourself or to a project member\n\n' +
   'link <code>: connect this chat to your account (code from Accounts in your profile)\n\n' +
   'help: this list';
 
@@ -173,6 +179,16 @@ async function answerCommand(
       return searchIssues(userId, command.args);
     case 'show':
       return showIssue(userId, command.args);
+    case 'new':
+      return newIssue(userId, command.args);
+    case 'done':
+      return doneIssue(userId, command.args);
+    case 'status':
+      return statusIssue(userId, command.args);
+    case 'comment':
+      return commentIssue(userId, command.args);
+    case 'assign':
+      return assignIssue(userId, command.args);
     default:
       return HELP;
   }
