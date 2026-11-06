@@ -28,9 +28,8 @@ emails.
   host name for TLS. `SSRF_ALLOWED_HOSTS` exempts a private host the operator trusts.
 - The api does not test the connection. The worker reports the first failure in `last_error`.
 
-Status of this document: sections Mail inbox and Replies, and the project choice in Triage, describe
-the target of tickets #79 and #80. The code in `modules/mail-inbox` still scopes by mailbox owner
-and posts replies itself until those land.
+Status of this document: the Replies section describes the target of ticket #80. The code in
+`modules/mail-inbox/replies.ts` still posts replies itself (`processMailReplies`) until it lands.
 
 ## Fetching
 
@@ -84,7 +83,7 @@ id derived from its source.
 ## Triage
 
 The worker queues the triage when it stores a new item (`queueTriage` in `mail-store.ts`): an
-`agent_run` with `trigger = 'mail_triage'` and `intake_item_id`, for the mailbox's agent. The run needs
+`agent_run` with `trigger = 'mail_triage'` and `intake_item_id`, for the mailbox's agent, so the team that owns the agent pays for it. The run needs
 a project, so the worker takes the first active project of the team the agent is a member of. Without one nothing is queued and the item shows "Check again". The api poller executes the run
 like any internal run (cost, traces, retries, concurrency limits); `run-poller.ts` sends a
 `mail_triage` run to `runMailTriage` in `modules/mail-inbox/triage.ts` instead of `runAgent`.
@@ -97,7 +96,8 @@ like any internal run (cost, traces, retries, concurrency limits); `run-poller.t
 - **Instructions.** The agent's own instructions follow the fixed triage preamble, so a team tunes
   the rules there.
 - **Projects.** The preamble lists the projects the agent may suggest: projects of the
-  team the agent is a member of (#79). The tools read with the rights of the agent's bot user
+  team the agent is a member of (`candidateProjects`). The right to create issues there is checked
+  when a member accepts, not for the agent. The tools read with the rights of the agent's bot user
   (`getProjectAccess`), so a project it cannot see is not searched.
 - **Duplicates.** `search_issues` uses the text search of the issues module (`ilike`) on the open
   issues of one project. There are no embeddings.
@@ -111,13 +111,15 @@ like any internal run (cost, traces, retries, concurrency limits); `run-poller.t
 
 ## Mail inbox
 
-`modules/mail-inbox`, routes under `/account/mail-inbox`. The web page is `/account/mail-inbox`;
+`modules/mail-inbox`, routes under `/account/mail-inbox`, open to every member of the team. The web page is `/account/mail-inbox`;
 its sidebar item appears when the user belongs to a team with a mailbox and shows the count of
 open drafts. The page polls every 30 seconds; the worker writes no revision scope.
 
-- **Team-wide (#79).** The inbox lists the drafts of the mailboxes of every team the user belongs
+- **Team-wide.** The inbox lists the drafts of the mailboxes of every team the user belongs
   to. Every team member sees the same drafts, and a user outside the team sees none and gets
-  "missing" for an item id.
+  "missing" for an item id (`visibleItem`).
+- **Projects.** The projects a draft can be moved to are the projects of the user's teams that have
+  a mailbox and where the user may create issues (`inboxProjects`).
 - Spam and `no_ticket` items, and items whose sender is not allowed, are listed apart ("Sorted
   out") and are not counted. They can still be accepted by hand.
 - Accept, add as comment and reject run with the rights of the acting user, not of the team agent.
@@ -127,9 +129,11 @@ open drafts. The page polls every 30 seconds; the worker writes no revision scop
   the project quota refuses, is named in the description. The item keeps its sender,
   `Message-ID` and `issue_id`, and loses its body and attachments.
 - **Add as comment** posts the email as a comment of the chosen issue ("via email from …") and
-  accepts the item with that issue.
+  accepts the item with that issue. It checks `work_items` `edit` in the issue's project, which has
+  to be a project of the mailbox's team.
 - **Reject** keeps the item for 30 days.
-- **Check again** queues a new run when none is pending.
+- **Check again** queues a new run of the team agent when none is pending. It is refused for a
+  sender that is not allowed.
 - A decision is claimed with a conditional update, so a double click cannot create two issues.
 
 ## Replies
