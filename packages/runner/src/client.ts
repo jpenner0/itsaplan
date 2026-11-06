@@ -13,6 +13,15 @@ export interface Run {
   systemPrompt: string;
   issueId: number | null;
   issueIdentifier: string | null;
+  // Set when the run is to be carried out in a clone of the issue's repository. Absent
+  // from an instance that does not send it.
+  repository?: RunRepository | null;
+}
+
+export interface RunRepository {
+  url: string;
+  baseBranch: string;
+  branch: string;
 }
 
 // `prompt` carries the conversation so far framed into a task — unless `sessionId` is set,
@@ -91,6 +100,7 @@ export class Client {
       output?: string;
       error?: string;
       usage?: ContextUsage | null;
+      branch?: string;
     },
   ): Promise<void> {
     await this.post(`/agent-runs/${runId}/result`, result);

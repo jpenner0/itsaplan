@@ -714,3 +714,12 @@ export async function commentOnLinkedPullRequest(
   );
   return linked.pullRequest;
 }
+
+export async function getManagedDefaultBranch(
+  projectId: number,
+  repositoryId: number,
+): Promise<string | null> {
+  const managed = await managedDevelopmentRepository(projectId, repositoryId);
+  const current = await getProviderRepository(managed.input, managed.repository.externalId);
+  return current.defaultBranch ?? null;
+}

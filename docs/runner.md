@@ -18,6 +18,34 @@ The instance can also send the tasks to an endpoint that you run. See
 
 Enable MCP for the project first, in Settings, MCP Server. It is off by default.
 
+## Implementing a synced issue
+
+An issue that is synced with a GitHub repository (see [GitHub issue sync](github-issue-sync.md))
+and delegated to an agent on a runner is implemented in a clone of that repository. This follows the
+delegation trigger of the agent, **Trigger on assign**. Other triggers run in the working directory
+as before.
+
+1. The runner clones the repository into a temporary directory and creates the branch
+   `<issue key>-<title slug>`, for example `abc-123-fix-the-login-bug`, from the default branch.
+   When the branch exists from an earlier delegation, the runner continues on it.
+2. The coding agent runs in that directory. It is told to commit its work or leave it uncommitted,
+   and not to push.
+3. The runner commits what is left uncommitted and pushes the branch. When the agent changed
+   nothing, nothing is pushed.
+4. The instance opens a pull request from the branch with the team's token. The body is
+   `Closes #<GitHub issue number>`. The existing pull request handling then moves the issue.
+
+The clone and the push use the git credentials of the machine the runner is on: an SSH key,
+`gh auth` or a credential helper. The team's token never leaves the instance. The runner clones
+over `https://github.com/<owner>/<repo>.git`. To use an SSH key, add
+`git config --global url."git@github.com:".insteadOf "https://github.com/"` on that machine. The commit author
+is your git identity there. A clone or push that fails fails the run, with the git error as its
+reason.
+
+The agent does not react to review comments on the pull request. Delegate the issue again to continue
+on the same branch. A branch that has an open pull request gets no second one.
+This needs runner 0.9.0 or later; an older runner runs the task in the working directory.
+
 ## Claude Code
 
 Claude Code reads `.mcp.json` from the working directory:
