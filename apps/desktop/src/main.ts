@@ -12,13 +12,18 @@ import { checkReachable } from './reachability';
 import { clearServerUrl, readServerUrl, writeServerUrl } from './server-store';
 import { isHttpUrl, normalizeServerUrl } from './server-url';
 import { cleanUserAgent } from './user-agent';
+import {
+  isAppPopupUrl,
+  isExternalOnlyUrl,
+  isNavigationAllowed,
+  isPermissionAllowed,
+} from './window-policy';
 import { loadWindowState, saveWindowStateOnClose } from './window-state';
 
 const APP_ID = 'io.github.jpenner0.itsaplan';
 // The dialog form submits to this origin. The main process reads the input from the URL and
 // cancels the navigation, so the dialog page needs no preload script.
 const SUBMIT_ORIGIN = 'https://connect.invalid';
-const ALLOWED_PERMISSIONS = new Set(['clipboard-sanitized-write', 'fullscreen']);
 // These equal Electron's defaults. They are set so a change of default cannot give a page Node.
 const WEB_PREFERENCES: WebPreferences = {
   contextIsolation: true,
@@ -151,9 +156,13 @@ function buildMenu(): Menu {
 async function start(): Promise<void> {
   const ses = session.defaultSession;
   ses.setUserAgent(cleanUserAgent(ses.getUserAgent()));
-  ses.setPermissionRequestHandler((_contents, permission, callback) => {
-    callback(ALLOWED_PERMISSIONS.has(permission));
+  // The requesting frame is checked, not the window, so an embedded frame gets nothing.
+  ses.setPermissionRequestHandler((_contents, permission, callback, details) => {
+    callback(isPermissionAllowed(permission, details.requestingUrl, readServerUrl()));
   });
+  ses.setPermissionCheckHandler((_contents, permission, requestingOrigin) =>
+    isPermissionAllowed(permission, requestingOrigin, readServerUrl()),
+  );
   Menu.setApplicationMenu(buildMenu());
 
   const url = readServerUrl();
@@ -179,12 +188,20 @@ if (!app.requestSingleInstanceLock()) {
 
   app.on('web-contents-created', (_event, contents) => {
     contents.setWindowOpenHandler(({ url }) => {
+      if (isAppPopupUrl(url)) {
+        return {
+          action: 'allow',
+          overrideBrowserWindowOptions: { webPreferences: WEB_PREFERENCES },
+        };
+      }
       if (isHttpUrl(url)) void shell.openExternal(url);
       return { action: 'deny' };
     });
     contents.on('will-attach-webview', (event) => event.preventDefault());
     contents.on('will-navigate', (event) => {
-      if (!isHttpUrl(event.url)) event.preventDefault();
+      if (isNavigationAllowed(event.url)) return;
+      event.preventDefault();
+      if (isExternalOnlyUrl(event.url)) void shell.openExternal(event.url);
     });
   });
 
