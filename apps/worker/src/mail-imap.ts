@@ -1,6 +1,6 @@
 import { ImapFlow } from 'imapflow';
-import { readMailboxSecret, type mailbox } from '@repo/db';
-import { microsoftAccessToken } from '@repo/mailer';
+import { readMailboxSecret, type mailbox, type MailboxSecret } from '@repo/db';
+import { microsoftAccessToken, TokenError } from '@repo/mailer';
 import { resolveHostForConnect } from '@repo/net';
 
 // The IMAP connection of one mailbox folder. It only reads: the folder is opened read-only
@@ -19,6 +19,19 @@ export class ImapAuthError extends Error {}
 
 type MailboxRow = typeof mailbox.$inferSelect;
 
+// Microsoft refusing the app credentials (a wrong or expired client secret) is a sign-in
+// failure like a refused password; a network error or a 5xx is not.
+async function microsoftToken(secret: MailboxSecret): Promise<string> {
+  try {
+    return await microsoftAccessToken(
+      secret.oauth ?? { tenantId: '', clientId: '', clientSecret: '' },
+    );
+  } catch (err) {
+    if (err instanceof TokenError && !err.retryable) throw new ImapAuthError(err.message);
+    throw err;
+  }
+}
+
 export async function openFolder(box: MailboxRow, folder: string): Promise<FolderSession> {
   const secret = readMailboxSecret(box);
   // The host is checked like any supplied URL, then the connection goes to the address that
@@ -26,12 +39,7 @@ export async function openFolder(box: MailboxRow, folder: string): Promise<Folde
   const address = await resolveHostForConnect(box.host);
   const auth =
     box.auth === 'microsoft365'
-      ? {
-          user: box.username,
-          accessToken: await microsoftAccessToken(
-            secret.oauth ?? { tenantId: '', clientId: '', clientSecret: '' },
-          ),
-        }
+      ? { user: box.username, accessToken: await microsoftToken(secret) }
       : { user: box.username, pass: secret.password ?? '' };
   const client = new ImapFlow({
     host: address,

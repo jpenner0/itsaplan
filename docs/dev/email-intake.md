@@ -133,3 +133,16 @@ An email that answers an accepted one never goes through triage.
   posting clears `reply_to_issue_id` and queues the triage, so the email appears in the Mail inbox
   like a new one. Nothing is retried in a loop.
 - After posting, the item is `accepted` with the issue; its body and attachments are deleted.
+
+## Security notes
+
+- The email text comes from outside senders. Triage gives the agent two read tools only (see
+  Triage). A reply is posted with no human check, and a comment can start a run of an agent that
+  has write tools, so `withoutMentions` breaks every `@handle` in the text of a reply and of an
+  email added as a comment.
+- A reply is matched by header, not by sender. Anyone who knows the `Message-ID` of an accepted
+  email and can send to the mailbox can add a comment to its issue as the mailbox owner. The
+  comment names the sender ("via email from …"). Treat the mailbox as an input that senders reach.
+- The IMAP host is checked on save and on every connection. `SSRF_ALLOWED_HOSTS` exempts a host.
+- A claimed reply that the api cannot post is not retried: it is triaged instead. A crash between
+  the claim and the post leaves the item `accepted` without a comment.

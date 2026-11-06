@@ -43,6 +43,13 @@ export function stripReply(body: string): string {
   return kept.join('\n').trim();
 }
 
+// The text of an outside sender is posted under the mailbox owner's name. A "@handle" in it
+// would start a run of that agent with the sender's text as its task, so the mention is broken
+// with a zero-width space.
+export function withoutMentions(text: string): string {
+  return text.replace(/@(?=\w)/g, '@\u200b');
+}
+
 type Item = typeof intakeItem.$inferSelect;
 
 // Posts one claimed reply. Returns false when it cannot be posted, so the caller triages it.
@@ -58,7 +65,7 @@ async function postReply(item: Item, ownerUserId: string): Promise<boolean> {
     return false;
   }
   const from = item.fromName ? `${item.fromName} <${item.fromAddress}>` : item.fromAddress;
-  const text = stripReply(item.body) || '(no text)';
+  const text = withoutMentions(stripReply(item.body)) || '(no text)';
   const notes = await moveAttachments(item, issue.projectId, issue.id);
   await createComment({
     issueId: issue.id,

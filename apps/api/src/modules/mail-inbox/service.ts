@@ -16,6 +16,7 @@ import { createComment } from '#modules/issues/activity';
 import { createIssue, getIssue, getIssues, updateIssue } from '#modules/issues/service';
 import { getProjectById } from '#modules/projects/service';
 import { moveAttachments } from './attachments';
+import { withoutMentions } from './replies';
 import { queueTriageRun } from './triage';
 
 // The Mail inbox: the drafts of the emails fetched from the user's own mailboxes. Every query
@@ -340,7 +341,7 @@ export async function commentOnIssue(userId: string, itemId: number, issueId: nu
       body: [
         `via email from ${from}`,
         '',
-        owned.item.body,
+        withoutMentions(owned.item.body),
         ...(notes.length ? ['', ...notes] : []),
       ].join('\n'),
     });
