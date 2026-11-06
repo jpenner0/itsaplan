@@ -252,7 +252,8 @@ describe('teams bot commands', () => {
   });
 
   afterAll(() => {
-    delete process.env.APP_URL;
+    if (saved.APP_URL === undefined) delete process.env.APP_URL;
+    else process.env.APP_URL = saved.APP_URL;
   });
 
   it('lists the commands for help and for an unknown keyword', async () => {
