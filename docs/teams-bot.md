@@ -2,7 +2,7 @@
 
 The Teams bot sends a member's notifications as direct messages in Microsoft Teams. It needs no
 workflow per member, unlike the [Workflows webhook](teams-notifications.md). The bot only links
-accounts and delivers notifications; it has no other commands.
+accounts, delivers notifications and answers the read commands below.
 
 The bot is off until the instance has an Azure Bot registration. Without one, the Accounts page
 does not offer it and members can still use the webhook.
@@ -22,6 +22,25 @@ does not offer it and members can still use the webhook.
   for the webhook. A member with a linked bot gets messages from the bot; otherwise from the
   webhook. If the bot is removed from the chat (HTTP 403 or 404), the link is marked broken and the
   webhook is used until the member links again.
+
+## Commands
+
+Commands are fixed keywords in a personal chat; free text is not interpreted. The bot acts as the
+linked member and sees only what that member sees: projects that are not archived and whose work
+items the member may read. A missing permission and a missing issue get the same reply,
+`Not found.` Replies are plain text with a link to the issue in the web app.
+
+| Command         | Reply                                                                         |
+| --------------- | ----------------------------------------------------------------------------- |
+| `my`            | your open issues (not completed or canceled), latest change first, at most 10 |
+| `search <text>` | issues matching the text across your projects, at most 10, archived left out  |
+| `show <id>`     | title, status, assignee, a shortened description and the link                 |
+| `link <code>`   | connects the chat to your account, see above                                  |
+| `help`          | lists the commands                                                            |
+
+An issue id looks like `MKT-42`. A project key is unique per team only. When several
+of your projects match the key, the bot lists them and does nothing else. Repeat the command with
+`@<slug>/MKT-42`, or `@<team-id>/MKT-42` when the team has no slug. The key is case-insensitive.
 
 ## Set up (operator)
 
