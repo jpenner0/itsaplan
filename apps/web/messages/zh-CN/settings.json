@@ -15,7 +15,9 @@
     "type": "运行方式",
     "types": {
       "cron": "按定时",
-      "status": "工作项进入某状态时"
+      "status": "工作项进入某状态时",
+      "synced_issue_created": "GitHub 出现新 issue 时",
+      "pull_request_opened": "pull request 被打开时"
     },
     "taskOptional": "任务（可选）",
     "issueTaskPlaceholder": "在工作项描述中写下验收标准。",
@@ -82,7 +84,11 @@
     "createAgent": "新建代理",
     "empty": "暂无定时任务",
     "emptyHint": "选择代理、任务和运行频率。",
-    "deleteMessage": "定时任务 <v>{name}</v> 及其运行记录将被删除。此操作无法撤销。"
+    "deleteMessage": "定时任务 <v>{name}</v> 及其运行记录将被删除。此操作无法撤销。",
+    "typeHints": {
+      "synced_issue_created": "仅在 issue 同步开启期间，对在 GitHub 上新建的 issue 运行。首次导入时不运行，It's a Plan 自己在 GitHub 上创建的 issue 也不运行。",
+      "pull_request_opened": "当引用已同步 issue 的 pull request 被打开或从草稿转为就绪时运行。不会在每次 push 时运行。要开始新的评审，请在 issue 中提及该智能体。"
+    }
   },
   "agents": {
     "empty": "还没有代理",
@@ -440,7 +446,7 @@
     "nativeAskTeamManager": "请联系团队所有者或管理员连接代码托管平台账户。",
     "nativeConnectTitle": "连接 {provider}",
     "nativeTokenHint": {
-      "github": "请使用对目标仓库具有 Metadata 读取、Webhooks 写入和 Pull requests 写入权限的 fine-grained token。",
+      "github": "请使用对目标仓库具有 Metadata 读取、Webhooks 写入、Pull requests 写入以及 Issues 读取和写入权限的 fine-grained token。经典令牌需要 repo 范围（仅公开仓库可用 public_repo）和 admin:repo_hook。",
       "gitlab": "请使用具有 API 权限的 personal access token。列表仅显示你拥有 Maintainer 或 Owner 权限的项目。",
       "gitea": "请使用能够管理目标仓库 webhook 的访问令牌。",
       "forgejo": "请使用能够管理目标仓库 webhook 的访问令牌。",
@@ -494,7 +500,13 @@
     "onOpenHint": "只移动尚未开始的工作项，进行中和已关闭的保持不变。",
     "onOpenNone": "不执行操作",
     "changeState": "更改状态…",
-    "noState": "无状态。"
+    "noState": "无状态。",
+    "issueSyncTitle": "议题同步",
+    "issueSyncOnHint": "开启后会一次性导入所有未关闭的 GitHub 议题。",
+    "issueSyncOffHint": "关闭后只会移除关联，两边的议题都会保留。",
+    "newIssuesToGithub": "新议题同步到 GitHub",
+    "newIssuesToGithubHint": "在此项目中创建的议题也会在 GitHub 中创建。",
+    "issueSyncSaved": "议题同步设置已保存"
   },
   "importExport": {
     "import": "导入",

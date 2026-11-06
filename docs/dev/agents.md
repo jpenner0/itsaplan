@@ -148,6 +148,43 @@ dashboard is read, so a price also recounts past calls whose traces are still st
 the models the workspace called in the last 90 days or priced, those no price covers first, and the
 whole table, paged, each beside the workspace's own price.
 
+## Event schedules
+
+An `agent_schedule` of an event type starts a run when something happens in the project, not at a
+time or in a column. The types are `synced_issue_created` and `pull_request_opened`
+(`eventScheduleTypes` in `modules/agents/schedules/extension.ts`).
+
+`queueEventRuns({ type, projectId, issueId, lead })` in `modules/agents/schedules/issue-runs.ts`
+queues one run for every active schedule of the type in the project whose agent is a member of the
+project. The run has `agent_run.trigger = 'event'` and the prompt `lead`, a blank line and the
+schedule's prompt. When the schedule's prompt is empty, the prompt is `lead`, a space and "Review it
+and take the appropriate next step." It returns the run ids.
+
+- `queueEventRuns` does no deduplication. A caller must call it once per event.
+- `lead` is copied into the prompt as it is. A caller builds it from stored values and never from
+  GitHub text.
+- `synced_issue_created` is called by the issue sync, `pull_request_opened` by the git webhook
+  handler. The rules are in `docs/dev/github-issue-sync.md`.
+
+## Pull request tools
+
+Two opt-in agent tools in the `issues` group work on a pull request that is linked to an issue.
+Both are for GitHub only.
+
+| Tool                      | Route                                           | Permission            |
+| ------------------------- | ----------------------------------------------- | --------------------- |
+| `get_pull_request_diff`   | `GET /issues/:issueId/development/:linkId/diff` | `repositories` edit   |
+| `comment_on_pull_request` | `POST /issues/:issueId/development/:linkId/comments` | `repositories` edit |
+
+- `linkId` is the `id` of an `issue_development_link` of kind `pull_request`. It is not the pull
+  request number. `get_issue` lists it under `development`.
+- The diff is cut at 100 KB. The answer is `{ repository, number, url, diff, truncated }`, and
+  `truncated` is true when the diff was cut.
+- A comment body has at most 60,000 characters. It is a plain conversation comment that starts
+  with the line `**<agent name>** (via It's a Plan):`. The answer is `{ repository, number, url }`.
+- The agent needs both keys in `ai_agent.tools`, and its role in the project must allow the
+  permissions above.
+
 ## Reading runs
 
 `GET /issues/:issueId/agent-runs` reads an issue's runs with cursor pagination. It requires

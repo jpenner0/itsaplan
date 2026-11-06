@@ -2,6 +2,13 @@ import { describe, it, expect, beforeEach } from 'bun:test';
 import { authedApi, type Api, createProject } from '#tests/helpers/app';
 import { signUpTestUser, type TestUser } from '#tests/helpers/auth';
 import { resetDb } from '#tests/helpers/db';
+import {
+  db,
+  gitManagedRepository,
+  gitProviderConnection,
+  issueCommentSyncLink,
+  issueSyncLink,
+} from '@repo/db';
 
 // An issue's timeline (issue_activity): comments (POST /issues/:issueId/comments)
 // and change-log entries recorded by the issue mutation routes, merged and paged
@@ -815,6 +822,69 @@ describe('issue activity', () => {
 
       const res = await asOwner.comments({ commentId: comment.id }).delete();
       expect(res.status).toBe(204);
+    });
+  });
+
+  describe('provider origin', () => {
+    it('names the provider login and link of a synced comment, and nothing for others', async () => {
+      const { asOwner, columnId } = await setupProject();
+      const view = (await asOwner.projects({ projectKey: 'MKT' }).get()).data!;
+      const issue = (await createIssue(asOwner, columnId)).data!;
+      const [connection] = await db
+        .insert(gitProviderConnection)
+        .values({
+          teamId: view.project.teamId,
+          provider: 'github',
+          baseUrl: 'https://api.github.com',
+          accountLogin: 'acme',
+          ciphertext: 'x',
+          iv: 'x',
+          authTag: 'x',
+        })
+        .returning();
+      const [repository] = await db
+        .insert(gitManagedRepository)
+        .values({
+          projectId: view.project.id,
+          connectionId: connection!.id,
+          externalId: '1',
+          fullName: 'acme/site',
+          webUrl: 'https://github.com/acme/site',
+          webhookExternalId: '1',
+        })
+        .returning();
+      const [link] = await db
+        .insert(issueSyncLink)
+        .values({
+          issueId: issue.id,
+          managedRepositoryId: repository!.id,
+          externalId: '1',
+          externalNumber: 1,
+          externalUrl: 'https://github.com/acme/site/issues/1',
+          syncedHash: 'x',
+          externalUpdatedAt: new Date(),
+        })
+        .returning();
+      const own = (await asOwner.issues({ issueId: issue.id }).comments.post({ body: 'mine' }))
+        .data!;
+      const remote = (await asOwner.issues({ issueId: issue.id }).comments.post({ body: 'theirs' }))
+        .data!;
+      await db.insert(issueCommentSyncLink).values({
+        activityId: remote.id,
+        issueSyncLinkId: link!.id,
+        externalId: '9',
+        externalUrl: 'https://github.com/acme/site/issues/1#issuecomment-9',
+        externalAuthorLogin: 'outsider',
+        syncedHash: 'x',
+        externalUpdatedAt: new Date(),
+      });
+
+      const items = (await feed(asOwner, issue.id, { filter: 'comments' })).data!.items;
+      expect(items.find((item) => item.id === own.id)!.external).toBeNull();
+      expect(items.find((item) => item.id === remote.id)!.external).toEqual({
+        login: 'outsider',
+        url: 'https://github.com/acme/site/issues/1#issuecomment-9',
+      });
     });
   });
 

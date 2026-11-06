@@ -77,6 +77,8 @@ export interface PublicAuthConfig {
   // that has a working single sign-on provider.
   emailPassword: boolean;
   google: boolean;
+  // Whether a member can link a GitHub account in the profile. Not a sign-in method.
+  github: boolean;
   oidc: boolean;
   // The sign-in button text the operator gave their identity provider. Empty when
   // OIDC is not offered, or when they left it blank.

@@ -253,7 +253,8 @@
     "edited": "змінено",
     "deleteComment": "Видалити коментар",
     "deleteCommentTitle": "Видалити цей коментар?",
-    "deleteCommentConfirmation": "Коментар і відповіді на нього буде видалено безповоротно."
+    "deleteCommentConfirmation": "Коментар і відповіді на нього буде видалено безповоротно.",
+    "viaGithub": "@{login} у GitHub"
   },
   "stats": {
     "title": "Статистика",
@@ -415,7 +416,9 @@
       "failed": "Помилка",
       "canceled": "Скасовано",
       "skipped": "Пропущено"
-    }
+    },
+    "publish": "Опублікувати в GitHub",
+    "published": "Опубліковано в GitHub"
   },
   "documents": {
     "title": "Документи",
@@ -564,5 +567,11 @@
     "selectRun": "Select a run to see its details",
     "runNotFound": "This run is not in your queue, or you cannot read it.",
     "backToRuns": "Back to runs"
+  },
+  "sync": {
+    "settingsConflict": "Цей репозиторій уже синхронізується з іншим проєктом.",
+    "publishConflict": "Ця задача вже є в GitHub, або її проєкт не синхронізує задачі.",
+    "github": "GitHub повернув помилку. Спробуйте пізніше.",
+    "busy": "Триває синхронізація. Спробуйте ще раз за мить."
   }
 }

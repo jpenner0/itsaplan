@@ -10,7 +10,7 @@ import { emitRunsCanceled } from '../core/run-finished';
 import { deleteThreadsWhere } from '../core/runtime/memory';
 
 export type AgentScheduleStatus = 'active' | 'paused';
-// 'cron', 'status', or a type an extension adds (./extension).
+// A core type or one an extension adds (./extension).
 export type AgentScheduleType = string;
 
 export interface AgentScheduleRow {
@@ -195,7 +195,7 @@ async function assertProjectColumn(projectId: number, columnId: number): Promise
 
 // Checks the fields of the given type that a write sets, and returns them as stored. A
 // field of another type is refused rather than ignored, so a caller that mixes them up
-// learns it. An extension's type takes the fields of a 'status' one but the column.
+// learns it. Any other type takes the fields of a 'status' one but the column.
 export async function scheduleTriggerFields(
   project: { id: number; teamId: number },
   type: AgentScheduleType,

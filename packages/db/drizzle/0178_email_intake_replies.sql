@@ -1,2 +1,0 @@
-ALTER TABLE "intake_item" ADD COLUMN "reply_to_issue_id" integer;--> statement-breakpoint
-CREATE INDEX "intake_item_reply_idx" ON "intake_item" USING btree ("id") WHERE "intake_item"."reply_to_issue_id" IS NOT NULL AND "intake_item"."status" = 'new';

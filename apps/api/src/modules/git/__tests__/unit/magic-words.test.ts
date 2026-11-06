@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test';
-import { parseIssueIdentifiers, parseMagicWords } from '../../magic-words';
+import { parseGithubIssueNumbers, parseIssueIdentifiers, parseMagicWords } from '../../magic-words';
 
 const ids = (refs: { key: string; sequenceNumber: number }[]) =>
   refs.map((r) => `${r.key}-${r.sequenceNumber}`);
@@ -80,5 +80,43 @@ describe('parseIssueIdentifiers', () => {
 
   it('does not treat a later dashed word as another issue key', () => {
     expect(ids(parseIssueIdentifiers('feature/MKT-42-extra-7'))).toEqual(['MKT-42']);
+  });
+});
+
+describe('parseGithubIssueNumbers', () => {
+  const parse = (text: string) =>
+    parseGithubIssueNumbers(text, 'acme/site', 'https://github.com/acme/site');
+
+  it('parses a bare reference and one after a closing word', () => {
+    expect(parse('Fixes #12, see #3')).toEqual([12, 3]);
+    expect(parse('#7 at the start')).toEqual([7]);
+  });
+
+  it('parses a reference qualified with this repository, ignoring case', () => {
+    expect(parse('Closes acme/site#5 and Acme/Site#6')).toEqual([5, 6]);
+  });
+
+  it('parses the issue URL of this repository', () => {
+    expect(parse('See https://github.com/acme/site/issues/9.')).toEqual([9]);
+  });
+
+  it('ignores another repository', () => {
+    expect(
+      parse('Fixes acme/other#5, https://github.com/acme/other/issues/6 and acme/sites#7'),
+    ).toEqual([]);
+  });
+
+  it('ignores a pull request URL, an anchor and a number inside a word', () => {
+    expect(
+      parse('https://github.com/acme/site/pull/4 page#2 &#38; #12abc https://x.test/#13'),
+    ).toEqual([]);
+  });
+
+  it('ignores a number too large for an issue', () => {
+    expect(parse('#1234567890')).toEqual([]);
+  });
+
+  it('lists a repeated number once, in the order of its first appearance', () => {
+    expect(parse('#2 #1 #2')).toEqual([2, 1]);
   });
 });

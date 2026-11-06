@@ -127,8 +127,8 @@ export const GoogleSettingsResponse = t.Object({
   enabled: t.Boolean(),
   clientId: t.String(),
   hasClientSecret: t.Boolean(),
-  // The value to register in the Google Cloud console. Derived from the API origin,
-  // so the UI shows it rather than asking the owner to assemble it.
+  // The value to register on the OAuth app. Derived from the API origin, so the UI
+  // shows it rather than asking the owner to assemble it.
   redirectUri: t.String(),
 });
 
@@ -137,6 +137,10 @@ export const GoogleSettingsBody = t.Object({
   clientId: t.Optional(t.String()),
   clientSecret: t.Optional(t.String()),
 });
+
+export const GithubSettingsResponse = GoogleSettingsResponse;
+
+export const GithubSettingsBody = GoogleSettingsBody;
 
 export const OidcSettingsResponse = t.Object({
   enabled: t.Boolean(),

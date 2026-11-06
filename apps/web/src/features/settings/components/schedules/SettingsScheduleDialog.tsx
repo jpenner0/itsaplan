@@ -147,26 +147,28 @@ export function SettingsScheduleDialog({
 
         <SettingsScheduleTaskField optional={!isCron} value={prompt} onChange={setPrompt} />
 
-        <div className="border-t border-border/50 pt-4">
-          {isStatus && (
-            <SettingsScheduleStatusFields
-              columns={columns}
-              columnId={columnId}
-              onColumnChange={setColumnId}
-              delayMin={delayMin}
-              onDelayChange={setDelayMin}
-            />
-          )}
-          {isCron && (
-            <SettingsScheduleField htmlFor="schedule-input" label={t('scheduleUtc')}>
-              <SettingsScheduleInput
-                id="schedule-input"
-                value={scheduleInput}
-                onChange={setScheduleInput}
+        {(isCron || isStatus) && (
+          <div className="border-t border-border/50 pt-4">
+            {isStatus && (
+              <SettingsScheduleStatusFields
+                columns={columns}
+                columnId={columnId}
+                onColumnChange={setColumnId}
+                delayMin={delayMin}
+                onDelayChange={setDelayMin}
               />
-            </SettingsScheduleField>
-          )}
-        </div>
+            )}
+            {isCron && (
+              <SettingsScheduleField htmlFor="schedule-input" label={t('scheduleUtc')}>
+                <SettingsScheduleInput
+                  id="schedule-input"
+                  value={scheduleInput}
+                  onChange={setScheduleInput}
+                />
+              </SettingsScheduleField>
+            )}
+          </div>
+        )}
 
         <div className="flex justify-end gap-2 border-t border-border/50 pt-4">
           <Button type="button" variant="ghost" onClick={onClose} disabled={saving}>

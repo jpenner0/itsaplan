@@ -94,6 +94,9 @@ webhook is updated in place on the next reconcile: saving the provider token aga
 regenerating the project's webhook secret. Deliveries are still authenticated by the
 project's secret. Auth, email links, the browser and MCP keep using `API_URL`.
 
+The GitHub issue sync also works without a public webhook endpoint. See
+[Syncing issues with GitHub](github-issue-sync.md#sync-without-a-public-url).
+
 ### Client IP
 
 The api rate-limits authentication per client address: sign-in, sign-up, password change and

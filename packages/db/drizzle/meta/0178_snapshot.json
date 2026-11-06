@@ -1,6 +1,6 @@
 {
-  "id": "8083f2a6-65ca-4b41-94a6-266a20e7209f",
-  "prevId": "bcb5ad68-f161-4fbd-839a-58594d0e5a7e",
+  "id": "22643101-9b01-4c36-ac78-8d333b3bcd65",
+  "prevId": "35bb6d7c-e8c3-467f-88d1-7397c1f822f9",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -2549,12 +2549,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "intake_item_id": {
-          "name": "intake_item_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "prompt": {
           "name": "prompt",
           "type": "text",
@@ -2639,22 +2633,6 @@
         }
       },
       "indexes": {
-        "agent_run_intake_item_idx": {
-          "name": "agent_run_intake_item_idx",
-          "columns": [
-            {
-              "expression": "intake_item_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"agent_run\".\"intake_item_id\" IS NOT NULL",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "agent_run_schedule_fire_uq": {
           "name": "agent_run_schedule_fire_uq",
           "columns": [
@@ -2857,19 +2835,6 @@
           ],
           "onDelete": "set null",
           "onUpdate": "no action"
-        },
-        "agent_run_intake_item_id_intake_item_id_fk": {
-          "name": "agent_run_intake_item_id_intake_item_id_fk",
-          "tableFrom": "agent_run",
-          "tableTo": "intake_item",
-          "columnsFrom": [
-            "intake_item_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2882,7 +2847,7 @@
         },
         "agent_run_trigger_check": {
           "name": "agent_run_trigger_check",
-          "value": "\"agent_run\".\"trigger\" IN ('mention', 'delegation', 'field', 'schedule', 'manual', 'status', 'event', 'mail_triage')"
+          "value": "\"agent_run\".\"trigger\" IN ('mention', 'delegation', 'field', 'schedule', 'manual', 'status', 'event')"
         }
       },
       "isRLSEnabled": false
@@ -4865,6 +4830,26 @@
           "primaryKey": false,
           "notNull": false
         },
+        "issues_sync_enabled": {
+          "name": "issues_sync_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "new_issues_to_provider": {
+          "name": "new_issues_to_provider",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "issues_watermark": {
+          "name": "issues_watermark",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -4898,6 +4883,28 @@
             }
           ],
           "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "git_managed_repository_issues_sync_uq": {
+          "name": "git_managed_repository_issues_sync_uq",
+          "columns": [
+            {
+              "expression": "connection_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "external_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"git_managed_repository\".\"issues_sync_enabled\"",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -4999,6 +5006,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "bot_user_id": {
+          "name": "bot_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -5044,10 +5057,31 @@
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
+        },
+        "git_provider_connection_bot_user_id_user_id_fk": {
+          "name": "git_provider_connection_bot_user_id_user_id_fk",
+          "tableFrom": "git_provider_connection",
+          "tableTo": "user",
+          "columnsFrom": [
+            "bot_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "git_provider_connection_bot_user_id_unique": {
+          "name": "git_provider_connection_bot_user_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "bot_user_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -5707,211 +5741,6 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.intake_item": {
-      "name": "intake_item",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "folder_id": {
-          "name": "folder_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "message_id": {
-          "name": "message_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "in_reply_to": {
-          "name": "in_reply_to",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "references": {
-          "name": "references",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::text[]"
-        },
-        "from_name": {
-          "name": "from_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "from_address": {
-          "name": "from_address",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "subject": {
-          "name": "subject",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "sent_at": {
-          "name": "sent_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "body": {
-          "name": "body",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "attachments": {
-          "name": "attachments",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[]'::jsonb"
-        },
-        "classification": {
-          "name": "classification",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "draft": {
-          "name": "draft",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'new'"
-        },
-        "issue_id": {
-          "name": "issue_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reply_to_issue_id": {
-          "name": "reply_to_issue_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "decided_at": {
-          "name": "decided_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "intake_item_reply_idx": {
-          "name": "intake_item_reply_idx",
-          "columns": [
-            {
-              "expression": "id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"intake_item\".\"reply_to_issue_id\" IS NOT NULL AND \"intake_item\".\"status\" = 'new'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "intake_item_message_idx": {
-          "name": "intake_item_message_idx",
-          "columns": [
-            {
-              "expression": "message_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "intake_item_folder_id_mailbox_folder_id_fk": {
-          "name": "intake_item_folder_id_mailbox_folder_id_fk",
-          "tableFrom": "intake_item",
-          "tableTo": "mailbox_folder",
-          "columnsFrom": [
-            "folder_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "intake_item_issue_id_issue_id_fk": {
-          "name": "intake_item_issue_id_issue_id_fk",
-          "tableFrom": "intake_item",
-          "tableTo": "issue",
-          "columnsFrom": [
-            "issue_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "intake_item_folder_id_message_id_unique": {
-          "name": "intake_item_folder_id_message_id_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "folder_id",
-            "message_id"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {
-        "intake_item_status_check": {
-          "name": "intake_item_status_check",
-          "value": "\"intake_item\".\"status\" IN ('new', 'accepted', 'rejected')"
-        },
-        "intake_item_classification_check": {
-          "name": "intake_item_classification_check",
-          "value": "\"intake_item\".\"classification\" IN ('bug', 'feature', 'question', 'no_ticket', 'spam')"
-        }
-      },
       "isRLSEnabled": false
     },
     "public.integration_credential": {
@@ -6882,6 +6711,110 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.issue_comment_sync_link": {
+      "name": "issue_comment_sync_link",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "activity_id": {
+          "name": "activity_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "issue_sync_link_id": {
+          "name": "issue_sync_link_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "external_id": {
+          "name": "external_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "external_url": {
+          "name": "external_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "external_author_login": {
+          "name": "external_author_login",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "synced_hash": {
+          "name": "synced_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "external_updated_at": {
+          "name": "external_updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "issue_comment_sync_link_activity_id_issue_activity_id_fk": {
+          "name": "issue_comment_sync_link_activity_id_issue_activity_id_fk",
+          "tableFrom": "issue_comment_sync_link",
+          "tableTo": "issue_activity",
+          "columnsFrom": [
+            "activity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "issue_comment_sync_link_issue_sync_link_id_issue_sync_link_id_fk": {
+          "name": "issue_comment_sync_link_issue_sync_link_id_issue_sync_link_id_fk",
+          "tableFrom": "issue_comment_sync_link",
+          "tableTo": "issue_sync_link",
+          "columnsFrom": [
+            "issue_sync_link_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "issue_comment_sync_link_activity_id_unique": {
+          "name": "issue_comment_sync_link_activity_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "activity_id"
+          ]
+        },
+        "issue_comment_sync_link_external_uq": {
+          "name": "issue_comment_sync_link_external_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "issue_sync_link_id",
+            "external_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -8090,6 +8023,275 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.issue_sync_link": {
+      "name": "issue_sync_link",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "issue_id": {
+          "name": "issue_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "managed_repository_id": {
+          "name": "managed_repository_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "external_id": {
+          "name": "external_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "external_number": {
+          "name": "external_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "external_url": {
+          "name": "external_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "synced_hash": {
+          "name": "synced_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "field_hashes": {
+          "name": "field_hashes",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "external_updated_at": {
+          "name": "external_updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "issue_sync_link_issue_id_issue_id_fk": {
+          "name": "issue_sync_link_issue_id_issue_id_fk",
+          "tableFrom": "issue_sync_link",
+          "tableTo": "issue",
+          "columnsFrom": [
+            "issue_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "issue_sync_link_managed_repository_id_git_managed_repository_id_fk": {
+          "name": "issue_sync_link_managed_repository_id_git_managed_repository_id_fk",
+          "tableFrom": "issue_sync_link",
+          "tableTo": "git_managed_repository",
+          "columnsFrom": [
+            "managed_repository_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "issue_sync_link_issue_id_unique": {
+          "name": "issue_sync_link_issue_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "issue_id"
+          ]
+        },
+        "issue_sync_link_repository_number_uq": {
+          "name": "issue_sync_link_repository_number_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "managed_repository_id",
+            "external_number"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.issue_sync_outbox": {
+      "name": "issue_sync_outbox",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "issue_id": {
+          "name": "issue_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "activity_id": {
+          "name": "activity_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "publish": {
+          "name": "publish",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "connection_id": {
+          "name": "connection_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "repository": {
+          "name": "repository",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "repository_external_id": {
+          "name": "repository_external_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "external_id": {
+          "name": "external_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "attempts": {
+          "name": "attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "last_error": {
+          "name": "last_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "next_attempt_at": {
+          "name": "next_attempt_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {
+        "issue_sync_outbox_issue_uq": {
+          "name": "issue_sync_outbox_issue_uq",
+          "columns": [
+            {
+              "expression": "issue_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"issue_sync_outbox\".\"kind\" = 'issue'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "issue_sync_outbox_comment_uq": {
+          "name": "issue_sync_outbox_comment_uq",
+          "columns": [
+            {
+              "expression": "activity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"issue_sync_outbox\".\"kind\" = 'comment'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "issue_sync_outbox_due_idx": {
+          "name": "issue_sync_outbox_due_idx",
+          "columns": [
+            {
+              "expression": "next_attempt_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "issue_sync_outbox_issue_idx": {
+          "name": "issue_sync_outbox_issue_idx",
+          "columns": [
+            {
+              "expression": "issue_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.issue_template": {
       "name": "issue_template",
       "schema": "",
@@ -8721,315 +8923,6 @@
       },
       "policies": {},
       "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.mailbox": {
-      "name": "mailbox",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "label": {
-          "name": "label",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "host": {
-          "name": "host",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "port": {
-          "name": "port",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 993
-        },
-        "secure": {
-          "name": "secure",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "auth": {
-          "name": "auth",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'password'"
-        },
-        "username": {
-          "name": "username",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "ciphertext": {
-          "name": "ciphertext",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "iv": {
-          "name": "iv",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "auth_tag": {
-          "name": "auth_tag",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "redacted": {
-          "name": "redacted",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::jsonb"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "mailbox_user_idx": {
-          "name": "mailbox_user_idx",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "mailbox_user_id_user_id_fk": {
-          "name": "mailbox_user_id_user_id_fk",
-          "tableFrom": "mailbox",
-          "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "mailbox_auth_check": {
-          "name": "mailbox_auth_check",
-          "value": "\"mailbox\".\"auth\" IN ('password', 'microsoft365')"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.mailbox_folder": {
-      "name": "mailbox_folder",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "mailbox_id": {
-          "name": "mailbox_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "team_id": {
-          "name": "team_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "agent_id": {
-          "name": "agent_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "uid_validity": {
-          "name": "uid_validity",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "last_uid": {
-          "name": "last_uid",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'active'"
-        },
-        "failures": {
-          "name": "failures",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "last_error": {
-          "name": "last_error",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "next_poll_at": {
-          "name": "next_poll_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "last_polled_at": {
-          "name": "last_polled_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "mailbox_folder_due_idx": {
-          "name": "mailbox_folder_due_idx",
-          "columns": [
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "next_poll_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "mailbox_folder_mailbox_id_mailbox_id_fk": {
-          "name": "mailbox_folder_mailbox_id_mailbox_id_fk",
-          "tableFrom": "mailbox_folder",
-          "tableTo": "mailbox",
-          "columnsFrom": [
-            "mailbox_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "mailbox_folder_team_id_team_id_fk": {
-          "name": "mailbox_folder_team_id_team_id_fk",
-          "tableFrom": "mailbox_folder",
-          "tableTo": "team",
-          "columnsFrom": [
-            "team_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "mailbox_folder_agent_id_ai_agent_id_fk": {
-          "name": "mailbox_folder_agent_id_ai_agent_id_fk",
-          "tableFrom": "mailbox_folder",
-          "tableTo": "ai_agent",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "mailbox_folder_mailbox_id_name_unique": {
-          "name": "mailbox_folder_mailbox_id_name_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "mailbox_id",
-            "name"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {
-        "mailbox_folder_status_check": {
-          "name": "mailbox_folder_status_check",
-          "value": "\"mailbox_folder\".\"status\" IN ('active', 'paused')"
-        }
-      },
       "isRLSEnabled": false
     },
     "public.model_price": {

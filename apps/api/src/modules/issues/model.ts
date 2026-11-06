@@ -40,6 +40,25 @@ export const createIssuePullRequestBody = t.Object({
   draft: t.Boolean(),
 });
 
+// GitHub refuses a comment over 65,536 characters; the rest is left for the header line.
+export const pullRequestCommentBody = t.Object({
+  body: t.String({ minLength: 1, maxLength: 60_000 }),
+});
+
+export const PullRequestDiffResponse = t.Object({
+  repository: t.String(),
+  number: t.Number(),
+  url: t.Nullable(t.String()),
+  diff: t.String(),
+  truncated: t.Boolean(),
+});
+
+export const PullRequestCommentResponse = t.Object({
+  repository: t.String(),
+  number: t.Number(),
+  url: t.Nullable(t.String()),
+});
+
 export const DevelopmentRepositoryResponse = t.Object({
   id: t.Number(),
   provider: t.Union([t.Literal('github'), t.Literal('gitlab')]),
@@ -80,6 +99,12 @@ export const IssueFieldValueEntry = t.Object({
   value: t.Nullable(t.Union([t.String(), t.Number(), t.Boolean()])),
   valueEnd: t.Nullable(t.String()),
   optionIds: t.Array(t.Number()),
+});
+
+export const PublishedIssueResponse = t.Object({
+  issueId: t.Number(),
+  externalNumber: t.Number(),
+  externalUrl: t.String(),
 });
 
 // IssueRow from the service.
@@ -288,7 +313,8 @@ export const createWorklogBody = t.Object({
 export const updateWorklogBody = t.Partial(createWorklogBody);
 
 // GET /issues/:issueId returns the full issue plus its custom field values, its
-// relations to other issues, the members watching it, and its checklists.
+// relations to other issues, the members watching it, and its checklists. `syncsIssues`
+// tells a member who cannot read the git settings whether "Publish to GitHub" applies.
 export const IssueWithFieldsResponse = t.Composite([
   IssueResponse,
   t.Object({
@@ -299,6 +325,7 @@ export const IssueWithFieldsResponse = t.Composite([
     subtasks: t.Array(IssueRefResponse),
     checklists: t.Array(ChecklistResponse),
     development: t.Array(DevelopmentLinkResponse),
+    syncsIssues: t.Boolean(),
   }),
 ]);
 
@@ -366,6 +393,7 @@ export const FeedItemResponse = t.Object({
   payload: ActivityPayloadResponse,
   createdAt: t.String(),
   editedAt: t.Nullable(t.String()),
+  external: t.Nullable(t.Object({ login: t.String(), url: t.String() })),
 });
 
 export const FeedCursorResponse = t.Nullable(t.Object({ ts: t.String(), id: t.Number() }));

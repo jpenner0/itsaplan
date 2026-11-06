@@ -112,6 +112,7 @@ Read the doc for what your task touches:
 | SCIM                                          | `docs/dev/scim.md`                                                   |
 | sign-in methods, sessions, API keys, MCP OAuth | `docs/dev/auth.md`                                                  |
 | live updates: scopes, counters, refetch       | `docs/dev/revision-engine.md`                                        |
+| GitHub issue sync                             | `docs/dev/github-issue-sync.md`                                      |
 | interface languages                           | `docs/dev/i18n.md`                                                   |
 | imports                                       | `docs/dev/import-worker.md`, `docs/dev/{linear,trello,plane}-import.md` |
 | the email intake: mailboxes, IMAP fetch, triage | `docs/dev/email-intake.md`                                         |
