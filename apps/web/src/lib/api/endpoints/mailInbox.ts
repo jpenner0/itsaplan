@@ -1,6 +1,6 @@
 import { request } from '@/lib/api/core/client';
 
-// The session user's Mail inbox: the drafts of the emails fetched from their own mailboxes.
+// The session user's Mail inbox: the drafts of the emails fetched by the mailboxes of their teams.
 
 export type Classification = 'bug' | 'feature' | 'question' | 'no_ticket' | 'spam';
 export type Priority = 'urgent' | 'high' | 'medium' | 'low';
@@ -25,7 +25,6 @@ export interface MailItem {
   body: string;
   attachments: { filename: string; sizeBytes: number; stored: boolean }[];
   classification: Classification | null;
-  folderName: string;
   teamId: number;
   triage: 'none' | 'pending' | 'done' | 'failed';
   draft: MailDraft | null;

@@ -1,4 +1,4 @@
-import { db, intakeItem, mailbox, mailboxFolder } from '@repo/db';
+import { aiAgent, db, intakeItem, teamMailbox } from '@repo/db';
 import { and, asc, eq, isNotNull } from 'drizzle-orm';
 import { checkPermission, assertProjectWritable } from '#shared/access';
 import { createComment } from '#modules/issues/activity';
@@ -8,7 +8,7 @@ import { queueTriageRun } from './triage';
 
 // Replies in a thread become issue comments. The worker marks an email that answers an
 // accepted one (`reply_to_issue_id`); this posts it, with no triage and no AI. It runs in the
-// api because it applies the mailbox owner's rights, which the worker cannot.
+// api because it applies the team agent's rights, which the worker cannot.
 
 // Lines that start the quoted earlier message or the signature. Everything from the first
 // such line on is cut.
@@ -43,7 +43,7 @@ export function stripReply(body: string): string {
   return kept.join('\n').trim();
 }
 
-// The text of an outside sender is posted under the mailbox owner's name. A "@handle" in it
+// The text of an outside sender is posted under the team agent's name. A "@handle" in it
 // would start a run of that agent with the sender's text as its task, so the mention is broken
 // with a zero-width space.
 export function withoutMentions(text: string): string {
@@ -53,10 +53,10 @@ export function withoutMentions(text: string): string {
 type Item = typeof intakeItem.$inferSelect;
 
 // Posts one claimed reply. Returns false when it cannot be posted, so the caller triages it.
-async function postReply(item: Item, ownerUserId: string): Promise<boolean> {
+async function postReply(item: Item, actorUserId: string): Promise<boolean> {
   const issue = item.replyToIssueId ? await getIssue(item.replyToIssueId) : null;
   if (!issue) return false;
-  if (!(await checkPermission(issue.projectId, { id: ownerUserId }, 'work_items', 'edit'))) {
+  if (!(await checkPermission(issue.projectId, { id: actorUserId }, 'work_items', 'edit'))) {
     return false;
   }
   try {
@@ -69,7 +69,7 @@ async function postReply(item: Item, ownerUserId: string): Promise<boolean> {
   const notes = await moveAttachments(item, issue.projectId, issue.id);
   await createComment({
     issueId: issue.id,
-    actorUserId: ownerUserId,
+    actorUserId,
     body: [`via email from ${from}`, '', text, ...(notes.length ? ['', ...notes] : [])].join('\n'),
   });
   await db
@@ -86,11 +86,11 @@ async function postReply(item: Item, ownerUserId: string): Promise<boolean> {
   return true;
 }
 
-// The email goes through triage like a new one: the owner can no longer comment, or the issue
+// The email goes through triage like a new one: the agent can no longer comment, or the issue
 // is gone.
-async function fallBackToTriage(item: Item, ownerUserId: string, agentId: number, teamId: number) {
+async function fallBackToTriage(item: Item, agentId: number, teamId: number) {
   await db.update(intakeItem).set({ replyToIssueId: null }).where(eq(intakeItem.id, item.id));
-  await queueTriageRun(item.id, { agentId, teamId }, ownerUserId);
+  await queueTriageRun(item.id, { agentId, teamId });
 }
 
 // Posts the pending replies. Each is claimed by clearing its marker in one conditional update,
@@ -100,18 +100,18 @@ export async function processMailReplies(): Promise<number> {
   const pending = await db
     .select({
       item: intakeItem,
-      ownerUserId: mailbox.userId,
-      agentId: mailboxFolder.agentId,
-      teamId: mailboxFolder.teamId,
+      actorUserId: aiAgent.userId,
+      agentId: teamMailbox.agentId,
+      teamId: teamMailbox.teamId,
     })
     .from(intakeItem)
-    .innerJoin(mailboxFolder, eq(mailboxFolder.id, intakeItem.folderId))
-    .innerJoin(mailbox, eq(mailbox.id, mailboxFolder.mailboxId))
+    .innerJoin(teamMailbox, eq(teamMailbox.id, intakeItem.teamMailboxId))
+    .innerJoin(aiAgent, eq(aiAgent.id, teamMailbox.agentId))
     .where(and(eq(intakeItem.status, 'new'), isNotNull(intakeItem.replyToIssueId)))
     .orderBy(asc(intakeItem.id))
     .limit(20);
   let posted = 0;
-  for (const { item, ownerUserId, agentId, teamId } of pending) {
+  for (const { item, actorUserId, agentId, teamId } of pending) {
     const claimed = await db
       .update(intakeItem)
       .set({ status: 'accepted' })
@@ -125,7 +125,7 @@ export async function processMailReplies(): Promise<number> {
       .returning({ id: intakeItem.id });
     if (claimed.length === 0) continue;
     try {
-      if (await postReply(item, ownerUserId)) {
+      if (await postReply(item, actorUserId)) {
         posted++;
         continue;
       }
@@ -133,7 +133,7 @@ export async function processMailReplies(): Promise<number> {
       console.error(`[mail-inbox] reply ${item.id} not posted:`, err);
     }
     await db.update(intakeItem).set({ status: 'new' }).where(eq(intakeItem.id, item.id));
-    await fallBackToTriage(item, ownerUserId, agentId, teamId);
+    await fallBackToTriage(item, agentId, teamId);
   }
   return posted;
 }

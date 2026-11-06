@@ -22,8 +22,8 @@ import {
   retriage,
 } from './service';
 
-// The session user's Mail inbox. Every route is self-scoped to the owner of the mailbox the
-// email came from, so no project guard applies. The routes take the user's own rights into
+// The session user's Mail inbox: the emails of the mailboxes of their teams. A route checks
+// the team membership itself, so no project guard applies. The routes take the user's own rights into
 // account when they create an issue or a comment. Not MCP tools: the content comes from
 // outside senders and a person confirms it.
 export const mailInboxRoutes = new Elysia({ name: 'mail-inbox', detail: { tags: ['Mail intake'] } })
