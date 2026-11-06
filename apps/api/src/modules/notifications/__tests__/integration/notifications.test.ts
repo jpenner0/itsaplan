@@ -337,6 +337,7 @@ describe('notifications', () => {
     await member.api.projects({ projectKey: 'MKT' })['notification-preferences'].put({
       emailEvents: events,
       telegramEvents: events,
+      teamsEvents: events,
     });
     const issue = (await createIssue(owner.api, columnId)).data!;
     const client = owner.api.issues({ issueId: issue.id });

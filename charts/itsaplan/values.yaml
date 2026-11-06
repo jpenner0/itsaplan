@@ -45,6 +45,10 @@ api:
     # TRUSTED_PROXIES: ""
     # Public origin for incoming Git webhooks when API_URL is private; unset uses API_URL.
     # GIT_WEBHOOK_BASE_URL: ""
+    # Microsoft Teams bot (optional): app id and tenant id of the Azure Bot registration.
+    # The password is secrets.teamsBotAppPassword. Unset disables the bot.
+    # TEAMS_BOT_APP_ID: ""
+    # TEAMS_BOT_TENANT_ID: ""
     S3_BUCKET: ""
     S3_REGION: "us-east-1"
     S3_FORCE_PATH_STYLE: "true"
@@ -167,6 +171,8 @@ secrets:
   appEncryptionKey: ""
   s3AccessKeyId: ""
   s3SecretAccessKey: ""
+  # Client secret of the Teams bot's Azure app registration (optional).
+  teamsBotAppPassword: ""
 
 # -- External database (when postgresql.enabled is false)
 externalDatabase:

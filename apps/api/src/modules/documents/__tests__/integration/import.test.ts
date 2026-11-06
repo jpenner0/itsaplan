@@ -86,6 +86,7 @@ describe('POST /projects/:projectKey/documents/import', () => {
     expect(res.data!.skipped).toEqual([]);
 
     const pages = await tree(asOwner);
+    expect(res.data!.createdCount).toBe(pages.length - 1);
     const byTitle = new Map(pages.map((page) => [page.title, page]));
     const childrenOf = (title: string) =>
       pages

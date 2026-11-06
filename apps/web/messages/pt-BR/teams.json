@@ -270,7 +270,11 @@
     "telegramBotHint": "O bot que entrega notificações para todos os projetos do time. Membros escolhem seu próprio chat em suas preferências. O token é armazenado criptografado.",
     "botToken": "Token da API do bot (opcional)",
     "emailSaved": "Provedor de e-mail salvo",
-    "telegramSaved": "Provedor do Telegram salvo"
+    "telegramSaved": "Provedor do Telegram salvo",
+    "teams": "Microsoft Teams",
+    "teamsTitle": "Microsoft Teams",
+    "teamsHint": "Let members of the team's projects receive notifications in Teams. Each member connects their own Workflows webhook in their account settings.",
+    "teamsSaved": "Teams setting saved"
   },
   "integrations": {
     "noAccess": "Você não tem acesso às integrações deste time.",

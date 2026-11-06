@@ -1261,6 +1261,13 @@
       "when": 1793891830699,
       "tag": "0179_issue_sync_inbox",
       "breakpoints": true
+    },
+    {
+      "idx": 180,
+      "version": "7",
+      "when": 1793951854129,
+      "tag": "0180_unknown_paladin",
+      "breakpoints": true
     }
   ]
 }

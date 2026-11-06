@@ -7,10 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useEmailForm } from '../../hooks/useEmailForm';
 import { useTelegramForm } from '../../hooks/useTelegramForm';
+import { useTeamsForm } from '../../hooks/useTeamsForm';
 import EmailSettings from './EmailSettings';
 import TelegramSettings from './TelegramSettings';
+import TeamsSettings from './TeamsSettings';
 
-type NotificationTab = 'email' | 'telegram';
+type NotificationTab = 'email' | 'telegram' | 'teams';
 
 // One tab per channel, each saving on its own: Save acts on the active tab and is
 // enabled once that tab has an unsaved change.
@@ -26,7 +28,8 @@ export default function TeamNotificationProviders({
   const [tab, setTab] = useState<NotificationTab>('email');
   const emailForm = useEmailForm(teamId, settings);
   const telegramForm = useTelegramForm(teamId, settings);
-  const active = tab === 'email' ? emailForm : telegramForm;
+  const teamsForm = useTeamsForm(teamId, settings);
+  const active = { email: emailForm, telegram: telegramForm, teams: teamsForm }[tab];
 
   return (
     <Tabs
@@ -38,6 +41,7 @@ export default function TeamNotificationProviders({
         <TabsList variant="line" className="w-auto">
           <TabsTrigger value="email">{t('email')}</TabsTrigger>
           <TabsTrigger value="telegram">{t('telegram')}</TabsTrigger>
+          <TabsTrigger value="teams">{t('teams')}</TabsTrigger>
         </TabsList>
         <Button
           size="sm"
@@ -54,6 +58,10 @@ export default function TeamNotificationProviders({
 
       <TabsContent value="telegram" className="mt-0">
         <TelegramSettings form={telegramForm} />
+      </TabsContent>
+
+      <TabsContent value="teams" className="mt-0">
+        <TeamsSettings form={teamsForm} />
       </TabsContent>
     </Tabs>
   );

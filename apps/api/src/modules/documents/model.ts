@@ -322,5 +322,6 @@ export const importDocumentsBody = t.Object({
 
 export const DocumentImportResponse = t.Object({
   pages: t.Array(DocumentSummaryResponse, { description: 'The created top-level pages.' }),
+  createdCount: t.Integer({ description: 'All created pages, the subpages included.' }),
   skipped: t.Array(t.String(), { description: 'ZIP paths that were not imported.' }),
 });

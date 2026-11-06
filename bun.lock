@@ -43,6 +43,7 @@
         "drizzle-orm": "^0.45.4",
         "elysia": "^1.4.30",
         "exceljs": "^4.4.0",
+        "jose": "^6.2.3",
         "jszip": "^3.10.2",
         "mammoth": "^1.13.0",
         "transliteration": "^2.6.1",
@@ -156,6 +157,7 @@
         "sonner": "^2.0.8",
         "tiptap-markdown": "^0.9.0",
         "transliteration": "^2.6.1",
+        "yaml": "^2.9.1",
       },
       "devDependencies": {
         "@repo/eslint-config": "workspace:*",

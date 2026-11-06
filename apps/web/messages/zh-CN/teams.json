@@ -270,7 +270,11 @@
     "telegramBotHint": "为团队的所有项目投递通知的机器人。成员在自己的偏好设置中选择聊天。令牌以加密方式存储。",
     "botToken": "Bot API 令牌（可选）",
     "emailSaved": "邮件服务商已保存",
-    "telegramSaved": "Telegram 服务商已保存"
+    "telegramSaved": "Telegram 服务商已保存",
+    "teams": "Microsoft Teams",
+    "teamsTitle": "Microsoft Teams",
+    "teamsHint": "Let members of the team's projects receive notifications in Teams. Each member connects their own Workflows webhook in their account settings.",
+    "teamsSaved": "Teams setting saved"
   },
   "integrations": {
     "noAccess": "你没有权限查看该团队的集成。",

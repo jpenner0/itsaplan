@@ -187,6 +187,8 @@ bot:
 | `api.env.CLIENT_IP_HEADER`            | Header the client IP for the rate limit is read from      | (unset, `X-Forwarded-For`)       |
 | `api.env.TRUSTED_PROXIES`             | Proxies skipped in an `X-Forwarded-For` chain (CSV)       | (unset)                          |
 | `api.env.GIT_WEBHOOK_BASE_URL`        | Public origin for incoming Git webhooks                   | (unset, uses `API_URL`)          |
+| `api.env.TEAMS_BOT_APP_ID`            | Microsoft Teams bot app id (enables the bot)              | (unset)                          |
+| `api.env.TEAMS_BOT_TENANT_ID`         | Microsoft Teams bot tenant id                             | (unset)                          |
 | `api.env.S3_BUCKET`                   | S3 bucket name                                            | `""`                             |
 | `api.env.S3_REGION`                   | S3 region                                                 | `us-east-1`                      |
 | `api.env.S3_FORCE_PATH_STYLE`         | S3 path-style access                                      | `"true"`                         |
@@ -287,6 +289,7 @@ bot:
 | `secrets.appEncryptionKey`    | AES encryption key for secrets at rest    | `""`    |
 | `secrets.s3AccessKeyId`       | S3 access key (also RustFS root user)     | `""`    |
 | `secrets.s3SecretAccessKey`   | S3 secret key (also RustFS root password) | `""`    |
+| `secrets.teamsBotAppPassword` | Microsoft Teams bot client secret         | (unset) |
 
 ### External services
 

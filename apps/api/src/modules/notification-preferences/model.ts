@@ -11,4 +11,12 @@ const EventToggles = t.Object({
 export const NotificationPreferenceBody = t.Object({
   emailEvents: EventToggles,
   telegramEvents: EventToggles,
+  teamsEvents: EventToggles,
+});
+
+// The GET also says whether the project's team has turned Teams on, so the client
+// shows the Teams column only then.
+export const NotificationPreferenceResponse = t.Object({
+  ...NotificationPreferenceBody.properties,
+  teamsEnabled: t.Boolean(),
 });
