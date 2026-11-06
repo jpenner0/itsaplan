@@ -260,5 +260,23 @@
     "retry": "Retry",
     "noResolved": "No resolved discussions.",
     "empty": "Select text to start a discussion."
-  }
+  },
+  "importMarkdown": "استيراد Markdown",
+  "importDescription": "استورد مجلدًا من ملفات Markdown كصفحات. يصبح كل مجلد صفحة أصلية.",
+  "importSubpagesDescription": "استورد مجلدًا من ملفات Markdown كصفحات فرعية لهذه الصفحة. يصبح كل مجلد صفحة أصلية.",
+  "importDrop": "أفلت مجلدًا أو ملف ZIP هنا، أو اخترهما.",
+  "importChooseFolder": "اختيار مجلد",
+  "importChooseZip": "اختيار ZIP",
+  "importReading": "جارٍ قراءة الملفات…",
+  "importReadFailed": "تعذّرت قراءة الملفات.",
+  "importAction": "استيراد",
+  "importing": "جارٍ الاستيراد…",
+  "importDone": "الصفحات المستوردة: {count}",
+  "importSummary": "الصفحات: {pages} · الأصول: {assets}",
+  "importNothing": "لا توجد صفحات Markdown للاستيراد.",
+  "importSkipped": "الملفات المتخطاة: {count}",
+  "importZipTooLarge": "ملف ZIP أكبر من 50 ميغابايت.",
+  "importTooManyPages": "يحتوي المجلد على {count} صفحة. الحد هو 500.",
+  "importPageTooLong": "{path} أطول من 250,000 حرف.",
+  "importInvalidUtf8": "{path} ليس بترميز UTF-8 صالح."
 }

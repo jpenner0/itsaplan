@@ -260,5 +260,23 @@
     "retry": "重試",
     "noResolved": "沒有已解決的討論。",
     "empty": "選取文字即可開始討論。"
-  }
+  },
+  "importMarkdown": "匯入 Markdown",
+  "importDescription": "將包含 Markdown 檔案的資料夾匯入為頁面。每個資料夾會成為一個父頁面。",
+  "importSubpagesDescription": "將包含 Markdown 檔案的資料夾匯入為此頁面的子頁面。每個資料夾會成為一個父頁面。",
+  "importDrop": "將資料夾或 ZIP 檔案拖曳到此處，或選擇一個。",
+  "importChooseFolder": "選擇資料夾",
+  "importChooseZip": "選擇 ZIP",
+  "importReading": "正在讀取檔案…",
+  "importReadFailed": "無法讀取檔案。",
+  "importAction": "匯入",
+  "importing": "正在匯入…",
+  "importDone": "已匯入頁面：{count}",
+  "importSummary": "頁面：{pages} · 資源：{assets}",
+  "importNothing": "沒有可匯入的 Markdown 頁面。",
+  "importSkipped": "已略過的檔案：{count}",
+  "importZipTooLarge": "ZIP 檔案超過 50 MB。",
+  "importTooManyPages": "資料夾包含 {count} 個頁面，上限為 500。",
+  "importPageTooLong": "{path} 超過 250,000 個字元。",
+  "importInvalidUtf8": "{path} 不是有效的 UTF-8。"
 }

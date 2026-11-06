@@ -260,5 +260,23 @@
     "retry": "Повторить",
     "noResolved": "Закрытых обсуждений пока нет.",
     "empty": "Выделите текст, чтобы начать обсуждение."
-  }
+  },
+  "importMarkdown": "Импорт Markdown",
+  "importDescription": "Импортируйте папку с файлами Markdown как страницы. Каждая папка становится родительской страницей.",
+  "importSubpagesDescription": "Импортируйте папку с файлами Markdown как подстраницы этой страницы. Каждая папка становится родительской страницей.",
+  "importDrop": "Перетащите сюда папку или ZIP-файл либо выберите их.",
+  "importChooseFolder": "Выбрать папку",
+  "importChooseZip": "Выбрать ZIP",
+  "importReading": "Чтение файлов…",
+  "importReadFailed": "Не удалось прочитать файлы.",
+  "importAction": "Импортировать",
+  "importing": "Импорт…",
+  "importDone": "Импортировано страниц: {count}",
+  "importSummary": "Страниц: {pages} · Вложений: {assets}",
+  "importNothing": "Нет страниц Markdown для импорта.",
+  "importSkipped": "Пропущено файлов: {count}",
+  "importZipTooLarge": "ZIP-файл больше 50 МБ.",
+  "importTooManyPages": "В папке {count} страниц. Лимит — 500.",
+  "importPageTooLong": "{path} длиннее 250 000 символов.",
+  "importInvalidUtf8": "{path} не в допустимой кодировке UTF-8."
 }

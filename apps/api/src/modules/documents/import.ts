@@ -34,6 +34,7 @@ import {
 
 export interface DocumentImportResult {
   pages: DocumentSummaryRow[];
+  createdCount: number;
   skipped: string[];
 }
 
@@ -203,6 +204,7 @@ export async function importMarkdownZip(input: {
         .filter((row) => rootIds.has(row.id))
         .sort((a, b) => a.position - b.position)
         .map((row) => summaryOf(row)),
+      createdCount: created.length,
       skipped: [...skipped].sort(),
     };
   } catch (error) {

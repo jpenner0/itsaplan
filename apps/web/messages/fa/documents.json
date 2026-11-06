@@ -260,5 +260,23 @@
     "retry": "تلاش دوباره",
     "noResolved": "گفتگوی حل‌شده‌ای وجود ندارد.",
     "empty": "برای شروع گفتگو متنی را انتخاب کنید."
-  }
+  },
+  "importMarkdown": "درون‌ریزی Markdown",
+  "importDescription": "پوشه‌ای از فایل‌های Markdown را به‌صورت صفحه درون‌ریزی کنید. هر پوشه به یک صفحهٔ والد تبدیل می‌شود.",
+  "importSubpagesDescription": "پوشه‌ای از فایل‌های Markdown را به‌صورت زیرصفحه‌های این صفحه درون‌ریزی کنید. هر پوشه به یک صفحهٔ والد تبدیل می‌شود.",
+  "importDrop": "پوشه یا فایل ZIP را اینجا رها کنید یا یکی را انتخاب کنید.",
+  "importChooseFolder": "انتخاب پوشه",
+  "importChooseZip": "انتخاب ZIP",
+  "importReading": "در حال خواندن فایل‌ها…",
+  "importReadFailed": "خواندن فایل‌ها ممکن نشد.",
+  "importAction": "درون‌ریزی",
+  "importing": "در حال درون‌ریزی…",
+  "importDone": "صفحه‌های درون‌ریزی‌شده: {count}",
+  "importSummary": "صفحه‌ها: {pages} · دارایی‌ها: {assets}",
+  "importNothing": "صفحهٔ Markdown برای درون‌ریزی وجود ندارد.",
+  "importSkipped": "فایل‌های ردشده: {count}",
+  "importZipTooLarge": "فایل ZIP بزرگ‌تر از ۵۰ مگابایت است.",
+  "importTooManyPages": "پوشه {count} صفحه دارد. حد مجاز ۵۰۰ است.",
+  "importPageTooLong": "{path} از ۲۵۰٬۰۰۰ نویسه بلندتر است.",
+  "importInvalidUtf8": "{path} UTF-8 معتبر نیست."
 }
