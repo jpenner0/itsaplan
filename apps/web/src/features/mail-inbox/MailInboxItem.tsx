@@ -50,6 +50,7 @@ export default function MailInboxItem({
   const error = accept.error ?? reject.error ?? comment.error ?? retriage.error;
   const busy = accept.isPending || reject.isPending || comment.isPending || retriage.isPending;
 
+  const suggested = item.replyTo ?? draft?.duplicate ?? null;
   const sender = item.fromName ? `${item.fromName} <${item.fromAddress}>` : item.fromAddress;
 
   return (
@@ -83,27 +84,27 @@ export default function MailInboxItem({
         </p>
       )}
 
-      {item.triage === 'failed' || (item.triage === 'none' && !draft) ? (
+      {!item.replyTo && (item.triage === 'failed' || (item.triage === 'none' && !draft)) ? (
         <p className="mt-3 text-xs text-destructive">
           {item.triage === 'failed' ? t('checkFailed') : t('notChecked')}
         </p>
       ) : null}
 
-      {draft?.duplicate && (
+      {suggested && (
         <div className="mt-3 flex items-center justify-between gap-2 rounded-md bg-muted p-2 text-xs">
           <span>
-            {t('duplicateOf', {
-              identifier: draft.duplicate.identifier,
-              title: draft.duplicate.title,
+            {t(item.replyTo ? 'replyTo' : 'duplicateOf', {
+              identifier: suggested.identifier,
+              title: suggested.title,
             })}
           </span>
           <Button
             size="sm"
             variant="outline"
             disabled={busy}
-            onClick={() => comment.mutate({ id: item.id, issueId: draft.duplicate!.id })}
+            onClick={() => comment.mutate({ id: item.id, issueId: suggested.id })}
           >
-            {t('addAsComment', { identifier: draft.duplicate.identifier })}
+            {t('addAsComment', { identifier: suggested.identifier })}
           </Button>
         </div>
       )}

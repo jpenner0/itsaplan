@@ -125,8 +125,8 @@ async function findRepliedIssue(mailboxId: number, mail: ParsedMail): Promise<nu
 
 // Stores one fetched email. A message id already stored for the mailbox is skipped. Returns
 // the new item's id and, for an answer to an accepted email from an allowed sender, the issue
-// it is to be posted on; null for a duplicate. An email from a sender that is not allowed is
-// never posted as a comment.
+// the inbox suggests for "Add as comment"; null for a duplicate. An email from a sender that is
+// not allowed is never matched.
 export async function storeMail(
   mailboxId: number,
   mail: ParsedMail,

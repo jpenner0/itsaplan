@@ -2951,9 +2951,9 @@ export const intakeItem = pgTable(
     // issue, which is what replies are matched against.
     status: text('status').notNull().default('new'),
     issueId: integer('issue_id').references(() => issue.id, { onDelete: 'set null' }),
-    // Set by the worker on an email that answers an accepted one: the issue it is to be posted
-    // on. The api posts it as a comment and clears this. No foreign key: an issue deleted
-    // meanwhile is found when the reply is posted, and the email is triaged instead.
+    // Set by the worker on an email that answers an accepted one: the issue the inbox suggests
+    // for "Add as comment". A member decides; the decision clears this. No foreign key: an issue
+    // deleted meanwhile is found when the inbox lists the email, and the email is triaged instead.
     replyToIssueId: integer('reply_to_issue_id'),
     decidedAt: timestamp('decided_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

@@ -14,6 +14,9 @@ export const InboxItemDto = t.Object({
   ),
   classification,
   teamId: t.Number(),
+  // The issue an email answers, matched by its headers: "Add as comment" offers it and no
+  // draft exists.
+  replyTo: t.Nullable(t.Object({ id: t.Number(), identifier: t.String(), title: t.String() })),
   // none: no run was queued; pending; done; failed. A failed or none item has no draft and
   // offers "Check again".
   triage: t.UnionEnum(['none', 'pending', 'done', 'failed']),

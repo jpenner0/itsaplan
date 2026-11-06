@@ -30,7 +30,6 @@ export function startBackgroundJobs(): void {
   // An expired link already reads as revoked everywhere, so the sweep only tidies the
   // token away; once a minute keeps the stored state close to what users see.
   startLoop('share-expiry', expireShares, () => intEnv('SHARE_EXPIRY_INTERVAL_MS', 60_000));
-  // A reply to an accepted email becomes a comment within seconds of the worker storing it.
   startLoop('agent-traces', pruneTraces, () => intEnv('AGENT_TRACE_PRUNE_INTERVAL_MS', 3_600_000));
   // Webhooks bring issue changes at once. The run first applies the deliveries a busy
   // repository or an error held back; the reconcile then catches what an instance
